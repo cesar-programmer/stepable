@@ -1,0 +1,1 @@
+-- E1.1 establishes the migration history without product tables.

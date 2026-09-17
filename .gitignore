@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Editors and operating systems
+.DS_Store
+*.swp
+
+# Logs
+*.log
