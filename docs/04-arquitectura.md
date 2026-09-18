@@ -1,6 +1,6 @@
 # Arquitectura inicial de Stepable V0
 
-Estado: arquitectura y stack local aprobados; acceso, servicios externos y piloto pendientes. Versión v0.6.
+Estado: arquitectura, stack e identidad local aprobados; acceso por espacio, servicios externos y piloto pendientes. Versión v0.7.
 Actualizado: 2026-09-17 · Decisiones relacionadas: [ADR-002](decisiones/ADR-002-organizacion-modular.md) y [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md).
 
 ## 1. Objetivo y fundamento
@@ -165,7 +165,7 @@ La separación propuesta permite agregar tipos de actividad y adaptadores de fue
 
 ADR-002 y el stack local de ADR-003 están aceptados. PEN-02/PEN-05 conservan las reglas de acceso pendientes; PEN-07 conserva jobs, búsqueda, IA y servicios alojados; PEN-01 requiere precisar la operación/costo del piloto. PEN-04/PEN-06/PEN-08 cubren versiones, privacidad y límites antes de las entregas afectadas.
 
-E1.1 fue autorizada, implementada y verificada localmente. Esta aprobación no autoriza E1.2, despliegue ni gastos.
+E1.1 fue autorizada, implementada y verificada localmente. Su aprobación no autorizaba por sí sola E1.2; la identidad local recibió autorización separada después. Ninguna de ambas autoriza despliegue o gastos.
 
 ## 14. Restricción económica incorporada en v0.3
 
@@ -198,7 +198,7 @@ Estado: **aceptado e implementado para E1.1**. Versiones exactas fijadas en `pac
 | Frontend y API | Next.js con App Router; Route Handlers como adaptador HTTP | Permite una aplicación desplegable en E1, renderizado web y endpoints cuando sean necesarios. Server Actions no sustituyen casos de uso ni autorización. |
 | Validación | Zod en fronteras de entrada y configuración | Esquemas explícitos y reutilizables; no reemplaza restricciones de base. |
 | Persistencia | PostgreSQL, Drizzle ORM para acceso tipado y migraciones SQL canónicas de Supabase CLI | Relacional encaja con membresías, unicidad e integridad. Habrá un solo historial de migraciones en `supabase/migrations`; no una segunda base o motor de migración de Drizzle. |
-| Autenticación local | Supabase Auth incluido en Supabase CLI | E1.1 verifica el componente, pero no implementa cuentas. Proveedor alojado y política de acceso siguen pendientes. |
+| Autenticación local | Supabase Auth mediante adaptadores `@supabase/ssr`/`supabase-js` | E1.2 implementa correo/contraseña, sesión y recuperación local. El proveedor alojado, espacios y política completa de acceso siguen pendientes. |
 | Archivos | Pendiente de E2/piloto | E1.1 no usa Storage ni MinIO; se elegirá sin duplicar servicios innecesarios. |
 | Trabajos | Propuesta pendiente: `pg-boss` sobre PostgreSQL y ejecutable Node separado desde E2 | La activación del worker está aceptada para E2, pero la biblioteca de cola se validará al iniciar esa entrega. |
 | Correo local | Mailpit incluido en Supabase CLI | Captura sin envío real. Correo externo y proveedor quedan pendientes del piloto. |
@@ -230,7 +230,9 @@ Flujo diario implementado:
 
 La verificación, recuperación e invitaciones se prueban generando correos de Auth y de Stepable contra el SMTP de Mailpit incluido. Los recorridos manuales abren los enlaces en su bandeja web; las pruebas automatizadas consultan su interfaz local y no Internet. No se desactiva la confirmación de correo para simular éxito.
 
-E1.1 conserva la configuración inicial de Auth generada por la CLI únicamente para verificar componentes. Sus valores predeterminados —por ejemplo registro o confirmación— no implementan ni aprueban RN-08–RN-18 y deberán cambiarse de forma probada cuando se autorice E1.2.
+E1.2 configura Auth con registro público bloqueado y proveedor de correo habilitado para login/recuperación. La sesión vive en cookies administradas por `@supabase/ssr`; una página protegida llama `getUser()` en servidor, no confía solo en estado del navegador. Un script Node obtiene la capacidad administrativa exclusivamente desde el estado local de Supabase, solicita credenciales interactivamente y crea una identidad confirmada sin asignar privilegios de producto. La clave administrativa no usa prefijo `NEXT_PUBLIC_` ni se importa desde `src/`.
+
+La recuperación usa una plantilla local con token hash y un callback servidor. El callback verifica el token una sola vez, fija la cookie en una respuesta intermedia no cacheable y navega después a la pantalla de contraseña; esto evita trasladar sesiones por fragmentos de URL y permite que el navegador confirme la cookie antes de la siguiente solicitud. Mailpit conserva el mensaje para la comprobación manual. Espacios, membresías, roles e invitaciones no forman parte de este flujo.
 
 La documentación oficial indica que Supabase CLI ofrece PostgreSQL, Auth y otros servicios locales, requiere CLI más runtime de contenedores y captura los correos locales automáticamente con Mailpit. [Desarrollo local](https://supabase.com/docs/guides/local-development) y [contraseñas/Auth local](https://supabase.com/docs/guides/auth/passwords).
 

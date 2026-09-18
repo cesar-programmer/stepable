@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseLocalEnvironment } from "./env";
+import { parseLocalEnvironment, parsePublicEnvironment } from "./env";
 
 describe("parseLocalEnvironment", () => {
   it("accepts a complete local configuration", () => {
@@ -19,5 +19,18 @@ describe("parseLocalEnvironment", () => {
 
   it("rejects an incomplete local configuration", () => {
     expect(() => parseLocalEnvironment({})).toThrow();
+  });
+
+  it("returns only values safe for the browser", () => {
+    expect(
+      parsePublicEnvironment({
+        NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "local-public-key",
+        SUPABASE_SERVICE_ROLE_KEY: "must-not-be-returned",
+      }),
+    ).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "local-public-key",
+    });
   });
 });

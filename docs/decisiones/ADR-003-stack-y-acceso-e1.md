@@ -1,6 +1,6 @@
 # ADR-003 · Stack y política mínima de acceso para E1
 
-Fecha: 2026-09-17 · Estado: resolución parcial; stack y entorno local aceptados, acceso y piloto propuestos.
+Fecha: 2026-09-17 · Estado: resolución parcial; stack, entorno e identidad local aceptados; espacios, invitaciones y piloto propuestos.
 
 ## Contexto
 
@@ -10,12 +10,16 @@ E1 debe entregar cuentas, espacios, membresías y permisos. Stepable lo desarrol
 
 El usuario aceptó para desarrollo local los puntos 1, 2 y 7: arquitectura modular, web/API juntas, worker desde E2, stack TypeScript/Next.js/`pnpm`/Zod/PostgreSQL/Drizzle/Vitest/Playwright y una sola pila Supabase CLI para PostgreSQL/Auth/Mailpit. No aprobó en bloque RN-08–RN-18, proveedores alojados, correo externo, dominios, costos o despliegue.
 
+## Resolución parcial de E1.2 del 2026-09-17
+
+El usuario aceptó la porción local de RN-08: autenticación por correo y contraseña mediante Supabase Auth local, login/logout, recuperación y establecimiento de contraseña desde Mailpit, sesión persistida y validación de identidad en servidor. No hay registro público; un procedimiento operativo interactivo crea usuarios de prueba confirmados sin credenciales fijas o versionadas. Esta resolución no crea un administrador de Stepable ni acepta espacios, membresías, roles, invitaciones, RN-09–RN-18 o la parte de invitación de RN-08.
+
 ## Propuesta
 
 1. Mantener el monolito modular de ADR-002. Web/API comparten despliegue en E1; el worker es un ejecutable del mismo código y se activa en E2, no un microservicio por módulo.
 2. Usar TypeScript estricto, Node.js LTS, `pnpm`, Next.js App Router, Zod, PostgreSQL, Drizzle, Vitest y Playwright.
 3. Propuesta pendiente: usar adaptadores para identidad, archivos, correo, trabajos e IA. Jobs, búsqueda, servicios alojados y proveedores se resolverán en sus entregas o antes del piloto.
-4. Adoptar la política RN-08–RN-18 de [datos y permisos](../05-datos-y-permisos.md): acceso solo por invitación, roles `responsable`/`integrante`, varios responsables, último responsable protegido y autorización en servidor por solicitud.
+4. Aceptado solo para E1.2: la porción local de identidad de RN-08. Propuesta pendiente: completar RN-08 y adoptar RN-09–RN-18 de [datos y permisos](../05-datos-y-permisos.md) para acceso por espacio, roles e invitaciones.
 5. Aprovisionar el primer espacio y los posteriores mediante un comando operativo privado: crea una invitación, el destinatario establece su contraseña y la aceptación crea atómicamente espacio/membresía. No existe contraseña predeterminada ni endpoint público; durante la V0 los responsables no crean otros espacios.
 6. Definir revocación por commit: cada caso de uso consulta membresía/rol vigente en PostgreSQL, no roles de tokens o cachés. Retirar un espacio no cierra la sesión global; las solicitudes ya admitidas siguen las reglas de bloqueo descritas en el documento 05.
 7. Desarrollar localmente con una única pila Supabase CLI para PostgreSQL, Auth y Mailpit; no duplicar base ni SMTP local. Contratar o desplegar solo con autorización separada.
@@ -44,8 +48,10 @@ El usuario aceptó para desarrollo local los puntos 1, 2 y 7: arquitectura modul
 
 E1.1 fijó Node 24, pnpm 11.23.0, Next.js 16.3.5, React 19.3.0, TypeScript 5.9.3, Zod 4.6.5, Drizzle 0.45.2, Vitest 5.0.1, Playwright 1.63.0 y Supabase CLI 2.117.0. La pila instalada usa PostgreSQL 17.6.1, GoTrue 2.196.0 y Mailpit 1.30.2. La versión instalada se verificó directamente; no se asume que versiones futuras conserven los mismos componentes.
 
+E1.2 añadió `@supabase/ssr` 0.12.7 y `@supabase/supabase-js` 2.116.0 detrás de un adaptador de identidad. `auth.enable_signup = false` bloquea el alta pública; el proveedor de correo permanece habilitado para login y recuperación. La página protegida usa `getUser()` en servidor, el proxy renueva cookies y Mailpit entrega un enlace con token hash de un solo uso. Las pruebas administrativas obtienen la clave efímeramente de Supabase CLI/estado local y comprobaron que no aparece en HTML o JavaScript del navegador.
+
 Correo externo, dominios, alojamiento, proveedores y costos quedan como investigación histórica no aprobada y deben reabrirse antes del piloto.
 
 ## Condiciones para aceptar
 
-Queda pendiente aprobar o ajustar RN-08–RN-18, bootstrap, revocación y matriz de permisos antes de implementar esas funciones. El piloto reabrirá correo externo, dominios, alojamiento, costos, backup y retención. La resolución parcial no autoriza E1.2 ni contratación.
+Queda pendiente completar RN-08 y aprobar o ajustar RN-09–RN-18, bootstrap, revocación y matriz de permisos antes de implementar espacios, membresías, roles o invitaciones. El piloto reabrirá correo externo, dominios, alojamiento, costos, backup y retención. La resolución parcial no autoriza E1.3 ni contratación.

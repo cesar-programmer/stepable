@@ -1,50 +1,52 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-09-17 · Fase: E1.1 cerrada y comprobada por el usuario · Versión documental: 0.6.
+Actualizado: 2026-09-17 · Fase: E1.2 cerrada y comprobada localmente; E1.3 no iniciada · Versión documental: 0.7.
 
 ## Hechos acordados
 
 - Producto propio para validar y portafolio, desarrollado individualmente con Codex.
-- Onboarding interactivo y consultas permanentes como usos centrales.
-- Visión amplia y enfoque inicial en software.
-- V0 aceptada como base de planificación; documentación separada para mantener continuidad.
+- Onboarding interactivo y consultas permanentes como usos centrales; V0 enfocada en equipos de software.
+- Arquitectura modular, web/API juntas, worker desde E2 y stack local aceptados.
+- Identidad E1.2 aceptada solo en local: correo/contraseña, sesión, recuperación por Mailpit, validación en servidor y ausencia de registro público.
 
 ## Actualización más reciente
 
-El usuario comprobó manualmente que la página de Stepable responde HTTP 200 y que Supabase inicia. La revisión posterior de los enlaces efectivos de Docker confirmó que los puertos publicados están limitados a `127.0.0.1`; el aviso `All services bind to 0.0.0.0` de Supabase CLI es genérico bajo la red configurada. E1.1 queda cerrada sin autorizar E1.2.
+Implementada E1.2 sobre el commit base `8e7859f5c0a65bfddfc851a1e1d2796cf035dbed`. El usuario comprobó manualmente credenciales incorrectas/correctas, acceso protegido, persistencia al recargar, logout, recuperación desde Mailpit, cambio de contraseña, rechazo de la contraseña anterior, aceptación de la nueva y rechazo del enlace ya utilizado. E1.2 queda cerrada sin autorizar E1.3.
 
 ## Realizado
 
-- Desarrollado [04-arquitectura](04-arquitectura.md): componentes, módulos, dependencias, flujos de ingesta/chat/publicación/aprendizaje, almacenamiento, fallos y controles de acceso.
-- Aceptado [ADR-002](decisiones/ADR-002-organizacion-modular.md): backend modular, web/API juntas y worker desde E2.
-- Aceptados parcialmente stack y entorno local de [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md).
-- Inicializado Git en rama `main`; primer commit local creado sin remoto ni push.
-- Creada aplicación Next.js mínima y configuración de TypeScript, Zod, Drizzle, Vitest, Playwright, ESLint y Prettier.
-- Supabase CLI 2.117.0 inicializada con PostgreSQL/Auth/Mailpit; puertos publicados solo en `127.0.0.1` mediante red `stepable-local`.
-- Añadidos migración y seed base sin tablas o datos de producto; `.env.example` no contiene secretos y `.env.local` está ignorado.
+- E1.1 cerrada y comprobada por el usuario: base Next.js, Supabase CLI y puertos limitados a `127.0.0.1`.
+- Añadidos `@supabase/ssr` 0.12.7 y `@supabase/supabase-js` 2.116.0 con versiones bloqueadas.
+- Bloqueado el registro público mediante `auth.enable_signup = false`; proveedor de correo habilitado para login y recuperación.
+- Implementados adaptador de identidad, cookies SSR, renovación en `proxy.ts`, acciones de sesión y validación servidor con `getUser()`.
+- Implementados `/login`, `/recover`, `/auth/callback`, `/auth/update-password` y `/protected`.
+- Añadida plantilla local de recuperación capturada por Mailpit y rechazo uniforme de enlaces inválidos o consumidos.
+- Añadido `pnpm auth:create-local-user`: entrada interactiva, contraseña no visible y creación confirmada solo en Auth local.
+- Añadidos arnés de integración real y E2E con identidades aleatorias eliminadas al terminar; no se reinicia la base.
 
-## Evidencia y estado real del repositorio
+## Evidencia y verificaciones reales
 
-- Dependencias exactas y lockfile instalados; `pnpm peers check` sin problemas.
-- `pnpm verify`: formato, lint, tipos, 2 pruebas unitarias y build aprobados.
-- `pnpm test:e2e`: 1 smoke test aprobado en Chromium.
-- `pnpm db:reset`: migración y seed aplicados en la red `stepable-local`; finalizó saludable.
-- PostgreSQL aceptó conexiones; Auth respondió como GoTrue 2.196.0; Mailpit respondió como 1.30.2; aplicación respondió HTTP 200.
-- Se verificaron componentes de los contenedores instalados, incluido PostgreSQL 17.6.1. Los extras de Supabase están presentes pero no forman parte funcional de E1.1.
-- El usuario confirmó manualmente el arranque web con HTTP 200 y el inicio de Supabase.
-- `docker inspect` confirmó los enlaces efectivos `127.0.0.1:54321`, `:54322`, `:54323`, `:54324` y `:54327`. Los demás puertos de los contenedores no están publicados al host. La red `stepable-local` tiene `com.docker.network.bridge.host_binding_ipv4=127.0.0.1`; no se encontró publicación en `0.0.0.0` ni `::`.
+- `pnpm test:integration:auth`: 1 archivo y 3 pruebas aprobadas contra Supabase Auth/Mailpit reales; cubre registro público rechazado, credenciales incorrectas/correctas, recuperación, cambio de contraseña y token reutilizado.
+- `pnpm test:e2e:auth`: 2 pruebas aprobadas; cubre anónimo rechazado, login, recarga con sesión, logout, recuperación completa y ausencia de la clave administrativa en HTML/bundles.
+- `pnpm test:e2e`: 3 pruebas aprobadas en Chromium, incluido el smoke de E1.1.
+- `pnpm verify`: formato, ESLint, TypeScript, 2 archivos/6 pruebas unitarias y build de producción aprobados.
+- Comprobación manual del usuario: contraseña incorrecta rechazada; login correcto; acceso a `/protected` y sesión conservada al recargar; logout efectivo y nueva visita a `/protected` redirigida al login.
+- Comprobación manual del usuario: correo de recuperación recibido en Mailpit, establecimiento de una contraseña nueva, rechazo de la anterior, login con la nueva y rechazo del enlace consumido.
+- El callback de recuperación usa una respuesta intermedia no cacheable para fijar la cookie antes de navegar; el token no se traslada a la siguiente URL.
+- La clave administrativa se obtiene solo en scripts/pruebas Node desde el entorno local ignorado; no existe variable `NEXT_PUBLIC_` administrativa ni importación desde `src/`.
+- Supabase se reinició normalmente para aplicar Auth, restaurando su backup local. No se ejecutó `db reset`, no se eliminaron volúmenes y los datos se conservaron.
 
 ## No realizado
 
-No se aprobaron ni implementaron RN-08–RN-18, cuentas, login, bootstrap, espacios, membresías, roles, invitaciones, autorización o correo de aplicación. No hay E2, despliegue, proveedor contratado, repositorio remoto, fecha/volumen/participantes de piloto ni estimación de costo vigente.
+No se implementaron perfiles de producto, espacios, membresías, roles, bootstrap, invitaciones de Stepable, autorización por espacio, E2, despliegue ni proveedor externo. RN-08 está aceptada solo en su porción local de identidad; RN-09–RN-18 y el mecanismo de invitación continúan propuestos.
 
 ## Próxima tarea concreta
 
-Revisar y aprobar las reglas necesarias antes de autorizar E1.2; no avanzar automáticamente a identidad o permisos.
+Revisar y resolver solamente las decisiones de modelo y bootstrap que bloquean E1.3; después, solicitar autorización expresa antes de implementarla. No adelantar autorización completa, invitaciones de E1.5, piloto o proveedores.
 
-## Verificación de esta entrega
+## Estado de Git y operación
 
-Verificaciones reales descritas arriba. Se comprobaron enlaces Markdown locales, estados de los ADR, archivos preparados para el primer commit y ausencia de secretos o artefactos generados versionados. No se consultaron ni alteraron los PDF. No se ejecutó `db reset`, no se eliminaron volúmenes y los datos locales se conservaron.
+E1.2 se consolida en el commit local `feat(auth): implement local identity and session flows`, sin remoto ni push. Los datos locales se conservaron. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
 
 ## Formato para futuras sesiones
 

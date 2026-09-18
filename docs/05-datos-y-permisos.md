@@ -1,6 +1,6 @@
 # Datos y permisos
 
-Estado: modelo conceptual y política mínima E1 propuestos; aclarados en v0.5, no aprobados ni implementados.
+Estado: identidad local de RN-08 aceptada e implementada en E1.2; modelo de espacios, permisos e invitaciones propuesto.
 Actualizado: 2026-09-17.
 
 ## Conceptos y relaciones
@@ -46,7 +46,7 @@ El [documento 04](04-arquitectura.md) propone separar propiedad de datos por mó
 
 ## Política mínima propuesta para E1
 
-Esta sección es la definición normativa propuesta de acceso e invitaciones. Requiere aprobación mediante ADR-003; hasta entonces PEN-02 y PEN-05 siguen abiertos.
+Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acepta solo la porción local de identidad descrita después de RN-08; las reglas de espacios, membresías, roles e invitaciones continúan propuestas y PEN-02/PEN-05 siguen abiertos para esas partes.
 
 ### Identidad y espacios
 
@@ -57,6 +57,8 @@ Esta sección es la definición normativa propuesta de acceso e invitaciones. Re
 | RN-10 | El primer responsable y el primer espacio se crean mediante un procedimiento operativo privado y auditable, sin contraseña predeterminada ni endpoint público. Durante la V0, el mismo aprovisionamiento operativo crea espacios posteriores y designa su primer responsable; después, cada responsable administra solo las invitaciones y membresías de su espacio. |
 | RN-11 | Toda operación protegida vuelve a cargar desde la base la membresía activa y el rol vigentes. Un identificador de espacio, un rol en pantalla/token/caché o una sesión válida no concede por sí solo acceso. |
 | RN-12 | Un espacio puede tener varios responsables y nunca puede quedar sin al menos uno. No se puede retirar ni degradar al último responsable activo. |
+
+**Resolución parcial de RN-08 en E1.2:** se aprueban exclusivamente autenticación local con correo y contraseña, ausencia de registro público, login/logout, recuperación y establecimiento de contraseña mediante Mailpit, sesión en cookies y validación de identidad en servidor. El usuario de prueba se crea con una operación local interactiva y queda confirmado en Auth, sin credenciales versionadas. “Solo por invitación” queda como restricción de producto, pero su mecanismo, las invitaciones de Stepable y la relación con espacios no están aprobados ni implementados todavía.
 
 ### Invitaciones y cambios de membresía
 
@@ -130,9 +132,9 @@ Sin fijar todavía nombres físicos, E1 necesita estas entidades y restricciones
 
 Las operaciones que aceptan invitaciones, cambian roles o retiran miembros deben usar transacciones y restricciones de base. El control del último responsable no puede depender solo de ocultar un botón; requiere una estrategia transaccional probada contra concurrencia.
 
-## Decisiones aún abiertas después de la propuesta
+## Decisiones aún abiertas después de E1.2
 
-- Aprobar el mecanismo administrado de identidad y el acceso solo por invitación.
+- Aprobar el mecanismo de invitación de Stepable y su relación con identidades ya existentes o nuevas.
 - Aprobar responsables múltiples, invitaciones de responsable y protección del último responsable.
 - Confirmar si siete días es la vigencia adecuada o elegir otra antes de publicar el correo definitivo.
 - PEN-06 sigue definiendo cuánto conservar membresías retiradas y auditoría. No bloquea implementar el rechazo inmediato, pero sí recibir datos reales del piloto.

@@ -4,5 +4,5 @@ test("shows the local E1 base", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Stepable" })).toBeVisible();
-  await expect(page.getByText("Base local E1")).toBeVisible();
+  await expect(page.getByText("Identidad local E1.2")).toBeVisible();
 });

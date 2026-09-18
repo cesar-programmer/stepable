@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="es">
+  <body>
+    <h1>Restablece tu contraseña de Stepable</h1>
+    <p>Este correo pertenece exclusivamente al entorno local.</p>
+    <p>
+      <a
+        href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=recovery"
+      >
+        Establecer una contraseña nueva
+      </a>
+    </p>
+  </body>
+</html>

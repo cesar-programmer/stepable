@@ -3,9 +3,9 @@
 Estado: secuencia inicial de planificación; sin fechas comprometidas.
 Actualizado: 2026-09-17.
 
-## Etapa actual: preparación
+## Etapa actual: E1.2 cerrada; E1.3 no iniciada
 
-Arquitectura modular y stack local aceptados; E1.1 implementada y verificada. Antes de E1.2 deben cerrarse las decisiones de acceso y permisos. Piloto y decisiones propias de entregas posteriores se resolverán antes de iniciarlas.
+Arquitectura modular, stack e identidad local aceptados en el alcance registrado por ADR-003. E1.2 está implementada y cerrada con verificación automatizada y comprobación manual de login, sesión, logout, recuperación, cambio de contraseña y enlace consumido. Espacios, membresías, roles, invitaciones de Stepable y piloto no están autorizados.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ RF-10 es transversal: errores y límites deben incorporarse en las entregas que 
 
 ## Regla de cierre
 
-Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. No existen resultados de ejecución todavía.
+Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1 y E1.2 tienen evidencia automatizada y comprobación manual; las entregas posteriores todavía no tienen resultados.
 
 Las pruebas deben cubrir aislamiento, permisos, referencias/versiones, recuperación de fallos y progreso. No fijar un número de pruebas como objetivo de calidad.
 
@@ -28,13 +28,13 @@ La V0 funcional termina cuando onboarding y consulta permanente operan juntos. U
 
 ## Plan ejecutable de E1
 
-E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) está aceptado solo para stack/entorno local; acceso sigue pendiente.
+E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) acepta stack, entorno e identidad local de E1.2; autorización por espacio e invitaciones siguen pendientes.
 
 | Paso | Trabajo | Criterio de aceptación | Pruebas pertinentes | Resultado esperado |
 | --- | --- | --- | --- | --- |
 | E1.0 Cerrar contrato | Resolver ADR-002/ADR-003, vigencia de invitación y política del último responsable | No quedan decisiones de comportamiento E1 ambiguas; PEN-02/PEN-05 se cierran o se dividen con dueño | Revisión cruzada RF-01/RF-02, RN-03 y RN-08–RN-18 | Base aprobada para implementar sin contratar ni desplegar |
 | E1.1 Base reproducible | Crear workspace, cascarón Next.js, configuración validada y una pila Supabase CLI local con Postgres/Auth/Mailpit; definir un único historial SQL | Un desarrollador nuevo puede iniciar/detener entorno, migrar desde cero y ejecutar verificaciones documentadas sin servicios duplicados | Instalación limpia, `env:start/status/stop`, reset local, lint, tipos y prueba mínima | Proyecto ejecutable localmente; sin cuentas, espacios, permisos ni flujo de bootstrap implementados todavía |
-| E1.2 Identidad | Integrar registro restringido por invitación, login, verificación, recuperación y logout con adaptador de Auth | Usuario válido entra/sale/recupera; registro libre se rechaza; respuestas no enumeran cuentas | Unidades de adaptador, integración de sesión, E2E feliz y tokens inválidos/caducados | Identidad autenticada, aún separada de autorización de espacios |
+| E1.2 Identidad | Integrar Supabase Auth local detrás de un adaptador: usuario operativo de prueba, login, sesión, recuperación, cambio de contraseña y logout; sin registro público | Usuario válido entra/sale/recupera; credenciales incorrectas, acceso anónimo y enlaces inválidos/usados se rechazan; la página protegida valida identidad en servidor | Unidades de entrada, integración con Auth/Mailpit reales, E2E de sesión/recuperación y revisión de clave administrativa | Identidad autenticada y comprobable localmente, aún separada de espacios y autorización |
 | E1.3 Espacios y membresías | Persistir perfiles, espacios, membresías, roles y bootstrap | Primer responsable/espacio se crea una sola vez; usuario puede listar solo sus espacios | Restricciones/índices en PostgreSQL real, concurrencia de bootstrap, manipulación de ID | Fuente de verdad de acceso por espacio |
 | E1.4 Autorización | Implementar políticas centrales y matriz mínima | Responsable e integrante acceden solo a acciones permitidas; sin membresía se deniega por defecto | Tabla de pruebas rol × acción, acceso horizontal/vertical, membresía retirada con sesión viva | CA-01 cubierto en backend, no solo en UI |
 | E1.5 Invitaciones | Crear, enviar/capturar localmente, aceptar, reenviar y revocar invitaciones | Coincidencia de correo, token único/hasheado, expiración, aceptación atómica e idempotente | Token alterado/usado/revocado/vencido, correo distinto, carreras de doble aceptación, reenvío | Flujo completo para incorporar usuarios |
@@ -50,4 +50,12 @@ La evidencia mínima será: salida de suite con fecha y versión, matriz de auto
 
 Completado el 2026-09-17: repositorio Git local, aplicación Next.js mínima, configuración tipada, dependencias bloqueadas, Supabase CLI con PostgreSQL/Auth/Mailpit, red limitada a `127.0.0.1`, migración/seed base, scripts de ciclo de vida, formato/lint/tipos/unidades/build, arranque HTTP y smoke E2E.
 
-No se implementaron registro/login, bootstrap, espacios, membresías, roles, invitaciones, correo de aplicación, RLS de negocio, E2 ni despliegue. El siguiente paso no comienza hasta que el usuario pruebe esta base y resuelva las reglas necesarias para E1.2.
+En E1.1 no se implementaron registro/login, bootstrap, espacios, membresías, roles, invitaciones, correo de aplicación, RLS de negocio, E2 ni despliegue. La identidad se añadió después, exclusivamente en E1.2.
+
+### Resultado de E1.2
+
+Implementado y verificado automáticamente el 2026-09-17: Supabase Auth local con correo/contraseña, registro público bloqueado, creación operativa e interactiva de usuario de prueba, cookies SSR, validación de identidad en servidor, login, persistencia al recargar, logout, recuperación por correo capturado en Mailpit, cambio de contraseña y rechazo de token inválido o reutilizado. El SDK queda detrás del adaptador de identidad y la clave administrativa se usa solo en scripts/pruebas Node locales.
+
+El usuario comprobó manualmente el rechazo de una contraseña incorrecta, el login correcto, el acceso protegido, la persistencia de sesión al recargar, el logout con redirección al login, la recuperación, el cambio de contraseña, el rechazo de la contraseña anterior, la aceptación de la nueva y el rechazo del enlace consumido. E1.2 queda cerrada.
+
+No se implementaron espacios, perfiles de producto, membresías, roles, invitaciones de Stepable ni autorización por espacio. E1.2 no autoriza E1.3.

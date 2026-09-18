@@ -1,5 +1,16 @@
 # Historial de cambios
 
+## 2026-09-17 · 0.7
+
+- Aceptada e implementada la porción local de identidad de RN-08: correo/contraseña, login/logout, recuperación por Mailpit, validación en servidor y registro público bloqueado.
+- Añadidos adaptador Supabase, cookies SSR, páginas y acciones mínimas de identidad, sin espacios, membresías, roles o invitaciones de Stepable.
+- Añadido procedimiento interactivo de usuario local sin credenciales fijas ni privilegios de producto.
+- Personalizada la recuperación local con token hash de un solo uso y callback no cacheable; enlaces inválidos o reutilizados se rechazan.
+- Verificados integración real (3 pruebas), navegador (3 pruebas), formato, lint, tipos, 6 unidades y build; la clave administrativa no apareció en recursos del navegador.
+- El usuario comprobó manualmente credenciales incorrectas/correctas, acceso protegido, persistencia al recargar, logout, recuperación desde Mailpit, cambio de contraseña y rechazo del enlace consumido.
+- Conservados datos y volúmenes: reinicio normal de Supabase, sin `db reset`.
+- E1.2 queda cerrada en un commit local, sin push, E1.3, despliegue o investigación de proveedores.
+
 ## 2026-09-17 · 0.6
 
 - Registrada la comprobación manual del usuario: página HTTP 200 y arranque correcto de Supabase.
