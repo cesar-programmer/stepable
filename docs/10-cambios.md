@@ -1,5 +1,18 @@
 # Historial de cambios
 
+## 2026-09-18 · 0.9
+
+- Aceptadas para E1.4 la matriz mínima, la consulta de identidad/membresía/rol por solicitud, la denegación predeterminada y la conservación de membresías revocadas sin cerrar la sesión global.
+- Añadida migración incremental de estado `activa`/`revocada`; filas existentes conservadas como activas y último responsable ajustado para contar solo responsables activos.
+- Implementada política central con acciones explícitas para consultar espacio, gestionar invitaciones y gestionar miembros; las interfaces/endpoints de gestión siguen en E1.5/E1.6.
+- Integrados listado y detalle con la política; revocadas se excluyen y el detalle inaccesible conserva 404.
+- Ajustado el bootstrap para informar conflicto sin reactivar una membresía revocada ni restaurar un rol.
+- Migración aplicada sin reset; identidad, espacio y membresía manual existentes conservados. Los fixtures de prueba no dejaron espacios residuales.
+- Superadas integración real (11 pruebas), navegador (6 pruebas), formato, lint, tipos, 16 unidades y build.
+- El usuario comprobó manualmente que su espacio sigue en el listado, puede abrirlo y conserva el rol `responsable`; no se registran escenarios manuales adicionales.
+- E1.4 queda cerrada en un commit local, sin push, E1.5, administración o servicios externos.
+- Sin invitaciones, endpoints administrativos, reincorporación, servicios externos, contratación o despliegue.
+
 ## 2026-09-18 · 0.8
 
 - Aceptados para E1.3 RN-09, RN-10, el principio de RN-12 y la comprobación de membresía de RN-11 en listado/detalle; invitaciones, administración y autorización completa siguen pendientes.

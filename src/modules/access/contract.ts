@@ -1,12 +1,24 @@
 export const spaceRoles = ["responsable", "integrante"] as const;
+export const membershipStatuses = ["activa", "revocada"] as const;
+export const spaceActions = [
+  "consultar_espacio",
+  "gestionar_invitaciones",
+  "gestionar_miembros",
+] as const;
 
 export type SpaceRole = (typeof spaceRoles)[number];
+export type MembershipStatus = (typeof membershipStatuses)[number];
+export type SpaceAction = (typeof spaceActions)[number];
 
 export type UserSpace = {
   id: string;
   slug: string;
   name: string;
   role: SpaceRole;
+};
+
+export type SpaceMembership = UserSpace & {
+  status: MembershipStatus;
 };
 
 export type BootstrapSpaceInput = {
@@ -22,11 +34,11 @@ export type BootstrapSpaceResult = {
 
 export interface AccessRepository {
   bootstrapSpace(input: BootstrapSpaceInput): Promise<BootstrapSpaceResult>;
-  listSpacesForIdentity(identityId: string): Promise<UserSpace[]>;
-  findSpaceForIdentity(
+  listActiveSpacesForIdentity(identityId: string): Promise<SpaceMembership[]>;
+  findSpaceMembershipForIdentity(
     identityId: string,
     spaceId: string,
-  ): Promise<UserSpace | null>;
+  ): Promise<SpaceMembership | null>;
 }
 
 export class IdentityNotFoundError extends Error {
@@ -39,7 +51,7 @@ export class IdentityNotFoundError extends Error {
 export class SpaceBootstrapConflictError extends Error {
   constructor() {
     super(
-      "El espacio ya existe con un nombre o responsable inicial diferente.",
+      "El espacio ya existe con datos incompatibles o su responsable inicial ya no conserva una membresía activa con ese rol.",
     );
     this.name = "SpaceBootstrapConflictError";
   }

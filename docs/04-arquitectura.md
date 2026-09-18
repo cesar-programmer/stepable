@@ -1,7 +1,7 @@
 # Arquitectura inicial de Stepable V0
 
-Estado: arquitectura, stack, identidad y persistencia local de acceso aprobados; autorización completa, servicios externos y piloto pendientes. Versión v0.8.
-Actualizado: 2026-09-17 · Decisiones relacionadas: [ADR-002](decisiones/ADR-002-organizacion-modular.md) y [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md).
+Estado: arquitectura, stack, identidad, persistencia y autorización local de E1.4 aprobados; invitaciones, administración, servicios externos y piloto pendientes. Versión v0.9.
+Actualizado: 2026-09-18 · Decisiones relacionadas: [ADR-002](decisiones/ADR-002-organizacion-modular.md) y [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md).
 
 ## 1. Objetivo y fundamento
 
@@ -163,7 +163,7 @@ La separación propuesta permite agregar tipos de actividad y adaptadores de fue
 
 ## 13. Qué queda para resolver
 
-ADR-002 y el stack local de ADR-003 están aceptados. PEN-02/PEN-05 conservan las reglas de acceso pendientes; PEN-07 conserva jobs, búsqueda, IA y servicios alojados; PEN-01 requiere precisar la operación/costo del piloto. PEN-04/PEN-06/PEN-08 cubren versiones, privacidad y límites antes de las entregas afectadas.
+ADR-002 y el stack/autorización local de ADR-003 están aceptados. PEN-02 conserva invitaciones y PEN-05 las operaciones administrativas/concurrencia; PEN-07 conserva jobs, búsqueda, IA y servicios alojados; PEN-01 requiere precisar la operación/costo del piloto. PEN-04/PEN-06/PEN-08 cubren versiones, privacidad y límites antes de las entregas afectadas.
 
 E1.1 fue autorizada, implementada y verificada localmente. Su aprobación no autorizaba por sí sola E1.2; la identidad local recibió autorización separada después. Ninguna de ambas autoriza despliegue o gastos.
 
@@ -237,7 +237,9 @@ La recuperación usa una plantilla local con token hash y un callback servidor. 
 
 E1.3 implementa el módulo de acceso con casos de uso independientes de Next.js y un adaptador PostgreSQL/Drizzle. `profiles` enlaza de forma única con `auth.users`; `spaces` conserva `slug`, nombre y responsable inicial; `memberships` usa clave compuesta espacio/perfil y un enum cerrado `responsable`/`integrante`. Las lecturas parten de la identidad validada en servidor y unen membresía con espacio; no existe una consulta de detalle que omita ese filtro.
 
-El bootstrap local es un comando Node privado, no una ruta HTTP. Usa el `slug` como clave idempotente y un bloqueo asesor transaccional para serializar repeticiones concurrentes; crea perfil, espacio y primera membresía en una sola transacción. Solo acepta una identidad existente. Una restricción diferida impide confirmar un espacio sin responsable; las operaciones administrativas y su bloqueo concurrente pertenecen a E1.6.
+El bootstrap local es un comando Node privado, no una ruta HTTP. Usa el `slug` como clave idempotente y un bloqueo asesor transaccional para serializar repeticiones concurrentes; crea perfil, espacio y primera membresía en una sola transacción. Solo acepta una identidad existente. No reactiva una membresía revocada ni restablece un rol: una repetición incompatible informa conflicto.
+
+E1.4 añade una política central cerrada para consultar espacios, gestionar invitaciones y gestionar miembros. Cada entrada protegida valida la identidad y consulta la membresía/rol vigentes en PostgreSQL; los permisos no se guardan en tokens ni se reutilizan entre solicitudes. `memberships.status` distingue `activa` y `revocada`, y la restricción diferida exige al menos un responsable activo. Las operaciones administrativas y su bloqueo concurrente pertenecen a E1.6.
 
 La documentación oficial indica que Supabase CLI ofrece PostgreSQL, Auth y otros servicios locales, requiere CLI más runtime de contenedores y captura los correos locales automáticamente con Mailpit. [Desarrollo local](https://supabase.com/docs/guides/local-development) y [contraseñas/Auth local](https://supabase.com/docs/guides/auth/passwords).
 

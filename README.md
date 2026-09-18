@@ -1,8 +1,8 @@
 # Stepable · Base documental V0
 
-Versión documental: 0.8 · Fecha: 2026-09-18 · Estado: E1.3 cerrada y comprobada localmente; E1.4 no iniciada.
+Versión documental: 0.9 · Fecha: 2026-09-18 · Estado: E1.4 cerrada con verificación automática y comprobación manual local; E1.5 no iniciada.
 
-Este repositorio contiene la base documental y la aplicación local de Stepable. E1.3 añade perfiles, espacios y membresías con roles por espacio, bootstrap privado e aislamiento de consultas. Invitaciones, administración de membresías, autorización completa, piloto y proveedores siguen pendientes.
+Este repositorio contiene la base documental y la aplicación local de Stepable. E1.4 añade autorización central por espacio, membresías activas/revocadas y revalidación de permisos desde PostgreSQL en cada solicitud protegida. Invitaciones, operaciones administrativas, piloto y proveedores siguen pendientes.
 
 ## Cómo comenzar
 
@@ -38,6 +38,7 @@ pnpm env:stop      # detiene la pila Supabase
 pnpm verify        # formato, lint, tipos, unidades y build
 pnpm test:integration:auth # integración real con Auth y Mailpit
 pnpm test:integration:access # integridad, bootstrap e aislamiento reales
+pnpm test:e2e:access # listado, detalle, aislamiento y revocación con sesión viva
 pnpm test:e2e      # recorridos web; requiere pnpm exec playwright install chromium
 ```
 
@@ -62,6 +63,18 @@ pnpm test:e2e      # recorridos web; requiere pnpm exec playwright install chrom
 4. Abrir el espacio desde la lista y confirmar que muestra el mismo nombre, `slug` y rol.
 5. Repetir el comando con los mismos datos y confirmar que informa que el espacio ya estaba aprovisionado sin duplicarlo.
 
+### Comprobación local de E1.4
+
+No existe todavía una interfaz para cambiar roles o revocar membresías. Esos comportamientos se comprueban sin editar datos manualmente mediante fixtures efímeros que se eliminan al terminar:
+
+```bash
+pnpm db:migrate
+pnpm test:integration:access
+pnpm test:e2e:access
+```
+
+La integración ejercita la matriz de acciones, ausencia/revocación, cambio de rol, último responsable activo y bootstrap. El recorrido de navegador mantiene una sesión abierta, revoca solo un espacio de prueba y confirma 404 para ese espacio, sesión global vigente y acceso conservado a otro espacio. Los comandos no modifican el espacio aprovisionado manualmente.
+
 `env:start` crea o reutiliza la red Docker `stepable-local` y publica los puertos solo en `127.0.0.1`. Supabase CLI puede mostrar el aviso genérico `All services bind to 0.0.0.0`; la comprobación válida es el enlace efectivo de Docker. Con esta red, `docker inspect` debe mostrar `127.0.0.1` —no `0.0.0.0` ni `::`— para los puertos publicados.
 
 Los documentos son memoria explícita: solo sirven a Codex si están disponibles en su entorno y se consultan. No implican recuerdo automático entre conversaciones.
@@ -71,6 +84,6 @@ Los documentos son memoria explícita: solo sirven a Codex si están disponibles
 - Acordado: dirección expresada por el usuario o alcance aceptado para planificar.
 - Propuesto: detalle añadido para concretar el diseño; puede cambiar durante la planificación.
 - Pendiente: decisión aún sin respuesta. No equivale a autorización para inventar una especificación.
-- Implementado/verificado: requiere evidencia real. E1.1, E1.2 y E1.3 están cerradas con evidencia automatizada y comprobación manual; E1.4 no está autorizada ni iniciada.
+- Implementado/verificado: requiere evidencia real. E1.1–E1.4 están cerradas con evidencia automatizada y comprobación manual. E1.5 no está autorizada ni iniciada.
 
 La aceptación de la V0 como base de planificación no significa que todos los detalles técnicos estén cerrados. Las instrucciones posteriores del usuario prevalecen; actualizar los documentos afectados para mantener coherencia.

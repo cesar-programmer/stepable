@@ -4,7 +4,7 @@ import type {
   AccessRepository,
   BootstrapSpaceInput,
   BootstrapSpaceResult,
-  UserSpace,
+  SpaceMembership,
 } from "../../modules/access/contract.ts";
 import {
   IdentityNotFoundError,
@@ -58,7 +58,7 @@ export class PostgresAccessRepository implements AccessRepository {
 
       if (existingSpace) {
         const [existingMembership] = await transaction
-          .select({ role: memberships.role })
+          .select({ role: memberships.role, status: memberships.status })
           .from(memberships)
           .where(
             and(
@@ -71,7 +71,8 @@ export class PostgresAccessRepository implements AccessRepository {
         if (
           existingSpace.name !== input.name ||
           existingSpace.initialResponsibleId !== identityId ||
-          existingMembership?.role !== "responsable"
+          existingMembership?.role !== "responsable" ||
+          existingMembership?.status !== "activa"
         ) {
           throw new SpaceBootstrapConflictError();
         }
@@ -109,30 +110,39 @@ export class PostgresAccessRepository implements AccessRepository {
     });
   }
 
-  async listSpacesForIdentity(identityId: string): Promise<UserSpace[]> {
+  async listActiveSpacesForIdentity(
+    identityId: string,
+  ): Promise<SpaceMembership[]> {
     return this.database
       .select({
         id: spaces.id,
         slug: spaces.slug,
         name: spaces.name,
         role: memberships.role,
+        status: memberships.status,
       })
       .from(memberships)
       .innerJoin(spaces, eq(spaces.id, memberships.spaceId))
-      .where(eq(memberships.profileId, identityId))
+      .where(
+        and(
+          eq(memberships.profileId, identityId),
+          eq(memberships.status, "activa"),
+        ),
+      )
       .orderBy(asc(spaces.name), asc(spaces.id));
   }
 
-  async findSpaceForIdentity(
+  async findSpaceMembershipForIdentity(
     identityId: string,
     spaceId: string,
-  ): Promise<UserSpace | null> {
+  ): Promise<SpaceMembership | null> {
     const [space] = await this.database
       .select({
         id: spaces.id,
         slug: spaces.slug,
         name: spaces.name,
         role: memberships.role,
+        status: memberships.status,
       })
       .from(memberships)
       .innerJoin(spaces, eq(spaces.id, memberships.spaceId))

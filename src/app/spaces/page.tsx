@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PostgresAccessRepository } from "@/adapters/postgres/access-repository";
 import { getApplicationDatabase } from "@/adapters/postgres/database";
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
+import { listAuthorizedSpaces } from "@/modules/access/authorization";
 
 import { logoutAction } from "../auth/actions";
 
@@ -16,11 +17,11 @@ export default async function SpacesPage() {
   }
 
   const repository = new PostgresAccessRepository(getApplicationDatabase());
-  const spaces = await repository.listSpacesForIdentity(currentIdentity.id);
+  const spaces = await listAuthorizedSpaces(repository, currentIdentity.id);
 
   return (
     <main>
-      <p className="eyebrow">Acceso local E1.3</p>
+      <p className="eyebrow">Acceso local E1.4</p>
       <h1>Tus espacios</h1>
       {spaces.length === 0 ? (
         <p className="empty-state">Todavía no perteneces a ningún espacio.</p>

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { PostgresAccessRepository } from "@/adapters/postgres/access-repository";
 import { getApplicationDatabase } from "@/adapters/postgres/database";
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
+import { authorizeSpaceAction } from "@/modules/access/authorization";
 import { spaceIdSchema } from "@/modules/access/input";
 
 type SpacePageProps = {
@@ -24,9 +25,11 @@ export default async function SpacePage({ params }: SpacePageProps) {
   }
 
   const repository = new PostgresAccessRepository(getApplicationDatabase());
-  const space = await repository.findSpaceForIdentity(
+  const space = await authorizeSpaceAction(
+    repository,
     currentIdentity.id,
     parsedSpaceId.data,
+    "consultar_espacio",
   );
 
   if (!space) {

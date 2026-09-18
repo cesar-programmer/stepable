@@ -3,11 +3,11 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <main>
-      <p className="eyebrow">Acceso local E1.3</p>
+      <p className="eyebrow">Acceso local E1.4</p>
       <h1>Stepable</h1>
       <p>
-        La base local permite probar identidad, sesión y espacios aislados por
-        membresía.
+        La base local permite probar identidad, sesión y espacios autorizados
+        mediante la membresía vigente.
       </p>
       <div className="actions">
         <Link className="button" href="/login">

@@ -21,7 +21,7 @@ Estado: vigente · Actualizado: 2026-09-18.
 
 Producto y alcance → flujos y reglas → datos y permisos → arquitectura e IA → entregas ejecutables → implementación.
 
-El orden numérico sirve para encontrar documentos; las dependencias de trabajo están en el documento 07. La arquitectura v0.8 registra organización, stack, identidad y modelo local de espacios/membresías aprobados. E1.3 está cerrada con evidencia automatizada y comprobación manual; invitaciones, administración, E1.4 y piloto no están autorizados.
+El orden numérico sirve para encontrar documentos; las dependencias de trabajo están en el documento 07. La arquitectura v0.9 registra organización, stack, identidad, espacios y autorización local aprobados. E1.4 está cerrada con evidencia automatizada y comprobación manual. Invitaciones, administración y piloto no están autorizados.
 
 ## Mantenimiento
 

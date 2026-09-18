@@ -3,9 +3,9 @@
 Estado: secuencia inicial de planificación; sin fechas comprometidas.
 Actualizado: 2026-09-18.
 
-## Etapa actual: E1.3 cerrada; E1.4 no iniciada
+## Etapa actual: E1.4 cerrada; E1.5 no iniciada
 
-Arquitectura modular, stack, identidad y modelo local de espacios/membresías están aceptados en ADR-003. E1.3 implementa perfiles, espacios, roles por membresía, bootstrap privado e aislamiento de listado/detalle; cuenta con verificación automatizada y comprobación manual confirmada por el usuario. E1.4, invitaciones, administración, piloto y proveedores no están autorizados.
+Arquitectura modular, stack, identidad, espacios y política local de autorización están aceptados en ADR-003. E1.4 implementa la matriz mínima, estado activo/revocado y revalidación por solicitud; cuenta con evidencia automatizada y comprobación manual confirmada por el usuario. Invitaciones, operaciones administrativas, piloto y proveedores no están autorizados.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ RF-10 es transversal: errores y límites deben incorporarse en las entregas que 
 
 ## Regla de cierre
 
-Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1, E1.2 y E1.3 tienen evidencia automatizada y comprobación manual; las entregas posteriores todavía no tienen resultados.
+Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1–E1.4 tienen evidencia automatizada y comprobación manual; las entregas posteriores todavía no tienen resultados.
 
 Las pruebas deben cubrir aislamiento, permisos, referencias/versiones, recuperación de fallos y progreso. No fijar un número de pruebas como objetivo de calidad.
 
@@ -28,7 +28,7 @@ La V0 funcional termina cuando onboarding y consulta permanente operan juntos. U
 
 ## Plan ejecutable de E1
 
-E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) acepta stack, entorno e identidad local de E1.2; autorización por espacio e invitaciones siguen pendientes.
+E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) acepta stack, entorno, identidad, espacios y autorización local hasta E1.4; invitaciones y administración siguen pendientes.
 
 | Paso | Trabajo | Criterio de aceptación | Pruebas pertinentes | Resultado esperado |
 | --- | --- | --- | --- | --- |
@@ -65,3 +65,11 @@ No se implementaron espacios, perfiles de producto, membresías, roles, invitaci
 Implementado y verificado automáticamente el 2026-09-17: migración incremental para perfiles, espacios y membresías; roles cerrados por espacio; primer responsable obligatorio; comando privado para una identidad existente; transacción idempotente y serializada por `slug`; lista y detalle filtrados por membresía; estado vacío sin espacios.
 
 La migración se aplicó sin reset y conservó la identidad Auth existente. Las pruebas reales cubren vínculo perfil/identidad, restricciones, atomicidad, repetición concurrente, conflictos, identidad inexistente, manipulación de UUID y estado vacío. El 2026-09-18 el usuario confirmó que realizó la comprobación manual de E1.3 y funcionó correctamente. E1.3 queda cerrada y no autoriza E1.4.
+
+### Resultado de E1.4
+
+Implementado y verificado automáticamente el 2026-09-18: política central con acciones explícitas para consultar espacios, gestionar invitaciones y gestionar miembros; denegación predeterminada; membresías activas/revocadas; listado y detalle autorizados desde identidad servidor y estado vigente en PostgreSQL.
+
+La migración incremental convirtió las membresías existentes en activas, ajustó el último responsable para contar solo responsables activos y se aplicó sin reset. Los fixtures controlados cubren matriz rol × acción, rol/acción desconocidos, ausencia, revocación, cambio de rol en la siguiente consulta, aislamiento, 404, sesión global conservada, otro espacio todavía accesible, último responsable activo y bootstrap que no reactiva. No existen endpoints o interfaces de invitación/administración.
+
+El usuario comprobó manualmente que su espacio continúa en el listado, puede abrirlo y conserva el rol `responsable`. No se atribuyen a esta comprobación otros escenarios. E1.4 queda cerrada y no autoriza E1.5.

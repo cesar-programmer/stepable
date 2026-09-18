@@ -12,7 +12,10 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import { spaceRoles } from "../../modules/access/contract.ts";
+import {
+  membershipStatuses,
+  spaceRoles,
+} from "../../modules/access/contract.ts";
 
 const authSchema = pgSchema("auth");
 
@@ -22,6 +25,7 @@ export const authUsers = authSchema.table("users", {
 });
 
 export const spaceRole = pgEnum("space_role", spaceRoles);
+export const membershipStatus = pgEnum("membership_status", membershipStatuses);
 
 export const profiles = pgTable("profiles", {
   identityId: uuid("identity_id")
@@ -68,6 +72,7 @@ export const memberships = pgTable(
       .notNull()
       .references(() => profiles.identityId, { onDelete: "restrict" }),
     role: spaceRole("role").notNull(),
+    status: membershipStatus("status").notNull().default("activa"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

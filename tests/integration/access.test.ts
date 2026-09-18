@@ -5,6 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresAccessRepository } from "../../src/adapters/postgres/access-repository.ts";
 import { createPostgresDatabase } from "../../src/adapters/postgres/database.ts";
 import {
+  authorizeSpaceAction,
+  listAuthorizedSpaces,
+} from "../../src/modules/access/authorization.ts";
+import {
   IdentityNotFoundError,
   SpaceBootstrapConflictError,
 } from "../../src/modules/access/contract.ts";
@@ -21,18 +25,26 @@ const config = getLocalAuthTestConfig();
 const admin = createAdminClient(config);
 const connection = createPostgresDatabase(config.databaseUrl);
 const repository = new PostgresAccessRepository(connection.database);
-const runKey = `e1-3-${randomUUID()}`;
+const runKey = `e1-4-${randomUUID()}`;
 const identities: LocalTestIdentity[] = [];
 
 function spaceInput(suffix: string, identity: LocalTestIdentity) {
   return {
     email: identity.email,
     slug: `${runKey}-${suffix}`,
-    name: `E1.3 ${suffix}`,
+    name: `E1.4 ${suffix}`,
   };
 }
 
-describe("E1.3 access persistence", () => {
+async function ensureProfile(identity: LocalTestIdentity) {
+  await connection.client`
+    insert into public.profiles (identity_id)
+    values (${identity.id})
+    on conflict (identity_id) do nothing
+  `;
+}
+
+describe("access persistence and authorization", () => {
   beforeAll(async () => {
     identities.push(
       await createLocalTestIdentity(admin),
@@ -70,7 +82,8 @@ describe("E1.3 access persistence", () => {
       select
         p.identity_id,
         s.initial_responsible_id,
-        m.role::text as role
+        m.role::text as role,
+        m.status::text as status
       from public.spaces s
       join public.memberships m on m.space_id = s.id
       join public.profiles p on p.identity_id = m.profile_id
@@ -81,6 +94,7 @@ describe("E1.3 access persistence", () => {
         identity_id: identities[0].id,
         initial_responsible_id: identities[0].id,
         role: "responsable",
+        status: "activa",
       },
     ]);
 
@@ -186,7 +200,8 @@ describe("E1.3 access persistence", () => {
       spaceInput("foreign", identities[1]),
     );
 
-    const firstSpaces = await repository.listSpacesForIdentity(
+    const firstSpaces = await listAuthorizedSpaces(
+      repository,
       identities[0].id,
     );
     expect(firstSpaces.some((space) => space.id === own.space.id)).toBe(true);
@@ -194,10 +209,164 @@ describe("E1.3 access persistence", () => {
       false,
     );
     expect(
-      await repository.findSpaceForIdentity(identities[0].id, foreign.space.id),
+      await authorizeSpaceAction(
+        repository,
+        identities[0].id,
+        foreign.space.id,
+        "consultar_espacio",
+      ),
     ).toBeNull();
-    expect(await repository.listSpacesForIdentity(identities[2].id)).toEqual(
+    expect(await listAuthorizedSpaces(repository, identities[2].id)).toEqual(
       [],
     );
+  });
+
+  it("denies missing and revoked memberships without affecting other spaces", async () => {
+    const revoked = await bootstrapSpace(
+      repository,
+      spaceInput("revoked", identities[0]),
+    );
+    const retained = await bootstrapSpace(
+      repository,
+      spaceInput("retained", identities[0]),
+    );
+    await ensureProfile(identities[1]);
+    await connection.client`
+      insert into public.memberships (space_id, profile_id, role)
+      values
+        (${revoked.space.id}, ${identities[1].id}, 'integrante'),
+        (${retained.space.id}, ${identities[1].id}, 'integrante')
+    `;
+
+    expect(
+      await authorizeSpaceAction(
+        repository,
+        identities[1].id,
+        revoked.space.id,
+        "consultar_espacio",
+      ),
+    ).not.toBeNull();
+    expect(
+      await authorizeSpaceAction(
+        repository,
+        identities[2].id,
+        revoked.space.id,
+        "consultar_espacio",
+      ),
+    ).toBeNull();
+
+    await connection.client`
+      update public.memberships
+      set status = 'revocada'
+      where space_id = ${revoked.space.id}
+        and profile_id = ${identities[1].id}
+    `;
+
+    expect(
+      await authorizeSpaceAction(
+        repository,
+        identities[1].id,
+        revoked.space.id,
+        "consultar_espacio",
+      ),
+    ).toBeNull();
+    expect(
+      await authorizeSpaceAction(
+        repository,
+        identities[1].id,
+        retained.space.id,
+        "consultar_espacio",
+      ),
+    ).not.toBeNull();
+    const visibleSpaceIds = (
+      await listAuthorizedSpaces(repository, identities[1].id)
+    ).map((space) => space.id);
+    expect(visibleSpaceIds).toContain(retained.space.id);
+    expect(visibleSpaceIds).not.toContain(revoked.space.id);
+  });
+
+  it("uses the current role for every authorization decision", async () => {
+    const { space } = await bootstrapSpace(
+      repository,
+      spaceInput("role-change", identities[0]),
+    );
+    await ensureProfile(identities[1]);
+    await connection.client`
+      insert into public.memberships (space_id, profile_id, role)
+      values (${space.id}, ${identities[1].id}, 'integrante')
+    `;
+
+    expect(
+      await authorizeSpaceAction(
+        repository,
+        identities[1].id,
+        space.id,
+        "gestionar_miembros",
+      ),
+    ).toBeNull();
+
+    await connection.client`
+      update public.memberships
+      set role = 'responsable'
+      where space_id = ${space.id}
+        and profile_id = ${identities[1].id}
+    `;
+
+    expect(
+      await authorizeSpaceAction(
+        repository,
+        identities[1].id,
+        space.id,
+        "gestionar_miembros",
+      ),
+    ).toMatchObject({ id: space.id, role: "responsable" });
+    expect(
+      await authorizeSpaceAction(
+        repository,
+        identities[1].id,
+        space.id,
+        "accion_desconocida",
+      ),
+    ).toBeNull();
+  });
+
+  it("counts only active responsibles and preserves a revoked bootstrap conflict", async () => {
+    const input = spaceInput("active-responsible", identities[0]);
+    const { space } = await bootstrapSpace(repository, input);
+    await ensureProfile(identities[1]);
+    await connection.client`
+      insert into public.memberships (space_id, profile_id, role)
+      values (${space.id}, ${identities[1].id}, 'responsable')
+    `;
+
+    await connection.client`
+      update public.memberships
+      set status = 'revocada'
+      where space_id = ${space.id}
+        and profile_id = ${identities[0].id}
+    `;
+
+    await expect(bootstrapSpace(repository, input)).rejects.toBeInstanceOf(
+      SpaceBootstrapConflictError,
+    );
+    await expect(
+      connection.client`
+        update public.memberships
+        set status = 'revocada'
+        where space_id = ${space.id}
+          and profile_id = ${identities[1].id}
+      `,
+    ).rejects.toMatchObject({ code: "23514" });
+
+    const [initialMembership] = await connection.client`
+      select role::text as role, status::text as status
+      from public.memberships
+      where space_id = ${space.id}
+        and profile_id = ${identities[0].id}
+    `;
+    expect(initialMembership).toEqual({
+      role: "responsable",
+      status: "revocada",
+    });
   });
 });
