@@ -12,6 +12,7 @@ const child = spawn(command, args, {
   cwd: process.cwd(),
   env: {
     ...process.env,
+    DATABASE_URL: status.DB_URL,
     NEXT_PUBLIC_SUPABASE_URL: status.API_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: status.PUBLISHABLE_KEY,
     STEPABLE_TEST_SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY,

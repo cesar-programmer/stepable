@@ -23,13 +23,19 @@ function readGeneratedLocalStatus() {
   const secrets = parseEnvironmentFile(secretsPath);
   const config = readFileSync("supabase/config.toml", "utf8");
   const apiPort = config.match(/\[api\][\s\S]*?\nport = (\d+)/)?.[1];
+  const databasePort = config.match(/\[db\][\s\S]*?\nport = (\d+)/)?.[1];
   const mailpitPort = config.match(/\[local_smtp\][\s\S]*?\nport = (\d+)/)?.[1];
-  if (!apiPort || !mailpitPort) {
+  if (!apiPort || !databasePort || !mailpitPort || !secrets.SUPABASE_DB_URL) {
     return null;
   }
 
+  const databaseUrl = new URL(secrets.SUPABASE_DB_URL);
+  databaseUrl.hostname = "127.0.0.1";
+  databaseUrl.port = databasePort;
+
   return {
     API_URL: `http://127.0.0.1:${apiPort}`,
+    DB_URL: databaseUrl.toString(),
     PUBLISHABLE_KEY:
       secrets.SUPABASE_INTERNAL_PUBLISHABLE_KEY ?? secrets.SUPABASE_ANON_KEY,
     SERVICE_ROLE_KEY: secrets.SUPABASE_SERVICE_ROLE_KEY,
@@ -58,6 +64,7 @@ export function readLocalSupabaseStatus() {
   }
   const required = [
     "API_URL",
+    "DB_URL",
     "PUBLISHABLE_KEY",
     "SERVICE_ROLE_KEY",
     "MAILPIT_URL",

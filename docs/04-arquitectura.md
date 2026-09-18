@@ -1,6 +1,6 @@
 # Arquitectura inicial de Stepable V0
 
-Estado: arquitectura, stack e identidad local aprobados; acceso por espacio, servicios externos y piloto pendientes. Versión v0.7.
+Estado: arquitectura, stack, identidad y persistencia local de acceso aprobados; autorización completa, servicios externos y piloto pendientes. Versión v0.8.
 Actualizado: 2026-09-17 · Decisiones relacionadas: [ADR-002](decisiones/ADR-002-organizacion-modular.md) y [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md).
 
 ## 1. Objetivo y fundamento
@@ -222,17 +222,22 @@ Requisitos verificados:
 
 Flujo diario implementado:
 
-1. `pnpm env:start`: envoltorio documentado de `supabase start`; inicia Postgres, Auth y Mailpit.
-2. `pnpm dev`: inicia únicamente la aplicación Next.js contra la instancia local.
-3. `pnpm db:reset`: aplica desde cero el único historial SQL de `supabase/migrations` y semillas no sensibles.
-4. `pnpm env:status`: muestra URLs locales, incluida la bandeja de Mailpit.
-5. `pnpm env:stop`: envoltorio de `supabase stop`; detiene la pila sin añadir servicios duplicados.
+1. `pnpm env:start`: inicia Postgres, Auth y Mailpit y sincroniza el `.env.local` ignorado sin imprimir sus valores.
+2. `pnpm db:migrate`: aplica solo migraciones pendientes a la base iniciada, sin borrar datos.
+3. `pnpm dev`: inicia únicamente la aplicación Next.js contra la instancia local.
+4. `pnpm db:reset`: reconstruye desde el historial SQL y semillas solo cuando se autoriza expresamente una base descartable; no se usa para aplicar entregas sobre datos existentes.
+5. `pnpm env:status`: muestra URLs locales, incluida la bandeja de Mailpit.
+6. `pnpm env:stop`: detiene la pila sin añadir servicios duplicados.
 
 La verificación, recuperación e invitaciones se prueban generando correos de Auth y de Stepable contra el SMTP de Mailpit incluido. Los recorridos manuales abren los enlaces en su bandeja web; las pruebas automatizadas consultan su interfaz local y no Internet. No se desactiva la confirmación de correo para simular éxito.
 
 E1.2 configura Auth con registro público bloqueado y proveedor de correo habilitado para login/recuperación. La sesión vive en cookies administradas por `@supabase/ssr`; una página protegida llama `getUser()` en servidor, no confía solo en estado del navegador. Un script Node obtiene la capacidad administrativa exclusivamente desde el estado local de Supabase, solicita credenciales interactivamente y crea una identidad confirmada sin asignar privilegios de producto. La clave administrativa no usa prefijo `NEXT_PUBLIC_` ni se importa desde `src/`.
 
 La recuperación usa una plantilla local con token hash y un callback servidor. El callback verifica el token una sola vez, fija la cookie en una respuesta intermedia no cacheable y navega después a la pantalla de contraseña; esto evita trasladar sesiones por fragmentos de URL y permite que el navegador confirme la cookie antes de la siguiente solicitud. Mailpit conserva el mensaje para la comprobación manual. Espacios, membresías, roles e invitaciones no forman parte de este flujo.
+
+E1.3 implementa el módulo de acceso con casos de uso independientes de Next.js y un adaptador PostgreSQL/Drizzle. `profiles` enlaza de forma única con `auth.users`; `spaces` conserva `slug`, nombre y responsable inicial; `memberships` usa clave compuesta espacio/perfil y un enum cerrado `responsable`/`integrante`. Las lecturas parten de la identidad validada en servidor y unen membresía con espacio; no existe una consulta de detalle que omita ese filtro.
+
+El bootstrap local es un comando Node privado, no una ruta HTTP. Usa el `slug` como clave idempotente y un bloqueo asesor transaccional para serializar repeticiones concurrentes; crea perfil, espacio y primera membresía en una sola transacción. Solo acepta una identidad existente. Una restricción diferida impide confirmar un espacio sin responsable; las operaciones administrativas y su bloqueo concurrente pertenecen a E1.6.
 
 La documentación oficial indica que Supabase CLI ofrece PostgreSQL, Auth y otros servicios locales, requiere CLI más runtime de contenedores y captura los correos locales automáticamente con Mailpit. [Desarrollo local](https://supabase.com/docs/guides/local-development) y [contraseñas/Auth local](https://supabase.com/docs/guides/auth/passwords).
 

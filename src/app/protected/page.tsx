@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 
@@ -20,9 +21,14 @@ export default async function ProtectedPage() {
         Identidad: <strong>{currentIdentity.email}</strong>
       </p>
       <p className="muted">
-        Esta pantalla confirma identidad, pero todavía no concede acceso a
-        espacios ni roles.
+        Esta pantalla confirma identidad. El acceso a espacios se comprueba por
+        membresía en cada consulta.
       </p>
+      <div className="actions">
+        <Link className="button secondary" href="/spaces">
+          Ver mis espacios
+        </Link>
+      </div>
       <form action={logoutAction}>
         <button type="submit">Cerrar sesión</button>
       </form>

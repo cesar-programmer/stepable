@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type LocalAuthTestConfig = {
   apiUrl: string;
+  databaseUrl: string;
   publishableKey: string;
   serviceRoleKey: string;
   mailpitUrl: string;
@@ -19,6 +20,7 @@ export type LocalTestIdentity = {
 export function getLocalAuthTestConfig(): LocalAuthTestConfig {
   const config = {
     apiUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    databaseUrl: process.env.DATABASE_URL,
     publishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     serviceRoleKey: process.env.STEPABLE_TEST_SUPABASE_SERVICE_ROLE_KEY,
     mailpitUrl: process.env.STEPABLE_TEST_MAILPIT_URL,

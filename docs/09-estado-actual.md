@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-09-17 · Fase: E1.2 cerrada y comprobada localmente; E1.3 no iniciada · Versión documental: 0.7.
+Actualizado: 2026-09-18 · Fase: E1.3 cerrada y comprobada localmente; E1.4 no iniciada · Versión documental: 0.8.
 
 ## Hechos acordados
 
@@ -8,10 +8,11 @@ Actualizado: 2026-09-17 · Fase: E1.2 cerrada y comprobada localmente; E1.3 no i
 - Onboarding interactivo y consultas permanentes como usos centrales; V0 enfocada en equipos de software.
 - Arquitectura modular, web/API juntas, worker desde E2 y stack local aceptados.
 - Identidad E1.2 aceptada solo en local: correo/contraseña, sesión, recuperación por Mailpit, validación en servidor y ausencia de registro público.
+- E1.3 acepta usuarios en varios espacios, membresía única por usuario/espacio, roles `responsable`/`integrante`, responsables múltiples y bootstrap privado por operador sobre una identidad existente.
 
 ## Actualización más reciente
 
-Implementada E1.2 sobre el commit base `8e7859f5c0a65bfddfc851a1e1d2796cf035dbed`. El usuario comprobó manualmente credenciales incorrectas/correctas, acceso protegido, persistencia al recargar, logout, recuperación desde Mailpit, cambio de contraseña, rechazo de la contraseña anterior, aceptación de la nueva y rechazo del enlace ya utilizado. E1.2 queda cerrada sin autorizar E1.3.
+Implementada E1.3 sobre el commit base `c5f021f6e85a8b5ff94a9d8d035961a1bc86916d`. Una migración incremental añadió perfiles, espacios y membresías sin perder la identidad Auth existente. El comando privado crea el primer responsable de forma atómica e idempotente y las vistas `/spaces` filtran por la membresía de la identidad validada. El usuario confirmó el 2026-09-18 que realizó la comprobación manual de E1.3 y funcionó correctamente.
 
 ## Realizado
 
@@ -23,6 +24,10 @@ Implementada E1.2 sobre el commit base `8e7859f5c0a65bfddfc851a1e1d2796cf035dbed
 - Añadida plantilla local de recuperación capturada por Mailpit y rechazo uniforme de enlaces inválidos o consumidos.
 - Añadido `pnpm auth:create-local-user`: entrada interactiva, contraseña no visible y creación confirmada solo en Auth local.
 - Añadidos arnés de integración real y E2E con identidades aleatorias eliminadas al terminar; no se reinicia la base.
+- Añadidos esquema SQL/Drizzle de acceso, adaptador PostgreSQL y casos de uso separados de la interfaz.
+- Añadido `pnpm access:bootstrap-space`: exige identidad existente, valida `slug`/nombre/correo, serializa concurrencia y no crea contraseñas o invitaciones.
+- Añadidas lista y vista mínima de espacio con comprobación de membresía en ambas consultas y estado vacío.
+- Añadido `pnpm env:sync`; `env:start` mantiene `.env.local` ignorado sincronizado sin imprimir secretos.
 
 ## Evidencia y verificaciones reales
 
@@ -35,18 +40,24 @@ Implementada E1.2 sobre el commit base `8e7859f5c0a65bfddfc851a1e1d2796cf035dbed
 - El callback de recuperación usa una respuesta intermedia no cacheable para fijar la cookie antes de navegar; el token no se traslada a la siguiente URL.
 - La clave administrativa se obtiene solo en scripts/pruebas Node desde el entorno local ignorado; no existe variable `NEXT_PUBLIC_` administrativa ni importación desde `src/`.
 - Supabase se reinició normalmente para aplicar Auth, restaurando su backup local. No se ejecutó `db reset`, no se eliminaron volúmenes y los datos se conservaron.
+- Migración `20260917010000_e1_3_access.sql` aplicada con `migration up`: Auth conservó 1 identidad; quedaron 2 migraciones registradas y las tablas nuevas empezaron vacías.
+- `pnpm test:integration`: 2 archivos y 8 pruebas aprobadas contra Auth/PostgreSQL/Mailpit reales; 5 corresponden a integridad, bootstrap, concurrencia, conflictos y aislamiento de E1.3.
+- `pnpm test:e2e`: 5 pruebas aprobadas; E1.3 cubre espacio propio visible, espacio ajeno ausente/404 y estado vacío.
+- `pnpm verify`: formato, ESLint, TypeScript, 3 archivos/9 pruebas unitarias y build de producción aprobados.
+- El comando privado rechazó una identidad inexistente con un mensaje comprensible y sin crear datos.
+- Comprobación manual del usuario: recorrido de E1.3 realizado y funcionamiento correcto confirmado; no se atribuyen otros escenarios manuales.
 
 ## No realizado
 
-No se implementaron perfiles de producto, espacios, membresías, roles, bootstrap, invitaciones de Stepable, autorización por espacio, E2, despliegue ni proveedor externo. RN-08 está aceptada solo en su porción local de identidad; RN-09–RN-18 y el mecanismo de invitación continúan propuestos.
+No se implementaron invitaciones, alta/retirada/cambio de rol de miembros, matriz completa de autorización, documentos, rutas, IA, E2, despliegue ni proveedor externo. La parte restante de RN-08/RN-11 y RN-13–RN-18 continúa pendiente según cada entrega.
 
 ## Próxima tarea concreta
 
-Revisar y resolver solamente las decisiones de modelo y bootstrap que bloquean E1.3; después, solicitar autorización expresa antes de implementarla. No adelantar autorización completa, invitaciones de E1.5, piloto o proveedores.
+Revisar y resolver solamente las decisiones de matriz y revocación que bloquean E1.4; después, solicitar autorización expresa antes de implementarla. No adelantar invitaciones de E1.5, administración de E1.6, piloto o proveedores.
 
 ## Estado de Git y operación
 
-E1.2 se consolida en el commit local `feat(auth): implement local identity and session flows`, sin remoto ni push. Los datos locales se conservaron. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
+E1.3 se consolida en el commit local `feat(access): implement spaces memberships and local bootstrap`, sin remoto ni push. La migración local está aplicada y Supabase conserva sus datos; `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
 
 ## Formato para futuras sesiones
 

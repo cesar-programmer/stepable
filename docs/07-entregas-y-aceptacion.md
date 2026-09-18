@@ -1,11 +1,11 @@
 # Entregas y aceptación
 
 Estado: secuencia inicial de planificación; sin fechas comprometidas.
-Actualizado: 2026-09-17.
+Actualizado: 2026-09-18.
 
-## Etapa actual: E1.2 cerrada; E1.3 no iniciada
+## Etapa actual: E1.3 cerrada; E1.4 no iniciada
 
-Arquitectura modular, stack e identidad local aceptados en el alcance registrado por ADR-003. E1.2 está implementada y cerrada con verificación automatizada y comprobación manual de login, sesión, logout, recuperación, cambio de contraseña y enlace consumido. Espacios, membresías, roles, invitaciones de Stepable y piloto no están autorizados.
+Arquitectura modular, stack, identidad y modelo local de espacios/membresías están aceptados en ADR-003. E1.3 implementa perfiles, espacios, roles por membresía, bootstrap privado e aislamiento de listado/detalle; cuenta con verificación automatizada y comprobación manual confirmada por el usuario. E1.4, invitaciones, administración, piloto y proveedores no están autorizados.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ RF-10 es transversal: errores y límites deben incorporarse en las entregas que 
 
 ## Regla de cierre
 
-Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1 y E1.2 tienen evidencia automatizada y comprobación manual; las entregas posteriores todavía no tienen resultados.
+Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1, E1.2 y E1.3 tienen evidencia automatizada y comprobación manual; las entregas posteriores todavía no tienen resultados.
 
 Las pruebas deben cubrir aislamiento, permisos, referencias/versiones, recuperación de fallos y progreso. No fijar un número de pruebas como objetivo de calidad.
 
@@ -59,3 +59,9 @@ Implementado y verificado automáticamente el 2026-09-17: Supabase Auth local co
 El usuario comprobó manualmente el rechazo de una contraseña incorrecta, el login correcto, el acceso protegido, la persistencia de sesión al recargar, el logout con redirección al login, la recuperación, el cambio de contraseña, el rechazo de la contraseña anterior, la aceptación de la nueva y el rechazo del enlace consumido. E1.2 queda cerrada.
 
 No se implementaron espacios, perfiles de producto, membresías, roles, invitaciones de Stepable ni autorización por espacio. E1.2 no autoriza E1.3.
+
+### Resultado de E1.3
+
+Implementado y verificado automáticamente el 2026-09-17: migración incremental para perfiles, espacios y membresías; roles cerrados por espacio; primer responsable obligatorio; comando privado para una identidad existente; transacción idempotente y serializada por `slug`; lista y detalle filtrados por membresía; estado vacío sin espacios.
+
+La migración se aplicó sin reset y conservó la identidad Auth existente. Las pruebas reales cubren vínculo perfil/identidad, restricciones, atomicidad, repetición concurrente, conflictos, identidad inexistente, manipulación de UUID y estado vacío. El 2026-09-18 el usuario confirmó que realizó la comprobación manual de E1.3 y funcionó correctamente. E1.3 queda cerrada y no autoriza E1.4.

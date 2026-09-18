@@ -1,6 +1,6 @@
 # Datos y permisos
 
-Estado: identidad local de RN-08 aceptada e implementada en E1.2; modelo de espacios, permisos e invitaciones propuesto.
+Estado: identidad local y modelo de espacios/membresías aceptados e implementados hasta E1.3; autorización completa e invitaciones pendientes.
 Actualizado: 2026-09-17.
 
 ## Conceptos y relaciones
@@ -46,7 +46,7 @@ El [documento 04](04-arquitectura.md) propone separar propiedad de datos por mó
 
 ## Política mínima propuesta para E1
 
-Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acepta solo la porción local de identidad descrita después de RN-08; las reglas de espacios, membresías, roles e invitaciones continúan propuestas y PEN-02/PEN-05 siguen abiertos para esas partes.
+Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acepta la porción local de RN-08 y, para E1.3, RN-09, RN-10 y el principio de RN-12. RN-11 está aceptada solo para las consultas de espacio implementadas. Invitaciones, administración y revocación siguen pendientes en PEN-02/PEN-05.
 
 ### Identidad y espacios
 
@@ -59,6 +59,8 @@ Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acep
 | RN-12 | Un espacio puede tener varios responsables y nunca puede quedar sin al menos uno. No se puede retirar ni degradar al último responsable activo. |
 
 **Resolución parcial de RN-08 en E1.2:** se aprueban exclusivamente autenticación local con correo y contraseña, ausencia de registro público, login/logout, recuperación y establecimiento de contraseña mediante Mailpit, sesión en cookies y validación de identidad en servidor. El usuario de prueba se crea con una operación local interactiva y queda confirmado en Auth, sin credenciales versionadas. “Solo por invitación” queda como restricción de producto, pero su mecanismo, las invitaciones de Stepable y la relación con espacios no están aprobados ni implementados todavía.
+
+**Resolución de E1.3:** RN-09 queda aceptada: una identidad puede pertenecer a varios espacios, la membresía es única por usuario/espacio y el rol pertenece al espacio. RN-10 queda aceptada con un cambio frente a la propuesta anterior: el comando privado vincula una identidad local ya existente y no crea una invitación ni una identidad. Solo el operador aprovisiona espacios durante la V0. RN-12 queda aceptada como invariante; el esquema admite varios responsables e impide confirmar un espacio sin ninguno, mientras las operaciones de administración y sus carreras se reservan para E1.6. La parte de RN-11 que obliga a consultar la membresía vigente se aplica desde ahora al listado y detalle de espacios; su matriz completa corresponde a E1.4.
 
 ### Invitaciones y cambios de membresía
 
@@ -92,14 +94,16 @@ RN-08, RN-09, RN-12–RN-16 y RN-18 conservan el texto de v0.4. Esta revisión a
 ### Desarrollo local
 
 1. Iniciar la pila local de Supabase y la aplicación en la máquina del desarrollador.
-2. Ejecutar un comando operativo versionado de la aplicación, por ejemplo `provision-space`, pasando de forma interactiva el nombre del espacio y el correo del primer responsable. El comando no acepta ni genera una contraseña conocida por el operador.
-3. El comando usa credenciales administrativas solo del entorno local, comprueba idempotencia y crea una invitación especial de aprovisionamiento. En la primera ejecución exige que no exista ningún espacio; una repetición con los mismos datos devuelve el estado existente, no duplica espacio o membresía.
-4. Si la identidad no existe, el comando usa la API administrativa de Supabase Auth para invitarla; el enlace de Auth redirige a la aceptación de Stepable. Si ya existe, Stepable envía solo su enlace de aprovisionamiento. Auth y la invitación RN-14 siguen siendo credenciales distintas y ambas se validan cuando correspondan. Mailpit captura localmente todos esos correos. La persona establece su propia contraseña.
-5. La aceptación consume la invitación y crea de forma atómica el espacio y su primera membresía `responsable`; se registra el evento de auditoría.
+2. Crear previamente la identidad con el procedimiento de E1.2. El bootstrap no crea identidades, no establece contraseñas y falla de forma comprensible si el correo no existe en Auth local.
+3. Ejecutar `pnpm access:bootstrap-space` y proporcionar de forma interactiva el correo existente, un `slug` estable y el nombre visible del espacio.
+4. El comando normaliza y valida los parámetros, serializa por `slug` y crea en una transacción el perfil, espacio y membresía `responsable`. Una repetición idéntica devuelve el espacio existente; el mismo `slug` con otro nombre o responsable inicial produce un conflicto y no deja datos parciales.
+5. El comando se ejecuta solo desde la terminal del operador y no tiene ruta pública equivalente. Para espacios posteriores se repite el mismo procedimiento con otro `slug`.
 
 Los datos de prueba usan dominios reservados como `example.test`; no se incluyen contraseñas, tokens o claves reales en semillas o archivos versionados.
 
 ### Piloto
+
+Propuesta no aprobada y fuera de E1.3. Deberá revisarse antes del piloto; no modifica el bootstrap local aceptado.
 
 1. El operador de Stepable ejecuta el mismo caso de uso como tarea puntual desde un entorno administrativo confiable. No existe botón, endpoint público ni URL secreta de bootstrap.
 2. La credencial de servicio se obtiene del gestor de secretos del alojamiento/Supabase y nunca se pasa por argumentos visibles, logs o repositorio.
@@ -122,19 +126,19 @@ Durante la V0, **solo el operador de Stepable** aprovisiona espacios nuevos y no
 
 ## Modelo mínimo para E1
 
-Sin fijar todavía nombres físicos, E1 necesita estas entidades y restricciones:
+E1.3 fija estas entidades de acceso; invitaciones y auditoría se añadirán en sus entregas:
 
-- perfil de usuario vinculado de forma única al identificador del proveedor de identidad;
-- espacio;
-- membresía con unicidad `(espacio, usuario)`, rol cerrado y estado activo/retirado;
+- `profiles`, con el UUID de `auth.users` como clave primaria y referencia restringida;
+- `spaces`, con UUID, `slug` único, nombre y responsable inicial;
+- `memberships`, con clave primaria `(space_id, profile_id)` y enum cerrado `responsable`/`integrante`;
 - invitación con correo normalizado, hash de token único, rol, vencimiento y estados terminales;
 - evento de auditoría de acceso sin secretos.
 
 Las operaciones que aceptan invitaciones, cambian roles o retiran miembros deben usar transacciones y restricciones de base. El control del último responsable no puede depender solo de ocultar un botón; requiere una estrategia transaccional probada contra concurrencia.
 
-## Decisiones aún abiertas después de E1.2
+## Decisiones aún abiertas después de E1.3
 
 - Aprobar el mecanismo de invitación de Stepable y su relación con identidades ya existentes o nuevas.
-- Aprobar responsables múltiples, invitaciones de responsable y protección del último responsable.
+- Concretar en E1.6 las operaciones de cambio/retiro y su estrategia de bloqueo concurrente para proteger al último responsable; el principio y los responsables múltiples ya están aceptados.
 - Confirmar si siete días es la vigencia adecuada o elegir otra antes de publicar el correo definitivo.
 - PEN-06 sigue definiendo cuánto conservar membresías retiradas y auditoría. No bloquea implementar el rechazo inmediato, pero sí recibir datos reales del piloto.

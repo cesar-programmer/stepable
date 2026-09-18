@@ -27,3 +27,7 @@ export function parseLocalEnvironment(
 export function getPublicEnvironment(): PublicEnvironment {
   return parsePublicEnvironment(process.env);
 }
+
+export function getLocalEnvironment(): LocalEnvironment {
+  return parseLocalEnvironment(process.env);
+}

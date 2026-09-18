@@ -1,5 +1,16 @@
 # Historial de cambios
 
+## 2026-09-18 · 0.8
+
+- Aceptados para E1.3 RN-09, RN-10, el principio de RN-12 y la comprobación de membresía de RN-11 en listado/detalle; invitaciones, administración y autorización completa siguen pendientes.
+- Añadida migración incremental con perfiles ligados a Auth, espacios, membresía única, roles cerrados, responsable inicial y comprobación diferida de al menos un responsable.
+- Implementado comando privado para aprovisionar un espacio sobre una identidad existente, con transacción, idempotencia, bloqueo de concurrencia y conflictos explícitos; sin ruta pública o invitaciones.
+- Añadidas lista y vista de espacios aisladas por membresía, incluido estado vacío y rechazo de UUID ajeno.
+- Sincronizado `.env.local` desde Supabase iniciado sin imprimir/versionar secretos; corregida la URL local de PostgreSQL para scripts y pruebas.
+- Migración aplicada sin reset y con la identidad existente conservada; integración real, navegador, formato, lint, tipos, unidades y build aprobados.
+- El usuario confirmó que realizó la comprobación manual de E1.3 y funcionó correctamente; no se registran escenarios manuales adicionales.
+- E1.3 queda cerrada en un commit local, sin push, E1.4, invitaciones, administración o servicios externos.
+
 ## 2026-09-17 · 0.7
 
 - Aceptada e implementada la porción local de identidad de RN-08: correo/contraseña, login/logout, recuperación por Mailpit, validación en servidor y registro público bloqueado.

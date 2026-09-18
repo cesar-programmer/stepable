@@ -1,8 +1,8 @@
 # Stepable · Base documental V0
 
-Versión documental: 0.7 · Fecha: 2026-09-17 · Estado: E1.2 cerrada y comprobada localmente; E1.3 no iniciada.
+Versión documental: 0.8 · Fecha: 2026-09-18 · Estado: E1.3 cerrada y comprobada localmente; E1.4 no iniciada.
 
-Este repositorio contiene la base documental y la aplicación local de Stepable. La arquitectura, el stack y la identidad local de E1.2 están aprobados: correo/contraseña, sesión, recuperación mediante Mailpit y ausencia de registro público. Espacios, membresías, roles, invitaciones de Stepable, piloto y proveedores siguen pendientes.
+Este repositorio contiene la base documental y la aplicación local de Stepable. E1.3 añade perfiles, espacios y membresías con roles por espacio, bootstrap privado e aislamiento de consultas. Invitaciones, administración de membresías, autorización completa, piloto y proveedores siguen pendientes.
 
 ## Cómo comenzar
 
@@ -17,27 +17,33 @@ Requisitos: Node.js 24, Corepack/`pnpm` 11, un runtime compatible con Docker y e
 
 ```bash
 pnpm install --frozen-lockfile
-cp .env.example .env.local
 pnpm env:start
 pnpm env:status
+pnpm db:migrate
 pnpm auth:create-local-user
+pnpm access:bootstrap-space
 pnpm dev
 ```
 
-Después de `env:start`, copiar a `.env.local` la URL y clave publicable locales mostradas por `env:status`. El archivo está ignorado por Git. La aplicación abre en `http://127.0.0.1:3000`, Supabase Studio en `http://127.0.0.1:54323` y Mailpit en `http://127.0.0.1:54324`.
+`env:start` sincroniza `.env.local` con la pila iniciada sin imprimir sus valores; el archivo está ignorado por Git. `db:migrate` aplica solo migraciones pendientes y no reinicia la base. La aplicación abre en `http://127.0.0.1:3000`, Supabase Studio en `http://127.0.0.1:54323` y Mailpit en `http://127.0.0.1:54324`.
 
 Comandos de operación:
 
 ```bash
 pnpm db:reset      # reconstruye PostgreSQL desde migraciones y seed locales
+pnpm db:migrate    # aplica migraciones pendientes sin borrar datos
+pnpm env:sync      # actualiza .env.local desde la pila local iniciada
 pnpm env:status    # muestra estado y URLs locales
 pnpm env:stop      # detiene la pila Supabase
 pnpm verify        # formato, lint, tipos, unidades y build
 pnpm test:integration:auth # integración real con Auth y Mailpit
+pnpm test:integration:access # integridad, bootstrap e aislamiento reales
 pnpm test:e2e      # recorridos web; requiere pnpm exec playwright install chromium
 ```
 
 `pnpm auth:create-local-user` solicita correo y contraseña de forma interactiva, no muestra la contraseña y no guarda credenciales. Crea solo una identidad confirmada en Supabase Auth local; no crea administrador de Stepable, espacio, membresía ni rol.
+
+`pnpm access:bootstrap-space` solicita el correo de una identidad local existente, un `slug` estable y el nombre visible. Crea transaccionalmente el perfil, espacio y primera membresía `responsable`. Repetir los mismos datos es idempotente; un nombre o responsable inicial diferente produce conflicto. No crea identidades ni modifica contraseñas y no existe una ruta web para aprovisionar espacios.
 
 ### Comprobación manual de E1.2
 
@@ -48,6 +54,14 @@ pnpm test:e2e      # recorridos web; requiere pnpm exec playwright install chrom
 5. Abrir `http://127.0.0.1:54324`, entrar al mensaje más reciente y seguir el enlace para establecer una contraseña nueva.
 6. Comprobar que el enlace usado se rechaza y que solo la contraseña nueva permite iniciar sesión.
 
+### Comprobación manual de E1.3
+
+1. Con la identidad local ya creada, ejecutar `pnpm access:bootstrap-space` y completar correo, `slug` y nombre.
+2. Arrancar la aplicación con `pnpm dev` e iniciar sesión.
+3. Abrir `http://127.0.0.1:3000/spaces` y comprobar el nombre y el rol `responsable`.
+4. Abrir el espacio desde la lista y confirmar que muestra el mismo nombre, `slug` y rol.
+5. Repetir el comando con los mismos datos y confirmar que informa que el espacio ya estaba aprovisionado sin duplicarlo.
+
 `env:start` crea o reutiliza la red Docker `stepable-local` y publica los puertos solo en `127.0.0.1`. Supabase CLI puede mostrar el aviso genérico `All services bind to 0.0.0.0`; la comprobación válida es el enlace efectivo de Docker. Con esta red, `docker inspect` debe mostrar `127.0.0.1` —no `0.0.0.0` ni `::`— para los puertos publicados.
 
 Los documentos son memoria explícita: solo sirven a Codex si están disponibles en su entorno y se consultan. No implican recuerdo automático entre conversaciones.
@@ -57,6 +71,6 @@ Los documentos son memoria explícita: solo sirven a Codex si están disponibles
 - Acordado: dirección expresada por el usuario o alcance aceptado para planificar.
 - Propuesto: detalle añadido para concretar el diseño; puede cambiar durante la planificación.
 - Pendiente: decisión aún sin respuesta. No equivale a autorización para inventar una especificación.
-- Implementado/verificado: requiere evidencia real. E1.1 y E1.2 están cerradas con evidencia automatizada y comprobación manual; E1.3 no está autorizada ni iniciada.
+- Implementado/verificado: requiere evidencia real. E1.1, E1.2 y E1.3 están cerradas con evidencia automatizada y comprobación manual; E1.4 no está autorizada ni iniciada.
 
 La aceptación de la V0 como base de planificación no significa que todos los detalles técnicos estén cerrados. Las instrucciones posteriores del usuario prevalecen; actualizar los documentos afectados para mantener coherencia.
