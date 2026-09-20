@@ -49,13 +49,16 @@ export async function requestPasswordRecoveryAction(formData: FormData) {
 }
 
 export async function updatePasswordAction(formData: FormData) {
+  const next = safeInternalPath(formData.get("next"));
   const input = passwordUpdateSchema.safeParse({
     password: formData.get("password"),
     confirmation: formData.get("confirmation"),
   });
 
   if (!input.success) {
-    redirect("/auth/update-password?error=invalid-password");
+    redirect(
+      `/auth/update-password?error=invalid-password&next=${encodeURIComponent(next)}`,
+    );
   }
 
   const identity = await createSupabaseIdentityGateway();
@@ -66,9 +69,11 @@ export async function updatePasswordAction(formData: FormData) {
 
   const result = await identity.updatePassword(input.data.password);
   if (!result.ok) {
-    redirect("/auth/update-password?error=update-failed");
+    redirect(
+      `/auth/update-password?error=update-failed&next=${encodeURIComponent(next)}`,
+    );
   }
 
   await identity.signOut();
-  redirect("/login?notice=password-updated");
+  redirect(`/login?notice=password-updated&next=${encodeURIComponent(next)}`);
 }

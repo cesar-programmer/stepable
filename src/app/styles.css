@@ -86,11 +86,47 @@ label {
   gap: 0.35rem;
 }
 
-input {
+input,
+select {
   border: 1px solid #94a3b8;
   border-radius: 0.5rem;
   font: inherit;
   padding: 0.65rem 0.75rem;
+}
+
+button.secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.invitation-list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+
+.invitation-list li {
+  border: 1px solid #d9deea;
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.invitation-list li > div:first-child {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.invitation-list span {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.actions.compact {
+  margin-top: 0;
 }
 
 .notice,

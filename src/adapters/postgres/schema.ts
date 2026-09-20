@@ -13,6 +13,11 @@ import {
 } from "drizzle-orm/pg-core";
 
 import {
+  invitationDeliveryStatuses,
+  invitationStatuses,
+} from "../../modules/invitations/contract.ts";
+
+import {
   membershipStatuses,
   spaceRoles,
 } from "../../modules/access/contract.ts";
@@ -26,6 +31,11 @@ export const authUsers = authSchema.table("users", {
 
 export const spaceRole = pgEnum("space_role", spaceRoles);
 export const membershipStatus = pgEnum("membership_status", membershipStatuses);
+export const invitationStatus = pgEnum("invitation_status", invitationStatuses);
+export const invitationDeliveryStatus = pgEnum(
+  "invitation_delivery_status",
+  invitationDeliveryStatuses,
+);
 
 export const profiles = pgTable("profiles", {
   identityId: uuid("identity_id")
@@ -80,5 +90,56 @@ export const memberships = pgTable(
   (table) => [
     primaryKey({ columns: [table.spaceId, table.profileId] }),
     index("memberships_profile_id_idx").on(table.profileId),
+  ],
+);
+
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: spaceRole("role").notNull().default("integrante"),
+    invitedBy: uuid("invited_by")
+      .notNull()
+      .references(() => profiles.identityId, { onDelete: "restrict" }),
+    tokenHash: text("token_hash").notNull(),
+    status: invitationStatus("status").notNull().default("pendiente"),
+    deliveryStatus: invitationDeliveryStatus("delivery_status")
+      .notNull()
+      .default("pendiente"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    acceptedBy: uuid("accepted_by").references(() => profiles.identityId, {
+      onDelete: "restrict",
+    }),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("invitations_token_hash_key").on(table.tokenHash),
+    uniqueIndex("invitations_one_pending_email_per_space_idx")
+      .on(table.spaceId, table.email)
+      .where(sql`${table.status} = 'pendiente'`),
+    index("invitations_space_created_at_idx").on(
+      table.spaceId,
+      table.createdAt,
+    ),
+    check(
+      "invitations_email_format",
+      sql`char_length(${table.email}) between 3 and 320 and ${table.email} = lower(${table.email}) and ${table.email} = btrim(${table.email}) and position('@' in ${table.email}) > 1`,
+    ),
+    check(
+      "invitations_token_hash_format",
+      sql`char_length(${table.tokenHash}) = 64 and ${table.tokenHash} ~ '^[0-9a-f]{64}$'`,
+    ),
   ],
 );

@@ -82,11 +82,14 @@ export async function deleteLocalTestIdentity(
 }
 
 type MailpitAddress = { Address?: string };
-type MailpitSummary = { ID?: string; To?: MailpitAddress[] };
+type MailpitSummary = { ID?: string; Subject?: string; To?: MailpitAddress[] };
 
-export async function waitForRecoveryLink(
+async function waitForMailLink(
   mailpitUrl: string,
   recipient: string,
+  linkPattern: RegExp,
+  subject?: string,
+  excludedLink?: string,
 ): Promise<string> {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     const listResponse = await fetch(`${mailpitUrl}/api/v1/messages`);
@@ -94,39 +97,73 @@ export async function waitForRecoveryLink(
       const payload = (await listResponse.json()) as {
         messages?: MailpitSummary[];
       };
-      const message = payload.messages?.find((candidate) =>
-        candidate.To?.some(
-          (address) =>
-            address.Address?.toLowerCase() === recipient.toLowerCase(),
-        ),
-      );
+      const candidates =
+        payload.messages?.filter(
+          (candidate) =>
+            (!subject || candidate.Subject?.includes(subject)) &&
+            candidate.To?.some(
+              (address) =>
+                address.Address?.toLowerCase() === recipient.toLowerCase(),
+            ),
+        ) ?? [];
 
-      if (message?.ID) {
+      for (const message of candidates) {
+        if (!message.ID) continue;
         const messageResponse = await fetch(
           `${mailpitUrl}/api/v1/message/${message.ID}`,
         );
-        if (messageResponse.ok) {
-          const detail = (await messageResponse.json()) as {
-            HTML?: string;
-            Text?: string;
-          };
-          const content =
-            `${detail.HTML ?? ""}\n${detail.Text ?? ""}`.replaceAll(
-              "&amp;",
-              "&",
-            );
-          const link = content.match(
-            /https?:\/\/[^\s"'<>]+\/auth\/callback\?token_hash=[^\s"'<>]+/i,
-          )?.[0];
-          if (link) {
-            return link;
-          }
-        }
+        if (!messageResponse.ok) continue;
+        const detail = (await messageResponse.json()) as {
+          HTML?: string;
+          Text?: string;
+        };
+        const content = `${detail.HTML ?? ""}\n${detail.Text ?? ""}`.replaceAll(
+          "&amp;",
+          "&",
+        );
+        const link = content.match(linkPattern)?.[0];
+        if (link && link !== excludedLink) return link;
       }
     }
-
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
+  throw new Error("Mailpit no recibió el enlace esperado.");
+}
 
-  throw new Error("Mailpit no recibió el enlace de recuperación esperado.");
+export async function waitForRecoveryLink(
+  mailpitUrl: string,
+  recipient: string,
+): Promise<string> {
+  return waitForMailLink(
+    mailpitUrl,
+    recipient,
+    /https?:\/\/[^\s"'<>]+\/auth\/callback\?token_hash=[^\s"'<>]+/i,
+    "Restablece",
+  );
+}
+
+export async function waitForInvitationLink(
+  mailpitUrl: string,
+  recipient: string,
+  excludedLink?: string,
+): Promise<string> {
+  return waitForMailLink(
+    mailpitUrl,
+    recipient,
+    /https?:\/\/[^\s"'<>]+\/invitations\/accept#token=[A-Za-z0-9_-]+/i,
+    "Invitación a",
+    excludedLink,
+  );
+}
+
+export async function waitForAccountSetupLink(
+  mailpitUrl: string,
+  recipient: string,
+): Promise<string> {
+  return waitForMailLink(
+    mailpitUrl,
+    recipient,
+    /https?:\/\/[^\s"'<>]+\/auth\/callback\?token_hash=[^\s"'<>]+/i,
+    "Configura tu cuenta",
+  );
 }

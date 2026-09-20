@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseLocalEnvironment, parsePublicEnvironment } from "./env";
+import {
+  parseLocalEnvironment,
+  parsePublicEnvironment,
+  parseServerEnvironment,
+} from "./env";
 
 describe("parseLocalEnvironment", () => {
   it("accepts a complete local configuration", () => {
@@ -31,6 +35,23 @@ describe("parseLocalEnvironment", () => {
     ).toEqual({
       NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "local-public-key",
+    });
+  });
+
+  it("validates the server-only local services separately", () => {
+    expect(
+      parseServerEnvironment({
+        NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "local-public-key",
+        DATABASE_URL: "postgresql://postgres:local@127.0.0.1:54322/postgres",
+        SUPABASE_SERVICE_ROLE_KEY: "server-only-key",
+        STEPABLE_APP_URL: "http://127.0.0.1:3000",
+        STEPABLE_MAILPIT_URL: "http://127.0.0.1:54324",
+      }),
+    ).toMatchObject({
+      SUPABASE_SERVICE_ROLE_KEY: "server-only-key",
+      STEPABLE_APP_URL: "http://127.0.0.1:3000",
+      STEPABLE_MAILPIT_URL: "http://127.0.0.1:54324",
     });
   });
 });

@@ -1,6 +1,6 @@
 # ADR-003 · Stack y política mínima de acceso para E1
 
-Fecha: 2026-09-18 · Estado: resolución parcial; stack, entorno, identidad, espacios y autorización local de E1.4 aceptados; invitaciones, administración y piloto pendientes.
+Fecha: 2026-09-18 · Estado: resolución parcial; stack, entorno, identidad, espacios, autorización e invitaciones locales de E1.5 aceptados; administración y piloto pendientes.
 
 ## Contexto
 
@@ -22,12 +22,16 @@ El usuario aceptó RN-09, RN-10 y el principio de RN-12 para desarrollo local: u
 
 El usuario aceptó completar RN-11 y la semántica local de RN-17: toda solicitud protegida valida identidad en servidor y consulta la membresía, estado y rol vigentes en PostgreSQL, sin roles del token ni caché de permisos. La matriz cerrada permite a ambos roles activos consultar el espacio y reserva gestión de invitaciones/miembros al responsable activo; ausencia, revocación, rol o acción desconocidos se deniegan. La membresía revocada se conserva bajo la misma unicidad usuario/espacio, no cierra la sesión global ni afecta otros espacios. Reincorporación, endpoints y operaciones concurrentes quedan en E1.5/E1.6.
 
+## Resolución parcial de E1.5 del 2026-09-18
+
+El usuario aceptó invitaciones locales de siete días, rol `integrante` predeterminado y `responsable` solo por selección explícita; el establecimiento de una identidad nueva mediante Auth/Mailpit separado de la aceptación Stepable; reactivación de membresías revocadas con el rol invitado; y prohibición de cambiar mediante invitación el rol de una membresía activa. También autorizó crear, listar, reenviar, cancelar y aceptar con token aleatorio de un uso cuyo hash es lo único persistido, autorización central, correo verificado coincidente y transacción atómica. La administración general de miembros permanece en E1.6 y RN-18 no se acepta en bloque.
+
 ## Propuesta
 
 1. Mantener el monolito modular de ADR-002. Web/API comparten despliegue en E1; el worker es un ejecutable del mismo código y se activa en E2, no un microservicio por módulo.
 2. Usar TypeScript estricto, Node.js LTS, `pnpm`, Next.js App Router, Zod, PostgreSQL, Drizzle, Vitest y Playwright.
 3. Propuesta pendiente: usar adaptadores para identidad, archivos, correo, trabajos e IA. Jobs, búsqueda, servicios alojados y proveedores se resolverán en sus entregas o antes del piloto.
-4. Aceptados: porción local de RN-08 en E1.2; RN-09, RN-10 y principio de RN-12 en E1.3; RN-11, matriz mínima y semántica de revocación de RN-17 en E1.4. Pendientes: completar invitaciones de RN-08/RN-13–RN-15/RN-18 y operaciones administrativas de RN-12/RN-16–RN-17 en sus entregas.
+4. Aceptados: porción local de RN-08 en E1.2; RN-09, RN-10 y principio de RN-12 en E1.3; RN-11, matriz mínima y semántica de revocación de RN-17 en E1.4; invitaciones de RN-13–RN-15 y parte de RN-16 en E1.5. Pendientes: operaciones administrativas de RN-12/RN-16–RN-17 y endurecimiento externo de RN-18.
 5. Aprovisionar el primer espacio y los posteriores mediante un comando operativo privado que exige una identidad local existente. Crea perfil, espacio y primera membresía en una transacción idempotente; no crea invitación ni contraseña y no existe endpoint público. Durante la V0 los responsables no crean otros espacios.
 6. Aceptado en E1.4: revocación por commit; cada caso de uso consulta membresía/rol vigente en PostgreSQL, no roles de tokens o cachés. Retirar un espacio no cierra la sesión global; las solicitudes ya admitidas siguen las reglas de bloqueo descritas en el documento 05.
 7. Desarrollar localmente con una única pila Supabase CLI para PostgreSQL, Auth y Mailpit; no duplicar base ni SMTP local. Contratar o desplegar solo con autorización separada.
@@ -64,8 +68,10 @@ E1.3 añadió una migración incremental para perfiles, espacios y membresías, 
 
 E1.4 añadió `membership_status` (`activa`/`revocada`) conservando filas existentes como activas, una política central con tres acciones explícitas y casos de uso que consultan PostgreSQL en cada solicitud. La restricción del último responsable cuenta solo membresías activas y el bootstrap informa conflicto ante una membresía inicial revocada o con rol incompatible. Integración y navegador comprobaron revocación con sesión viva, cambio de rol, aislamiento, 404 y acceso conservado a otro espacio, sin `db reset` ni cambios al espacio manual.
 
+E1.5 añadió la tabla `invitations`, casos de uso y adaptadores de PostgreSQL, Mailpit y Auth administrativo. El token Stepable se coloca en el fragmento del enlace, se retira del navegador al cargar y solo su hash queda en PostgreSQL. Reenvío rota el token; aceptación, cancelación y reenvío bloquean la invitación para resolver carreras. La aceptación y la membresía comparten transacción; cuenta nueva y aceptación permanecen separadas. La clave de servicio vive solo en el entorno servidor ignorado y conserva un nombre sin prefijo `NEXT_PUBLIC_`.
+
 Correo externo, dominios, alojamiento, proveedores y costos quedan como investigación histórica no aprobada y deben reabrirse antes del piloto.
 
 ## Condiciones para aceptar
 
-Queda pendiente completar invitaciones de RN-08/RN-13–RN-15/RN-18 y las operaciones administrativas de RN-12/RN-16–RN-17 en E1.5/E1.6. El piloto reabrirá correo externo, dominios, alojamiento, costos, backup y retención. E1.4 no autoriza invitaciones, endpoints administrativos, contratación o despliegue.
+Quedan pendientes las operaciones administrativas de RN-12/RN-16–RN-17 en E1.6 y el cierre de seguridad local de E1.7. El piloto reabrirá RN-18, correo externo, dominios, alojamiento, costos, backup y retención. E1.5 no autoriza administración general, contratación o despliegue.

@@ -1,5 +1,23 @@
 # Historial de cambios
 
+## 2026-09-19 · 1.0 · Cierre de E1.5
+
+- El usuario comprobó una invitación para identidad nueva: configuración de cuenta, inicio de sesión, aceptación y entrada al espacio como `integrante`; resultado correcto.
+- En una comprobación manual separada, el usuario confirmó que reenviar invalidó el enlace anterior, el enlace nuevo mostró la invitación pendiente y cancelar impidió aceptarla.
+- No se atribuyen al usuario pruebas manuales de usuario existente, rol `responsable`, vencimiento o concurrencia; esos escenarios conservan evidencia automatizada.
+- E1.5 queda cerrada y consolidada en el commit local solicitado; no se avanzó a E1.6.
+
+## 2026-09-18 · 1.0
+
+- Aceptadas para E1.5 invitaciones de siete días, integrante predeterminado, responsable explícito, cuenta Auth separada de aceptación Stepable, reactivación con el rol invitado y preservación del rol activo.
+- Añadida migración incremental de invitaciones con correo normalizado, estados, entrega, vencimiento, token hasheado y unicidad de pendiente por correo/espacio; aplicada sin reset y con los datos manuales conservados.
+- Implementados creación, lista, reenvío y cancelación desde una interfaz mínima, autorizados por la política central solo para responsables activos.
+- Implementada aceptación explícita: abrir el enlace no consume, el token se retira del fragmento, identidad/correo verificado coinciden y membresía/consumo se confirman en una transacción.
+- Añadido flujo local para identidades nuevas mediante un correo separado de Supabase Auth en Mailpit, sin registro público y sin cambiar contraseñas existentes.
+- Cubiertos usuario existente/nuevo, ambos roles, entrega fallida, rotación, cancelación, vencimiento, token/correo incorrectos, aislamiento, membresías activas/revocadas, doble aceptación y carreras con reenvío/cancelación.
+- Superadas la suite completa de integración (18), navegador (9), formato, lint, tipos, unidades (22) y build; la clave administrativa no aparece en recursos del navegador y los fixtures no dejaron datos residuales.
+- E1.5 espera comprobación manual y permanece sin commit ni push; E1.6, piloto y proveedores no se adelantaron.
+
 ## 2026-09-18 · 0.9
 
 - Aceptadas para E1.4 la matriz mínima, la consulta de identidad/membresía/rol por solicitud, la denegación predeterminada y la conservación de membresías revocadas sin cerrar la sesión global.

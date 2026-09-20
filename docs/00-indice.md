@@ -1,6 +1,6 @@
 # Índice y responsabilidades documentales
 
-Estado: vigente · Actualizado: 2026-09-18.
+Estado: vigente · Actualizado: 2026-09-19.
 
 | Documento | Fuente canónica de | Cuándo consultarlo |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ Estado: vigente · Actualizado: 2026-09-18.
 
 Producto y alcance → flujos y reglas → datos y permisos → arquitectura e IA → entregas ejecutables → implementación.
 
-El orden numérico sirve para encontrar documentos; las dependencias de trabajo están en el documento 07. La arquitectura v0.9 registra organización, stack, identidad, espacios y autorización local aprobados. E1.4 está cerrada con evidencia automatizada y comprobación manual. Invitaciones, administración y piloto no están autorizados.
+El orden numérico sirve para encontrar documentos; las dependencias de trabajo están en el documento 07. La arquitectura v1.0 registra organización, stack, identidad, espacios, autorización e invitaciones locales aprobados. E1.5 está cerrada con evidencia automatizada y comprobaciones manuales; administración general y piloto siguen pendientes según su etapa.
 
 ## Mantenimiento
 

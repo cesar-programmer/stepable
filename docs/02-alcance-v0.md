@@ -11,7 +11,7 @@ Responsable carga fuentes → genera y revisa ruta → publica → integrante ap
 
 | ID | Capacidad |
 | --- | --- |
-| RF-01 | Cuentas, inicio de sesión, recuperación e invitaciones; mecanismo técnico pendiente |
+| RF-01 | Cuentas, inicio de sesión, recuperación e invitaciones; mecanismo local definido, operación externa pendiente del piloto |
 | RF-02 | Espacio por proyecto y roles responsable/integrante |
 | RF-03 | Carga de PDF con texto y Markdown; estados y reintentos de procesamiento |
 | RF-04 | Generación de borrador de ruta con objetivo y fuentes seleccionadas |

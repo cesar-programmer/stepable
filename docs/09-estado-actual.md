@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-09-18 · Fase: E1.4 cerrada y comprobada localmente; E1.5 no iniciada · Versión documental: 0.9.
+Actualizado: 2026-09-19 · Fase: E1.5 cerrada y comprobada localmente; E1.6 no iniciada · Versión documental: 1.0.
 
 ## Hechos acordados
 
@@ -10,10 +10,11 @@ Actualizado: 2026-09-18 · Fase: E1.4 cerrada y comprobada localmente; E1.5 no i
 - Identidad E1.2 aceptada solo en local: correo/contraseña, sesión, recuperación por Mailpit, validación en servidor y ausencia de registro público.
 - E1.3 acepta usuarios en varios espacios, membresía única por usuario/espacio, roles `responsable`/`integrante`, responsables múltiples y bootstrap privado por operador sobre una identidad existente.
 - E1.4 acepta la matriz mínima por espacio, revalidación en PostgreSQL por solicitud, membresías activas/revocadas y revocación sin cerrar sesión global ni afectar otros espacios.
+- E1.5 acepta invitaciones locales de siete días, integrante predeterminado, responsable explícito, cuenta Auth separada de aceptación Stepable, reactivación con el rol invitado y preservación del rol de membresías activas.
 
 ## Actualización más reciente
 
-Implementada E1.4 sobre el commit base `f052f4088d7608ca76b2dfd63b2879b8ecaf1ac5`. La migración incremental conserva las membresías existentes como activas y permite conservar retiradas como revocadas. Una política central decide tres acciones explícitas con denegación predeterminada; listado y detalle consultan identidad y membresía actual por solicitud. El usuario confirmó que su espacio sigue visible, puede abrirlo y conserva el rol `responsable`. No se añadieron endpoints de invitación o administración.
+Implementada E1.5 sobre el commit base `7fd303a657bdf7fd2efeb4c3b749cff95c1b8ebc`. Una migración incremental añade invitaciones sin alterar identidades, espacios o membresías existentes. Responsables activos pueden crear, listar, reenviar y cancelar desde el espacio. Usuarios existentes o nuevos revisan el enlace sin consumirlo y aceptan explícitamente con correo verificado; la membresía se crea o reactiva atómicamente. La suite automatizada pasa. El usuario comprobó la incorporación de una identidad nueva como `integrante` y, por separado, la rotación por reenvío y el bloqueo por cancelación. E1.5 queda cerrada.
 
 ## Realizado
 
@@ -30,7 +31,12 @@ Implementada E1.4 sobre el commit base `f052f4088d7608ca76b2dfd63b2879b8ecaf1ac5
 - Añadidas lista y vista mínima de espacio con comprobación de membresía en ambas consultas y estado vacío.
 - Añadidos estado `activa`/`revocada`, política central rol × acción y casos de uso reutilizables para lista/detalle.
 - Ajustado el último responsable para contar solo responsables activos y el bootstrap para rechazar una membresía inicial revocada o con rol incompatible.
-- Añadido `pnpm env:sync`; `env:start` mantiene `.env.local` ignorado sincronizado sin imprimir secretos.
+- Añadido `pnpm env:sync`; `env:start` mantiene `.env.local` ignorado sincronizado. Supabase CLI puede mostrar claves locales en terminal, que no deben copiarse a reportes o commits.
+- Añadido modelo de invitación con estados, entrega, vigencia de siete días, correo normalizado y hash único; el token sin hash no se persiste.
+- Añadidos casos de uso autorizados para crear/listar/reenviar/cancelar y una interfaz mínima solo visible/utilizable por responsables activos.
+- Añadida aceptación explícita con vista GET no consumidora, token en fragmento retirado por el cliente y transacción de invitación/membresía.
+- Añadido flujo de identidad nueva mediante correo Auth separado en Mailpit, sin registro público ni cambio de contraseñas existentes.
+- Añadidos adaptadores locales de Mailpit y Auth administrativo; la clave de servicio permanece solo en entorno servidor ignorado.
 
 ## Evidencia y verificaciones reales
 
@@ -55,18 +61,27 @@ Implementada E1.4 sobre el commit base `f052f4088d7608ca76b2dfd63b2879b8ecaf1ac5
 - `pnpm verify`: formato, ESLint, TypeScript, 4 archivos/16 pruebas unitarias y build de producción aprobados.
 - Consulta agregada posterior: 1 membresía persistente, 1 activa, 0 revocadas; 0 espacios de fixture E1.4. No se consultó ni registró PII.
 - Comprobación manual del usuario: su espacio aparece en el listado, se abre correctamente y muestra el rol `responsable`; no se atribuyen otros escenarios manuales.
+- Migración `20260918010000_e1_5_invitations.sql` aplicada con `migration up`, sin reset. Antes y después del reinicio conservador quedaron 1 identidad, 1 espacio y 1 membresía existentes; la tabla de invitaciones empezó vacía.
+- `pnpm test:integration:invitations`: 1 archivo y 7 pruebas aprobadas contra PostgreSQL/Auth locales; cubre autorización, unicidad, ambos roles, correo distinto, vencimiento, tokens inválidos, entrega fallida recuperable, reenvío/cancelación, membresías activas/revocadas, doble aceptación y carreras con cancelación/reenvío.
+- `pnpm test:e2e:invitations`: 3 pruebas aprobadas en Chromium contra la aplicación, Auth y Mailpit reales; cubre usuario existente como responsable, usuario nuevo como integrante, separación cuenta/aceptación, GET no consumidor, rotación, cancelación y 404 para integrante que intenta gestionar.
+- `pnpm test:integration`: 3 archivos y 18 pruebas aprobadas contra Auth, PostgreSQL y Mailpit locales.
+- `pnpm test:e2e`: 9 pruebas aprobadas en Chromium; incluye regresión completa de identidad, sesión, recuperación, acceso e invitaciones. La clave administrativa no apareció en HTML ni bundles accesibles al navegador.
+- `pnpm verify`: formato, ESLint, TypeScript, 6 archivos/22 pruebas unitarias y build de producción aprobados.
+- Consulta agregada posterior: 1 identidad, 1 espacio, 1 membresía y 0 invitaciones persistentes; los fixtures E1.5 se eliminaron sin consultar ni registrar PII.
+- Primera comprobación manual del usuario: para una identidad nueva configuró la cuenta, inició sesión, aceptó la invitación y entró al espacio como `integrante`; funcionó correctamente. Esa comprobación no cubrió usuario existente, rol `responsable`, reenvío, cancelación, vencimiento ni concurrencia.
+- Comprobación manual posterior del usuario: reenviar invalidó el enlace anterior, el enlace nuevo mostró la invitación pendiente y cancelar impidió aceptarla; los tres resultados fueron correctos. No se le atribuyen mediante esta comprobación pruebas de aceptación con usuario existente, rol `responsable`, vencimiento o concurrencia.
 
 ## No realizado
 
-No se implementaron invitaciones, endpoints de alta/retirada/cambio de rol, reincorporación, documentos, rutas, IA, E2, despliegue ni proveedor externo. RN-13–RN-16, RN-18 y la parte operativa/concurrente de RN-12/RN-17 continúan pendientes según cada entrega.
+No se implementaron listado general de miembros, cambio de rol, retiro/autosalida, documentos, rutas, IA, E2, despliegue ni proveedor externo. La parte administrativa de RN-12/RN-16–RN-17 sigue en E1.6; auditoría/endurecimiento local en E1.7 y RN-18 externo en el piloto.
 
 ## Próxima tarea concreta
 
-Resolver y autorizar únicamente las decisiones de invitaciones que bloquean E1.5; después implementar el flujo local con correo capturado en Mailpit. No adelantar administración de E1.6, piloto o proveedores.
+Antes de iniciar E1.6, resolver únicamente las reglas pendientes de administración en PEN-05: gestión entre responsables, modificación o retiro de la propia membresía, autosalida del integrante y tratamiento administrativo de membresías revocadas. Mantener la protección ya aceptada del último responsable activo. No adelantar piloto o proveedores.
 
 ## Estado de Git y operación
 
-E1.4 se consolida en el commit local solicitado `feat(access): centralize space authorization and membership revocation`, sin remoto ni push. Su migración local está aplicada y Supabase conserva los datos. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
+E1.4 está en `7fd303a657bdf7fd2efeb4c3b749cff95c1b8ebc`. E1.5 está cerrada y consolidada en el commit local solicitado, sin push; su migración está aplicada y los datos previos se conservaron. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
 
 ## Formato para futuras sesiones
 

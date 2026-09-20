@@ -1,11 +1,11 @@
 # Entregas y aceptación
 
 Estado: secuencia inicial de planificación; sin fechas comprometidas.
-Actualizado: 2026-09-18.
+Actualizado: 2026-09-19.
 
-## Etapa actual: E1.4 cerrada; E1.5 no iniciada
+## Etapa actual: E1.5 cerrada; E1.6 no iniciada
 
-Arquitectura modular, stack, identidad, espacios y política local de autorización están aceptados en ADR-003. E1.4 implementa la matriz mínima, estado activo/revocado y revalidación por solicitud; cuenta con evidencia automatizada y comprobación manual confirmada por el usuario. Invitaciones, operaciones administrativas, piloto y proveedores no están autorizados.
+Arquitectura modular, stack, identidad, espacios, política local de autorización e invitaciones están aceptados en ADR-003. E1.5 implementa invitaciones locales con Mailpit para usuarios existentes y nuevos y cuenta con evidencia automatizada y comprobaciones manuales. Operaciones administrativas generales, piloto y proveedores no están autorizados.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ RF-10 es transversal: errores y límites deben incorporarse en las entregas que 
 
 ## Regla de cierre
 
-Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1–E1.4 tienen evidencia automatizada y comprobación manual; las entregas posteriores todavía no tienen resultados.
+Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1–E1.5 tienen evidencia automatizada y comprobación manual; las entregas posteriores todavía no tienen resultados.
 
 Las pruebas deben cubrir aislamiento, permisos, referencias/versiones, recuperación de fallos y progreso. No fijar un número de pruebas como objetivo de calidad.
 
@@ -28,7 +28,7 @@ La V0 funcional termina cuando onboarding y consulta permanente operan juntos. U
 
 ## Plan ejecutable de E1
 
-E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) acepta stack, entorno, identidad, espacios y autorización local hasta E1.4; invitaciones y administración siguen pendientes.
+E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) acepta stack, entorno, identidad, espacios, autorización e invitaciones locales hasta E1.5; administración general sigue pendiente.
 
 | Paso | Trabajo | Criterio de aceptación | Pruebas pertinentes | Resultado esperado |
 | --- | --- | --- | --- | --- |
@@ -73,3 +73,13 @@ Implementado y verificado automáticamente el 2026-09-18: política central con 
 La migración incremental convirtió las membresías existentes en activas, ajustó el último responsable para contar solo responsables activos y se aplicó sin reset. Los fixtures controlados cubren matriz rol × acción, rol/acción desconocidos, ausencia, revocación, cambio de rol en la siguiente consulta, aislamiento, 404, sesión global conservada, otro espacio todavía accesible, último responsable activo y bootstrap que no reactiva. No existen endpoints o interfaces de invitación/administración.
 
 El usuario comprobó manualmente que su espacio continúa en el listado, puede abrirlo y conserva el rol `responsable`. No se atribuyen a esta comprobación otros escenarios. E1.4 queda cerrada y no autoriza E1.5.
+
+### Resultado de E1.5
+
+Implementado y verificado automáticamente el 2026-09-18: creación, lista, reenvío y cancelación de invitaciones desde el espacio, autorizadas por la política central solo para responsables activos. Cada enlace dura siete días, contiene un token aleatorio en el fragmento y la base conserva únicamente su hash; un GET no consume la invitación y el reenvío invalida el enlace previo.
+
+La aceptación exige acción explícita, sesión con correo verificado coincidente y una transacción que consume la invitación junto con la creación o reactivación de la membresía. Una membresía activa conserva su rol; el mismo rol informa pertenencia y uno distinto produce conflicto. Un enlace ya consumido devuelve el resultado existente para la misma identidad y nunca reactiva una membresía retirada después.
+
+El alta de una identidad nueva usa un correo separado de Supabase Auth en Mailpit y no acepta por sí misma el espacio. Las pruebas reales cubren usuario existente/nuevo, ambos roles, entrega fallida recuperable, rotación, cancelación, vencimiento, tokens y correos incorrectos, aislamiento, membresías activas/revocadas, doble aceptación y carreras con reenvío/cancelación. La migración se aplicó sin reset y conservó la identidad, el espacio y la membresía manuales.
+
+El 2026-09-19 el usuario comprobó manualmente dos grupos separados. Primero, configuró una identidad nueva, inició sesión, aceptó la invitación y entró al espacio como `integrante`. Después comprobó que reenviar invalida el enlace anterior, el enlace nuevo muestra la invitación pendiente y cancelar impide aceptarla. Ambos resultados fueron correctos. No se atribuyen al usuario pruebas manuales de usuario existente, rol `responsable`, vencimiento o concurrencia; esos escenarios conservan únicamente evidencia automatizada. E1.5 queda cerrada y no autoriza E1.6.

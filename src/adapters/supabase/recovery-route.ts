@@ -3,9 +3,10 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { getPublicEnvironment } from "@/lib/env";
 
-export async function verifySupabaseRecoveryRequest(
+export async function verifySupabaseEmailOtpRequest(
   request: NextRequest,
   tokenHash: string,
+  type: "invite" | "recovery",
   response: NextResponse,
 ): Promise<boolean> {
   const environment = getPublicEnvironment();
@@ -26,7 +27,7 @@ export async function verifySupabaseRecoveryRequest(
 
   const { error } = await client.auth.verifyOtp({
     token_hash: tokenHash,
-    type: "recovery",
+    type,
   });
 
   return !error;

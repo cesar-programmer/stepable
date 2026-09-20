@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
+import { safeInternalPath } from "@/modules/identity/input";
 
 import { updatePasswordAction } from "../actions";
 
@@ -17,6 +18,9 @@ export default async function UpdatePasswordPage({
   }
 
   const parameters = await searchParams;
+  const next = safeInternalPath(
+    typeof parameters.next === "string" ? parameters.next : null,
+  );
 
   return (
     <main>
@@ -29,6 +33,7 @@ export default async function UpdatePasswordPage({
         </p>
       ) : null}
       <form action={updatePasswordAction}>
+        <input name="next" type="hidden" value={next} />
         <label>
           Nueva contraseña
           <input

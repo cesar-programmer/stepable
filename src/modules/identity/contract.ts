@@ -1,6 +1,7 @@
 export type AuthenticatedIdentity = {
   id: string;
   email: string;
+  emailVerified: boolean;
 };
 
 export type IdentityResult =

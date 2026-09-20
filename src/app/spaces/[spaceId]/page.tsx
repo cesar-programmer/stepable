@@ -51,6 +51,11 @@ export default async function SpacePage({ params }: SpacePageProps) {
         </div>
       </dl>
       <div className="actions">
+        {space.role === "responsable" ? (
+          <Link className="button" href={`/spaces/${space.id}/invitations`}>
+            Gestionar invitaciones
+          </Link>
+        ) : null}
         <Link className="button secondary" href="/spaces">
           Volver a tus espacios
         </Link>

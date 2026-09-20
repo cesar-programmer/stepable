@@ -32,7 +32,11 @@ export async function createSupabaseIdentityGateway(): Promise<IdentityGateway> 
         return null;
       }
 
-      return { id: data.user.id, email: data.user.email };
+      return {
+        id: data.user.id,
+        email: data.user.email,
+        emailVerified: Boolean(data.user.email_confirmed_at),
+      };
     },
 
     async requestPasswordRecovery(email) {

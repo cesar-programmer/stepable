@@ -8,6 +8,9 @@ const content = [
   `NEXT_PUBLIC_SUPABASE_URL=${status.API_URL}`,
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${status.PUBLISHABLE_KEY}`,
   `DATABASE_URL=${status.DB_URL}`,
+  `SUPABASE_SERVICE_ROLE_KEY=${status.SERVICE_ROLE_KEY}`,
+  "STEPABLE_APP_URL=http://127.0.0.1:3000",
+  `STEPABLE_MAILPIT_URL=${status.MAILPIT_URL}`,
   "",
 ].join("\n");
 
