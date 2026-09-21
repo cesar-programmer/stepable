@@ -1,8 +1,8 @@
 # Stepable · Base documental V0
 
-Versión documental: 1.0 · Fecha: 2026-09-19 · Estado: E1.5 cerrada con verificación automática y comprobaciones manuales locales.
+Versión documental: 1.2 · Fecha: 2026-09-21 · Estado: E1.6 cerrada con verificación automática y comprobación manual local.
 
-Este repositorio contiene la base documental y la aplicación local de Stepable. E1.5 añade invitaciones por espacio capturadas en Mailpit, aceptación explícita para identidades existentes o nuevas y alta/reactivación transaccional de membresías. La administración general de miembros, el piloto y los proveedores siguen pendientes.
+Este repositorio contiene la base documental y la aplicación local de Stepable. E1.6 añade administración de membresías activas/revocadas, cambios de rol, retiro y autosalida con autorización vigente y protección transaccional del último responsable. El piloto y los proveedores siguen pendientes.
 
 ## Cómo comenzar
 
@@ -39,8 +39,10 @@ pnpm verify        # formato, lint, tipos, unidades y build
 pnpm test:integration:auth # integración real con Auth y Mailpit
 pnpm test:integration:access # integridad, bootstrap e aislamiento reales
 pnpm test:integration:invitations # estados, atomicidad y concurrencia de invitaciones
+pnpm test:integration:memberships # roles, retiros, autosalida y concurrencia
 pnpm test:e2e:access # listado, detalle, aislamiento y revocación con sesión viva
 pnpm test:e2e:invitations # invitaciones con Auth y Mailpit reales
+pnpm test:e2e:memberships # administración con dos sesiones y permisos vigentes
 pnpm test:e2e      # recorridos web; requiere pnpm exec playwright install chromium
 ```
 
@@ -88,6 +90,18 @@ La integración ejercita la matriz de acciones, ausencia/revocación, cambio de 
 
 No copiar tokens a la terminal. La interfaz no los muestra y el servidor guarda solo su hash.
 
+### Comprobación manual de E1.6
+
+Usar dos identidades con membresía activa en el mismo espacio, una `responsable` y otra `integrante`, en dos perfiles o contextos de navegador separados:
+
+1. Como responsable, abrir **Gestionar miembros** y promover al integrante a `responsable`; confirmar en la segunda sesión que el nuevo rol y el acceso a administración aparecen al recargar.
+2. Como responsable original, cambiar el propio rol a `integrante`; debe salir de administración y permanecer en el detalle. El segundo responsable conserva el control.
+3. Desde la segunda sesión, devolver al usuario original el rol `responsable` para asegurar que siempre quede al menos uno.
+4. En la segunda sesión, usar **Abandonar espacio**. Debe volver a la lista de espacios; la sesión global sigue abierta y otros espacios no cambian.
+5. Como responsable restante, comprobar en **Gestionar miembros** que la membresía aparece `revocada` y no ofrece cambio de rol ni reactivación directa.
+
+No intentar retirar o degradar simultáneamente a ambos responsables durante la comprobación manual; las carreras y la protección del último responsable se cubren con fixtures automatizados.
+
 `env:start` crea o reutiliza la red Docker `stepable-local` y publica los puertos solo en `127.0.0.1`. Supabase CLI puede mostrar el aviso genérico `All services bind to 0.0.0.0`; la comprobación válida es el enlace efectivo de Docker. Con esta red, `docker inspect` debe mostrar `127.0.0.1` —no `0.0.0.0` ni `::`— para los puertos publicados.
 
 Los documentos son memoria explícita: solo sirven a Codex si están disponibles en su entorno y se consultan. No implican recuerdo automático entre conversaciones.
@@ -97,6 +111,6 @@ Los documentos son memoria explícita: solo sirven a Codex si están disponibles
 - Acordado: dirección expresada por el usuario o alcance aceptado para planificar.
 - Propuesto: detalle añadido para concretar el diseño; puede cambiar durante la planificación.
 - Pendiente: decisión aún sin respuesta. No equivale a autorización para inventar una especificación.
-- Implementado/verificado: requiere evidencia real. E1.1–E1.5 están cerradas con evidencia automatizada y comprobaciones manuales. E1.6 no está autorizada ni iniciada.
+- Implementado/verificado: requiere evidencia real. E1.1–E1.6 están cerradas con evidencia automatizada y comprobaciones manuales. E1.7 no está iniciada.
 
 La aceptación de la V0 como base de planificación no significa que todos los detalles técnicos estén cerrados. Las instrucciones posteriores del usuario prevalecen; actualizar los documentos afectados para mantener coherencia.

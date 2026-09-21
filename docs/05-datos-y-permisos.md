@@ -1,7 +1,7 @@
 # Datos y permisos
 
-Estado: identidad, espacios, autorización e invitaciones aceptados e implementados hasta E1.5; administración general pendiente.
-Actualizado: 2026-09-18.
+Estado: ciclo local de identidad, espacios, invitaciones y membresías aceptado e implementado hasta E1.6; cierre local y piloto pendientes.
+Actualizado: 2026-09-19.
 
 ## Conceptos y relaciones
 
@@ -32,7 +32,7 @@ Responsable que prueba una ruta y acceso al documento completo son concreciones 
 
 ## Cuestiones del modelo conceptual
 
-- Revocación y cambio de rol ya tienen semántica de autorización en RN-11/RN-17; E1.5 implementa reincorporación por invitación y E1.6 conserva los demás casos administrativos y su concurrencia.
+- Revocación, cambio de rol, autosalida y reincorporación por invitación tienen semántica implementada en RN-11–RN-17. E1.7 conserva la auditoría y revisión de seguridad local.
 - Qué ocurre con referencias históricas al borrar una fuente.
 - Qué versión puede consultar un asistente cuando una ruta usa contenido anterior.
 - Retención de conversaciones, intentos y archivos; acceso operativo y tratamiento por proveedores.
@@ -46,7 +46,7 @@ El [documento 04](04-arquitectura.md) propone separar propiedad de datos por mó
 
 ## Política mínima para E1
 
-Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acepta la porción local de RN-08; E1.3 acepta RN-09, RN-10 y el principio de RN-12; E1.4 acepta RN-11, la matriz mínima y la semántica de revocación de RN-17; E1.5 acepta el flujo local de invitaciones de RN-13–RN-15 y parte de RN-16. La administración general sigue pendiente en PEN-05 y el endurecimiento externo de RN-18 en PEN-02.
+Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acepta la porción local de RN-08; E1.3 acepta RN-09, RN-10 y el principio de RN-12; E1.4 acepta RN-11, la matriz mínima y la semántica de revocación de RN-17; E1.5 acepta el flujo local de invitaciones de RN-13–RN-15 y parte de RN-16; E1.6 completa RN-12, RN-16 y RN-17 para la administración local. El endurecimiento externo de RN-18 continúa en PEN-02.
 
 ### Identidad y espacios
 
@@ -66,6 +66,8 @@ Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acep
 
 **Resolución de E1.5:** RN-13–RN-15 quedan aceptadas para desarrollo local. Las invitaciones duran siete días, usan rol `integrante` por defecto y requieren selección explícita para `responsable`. El token aleatorio se entrega una sola vez, se persiste únicamente como hash y rota al reenviar. Abrir el GET no consume; la persona autenticada debe aceptar explícitamente con correo verificado coincidente. Cuenta Auth nueva y aceptación Stepable son pasos separados. La transacción crea la membresía o reactiva una revocada con el rol invitado y consume la invitación; nunca cambia el rol de una membresía activa. RN-16 se acepta solo para crear, listar, reenviar y cancelar invitaciones por responsables activos del propio espacio. Miembros, cambios de rol y retiros siguen en E1.6. RN-18 no se da por aceptada en bloque: los recorridos actuales evitan enumeración pública y responden genéricamente al establecimiento de cuenta, pero límites y operación externa se revisarán antes del piloto.
 
+**Resolución de E1.6:** RN-12, RN-16 y RN-17 quedan aceptadas para la administración local. Un responsable activo puede cambiar el rol o retirar a cualquier miembro activo de su espacio, incluida su propia membresía u otro responsable, siempre que quede al menos un responsable activo. Un integrante activo puede abandonar únicamente su propia membresía y no adquiere `gestionar_miembros`. El listado administrativo incluye activas y revocadas; una revocada no admite cambio de rol, retiro repetido ni reactivación directa y solo vuelve mediante una nueva invitación de E1.5. Todas las mutaciones revalidan al actor y el último responsable dentro de la misma transacción serializada por espacio.
+
 ### Matriz mínima aceptada en E1.4
 
 | Acción explícita | Responsable activo | Integrante activo |
@@ -73,8 +75,9 @@ Esta sección es la definición normativa de acceso e invitaciones. ADR-003 acep
 | `consultar_espacio` | Sí | Sí |
 | `gestionar_invitaciones` | Sí | No |
 | `gestionar_miembros` | Sí | No |
+| `abandonar_espacio` | Sí | Sí |
 
-Una membresía ausente o revocada, un rol desconocido o una acción desconocida se deniegan. E1.4 implementa y prueba las tres decisiones en la política central. E1.5 conecta `gestionar_invitaciones` con su interfaz y casos de uso; `gestionar_miembros` permanece sin endpoint ni interfaz hasta E1.6.
+Una membresía ausente o revocada, un rol desconocido o una acción desconocida se deniegan. E1.4 implementa las tres primeras acciones en la política central, E1.5 conecta `gestionar_invitaciones` y E1.6 conecta `gestionar_miembros` y `abandonar_espacio`. Esta última solo opera sobre la membresía propia; no concede administración.
 
 ### Invitaciones y cambios de membresía
 
@@ -91,8 +94,8 @@ El bootstrap es una capacidad operativa, no un rol global visible en el producto
 
 ### Consecuencias por rol
 
-- Responsable: administra miembros e invitaciones únicamente en sus espacios, puede promover otro responsable y no puede retirar/degradar al último. Ser responsable no permite crear otro espacio durante la V0 ni concede acceso operativo global.
-- Integrante: usa contenido y ve su propio progreso en los espacios donde mantiene una membresía activa; no administra miembros ni obtiene acceso por conservar una sesión después de ser retirado.
+- Responsable: administra miembros e invitaciones únicamente en sus espacios, puede promover, degradar o retirar responsables —incluido a sí mismo— y abandonar, siempre que permanezca otro responsable activo. Ser responsable no permite crear otro espacio durante la V0 ni concede acceso operativo global.
+- Integrante: usa contenido y ve su propio progreso en los espacios donde mantiene una membresía activa; puede abandonar solo su propia membresía, no administra miembros ni obtiene acceso por conservar una sesión después de ser retirado.
 - Ambos: pueden pertenecer a varios espacios, mantienen una única sesión de identidad y pierden o cambian capacidades por espacio según el estado vigente en la base.
 
 ### Historial de aclaraciones
@@ -103,7 +106,7 @@ RN-08, RN-09, RN-12–RN-16 y RN-18 conservan el texto de v0.4. Esta revisión a
 - RN-11 explicita que roles embebidos en tokens o cachés no son autoridad.
 - RN-17 delimita la revocación por espacio, la sesión global y el momento a partir del cual aplica.
 
-E1.4 acepta RN-11 y esa semántica de RN-17. E1.5 acepta las concreciones de RN-13–RN-15 y la porción de invitaciones de RN-16 descritas arriba, sin adelantar la administración general de E1.6 ni aceptar en bloque RN-18.
+E1.4 acepta RN-11 y esa semántica de RN-17. E1.5 acepta las concreciones de RN-13–RN-15 y la porción de invitaciones de RN-16. E1.6 acepta la administración restante de RN-12/RN-16/RN-17 y añade la acción explícita de autosalida, sin aceptar en bloque RN-18.
 
 ## Aprovisionamiento inicial y de espacios posteriores
 
@@ -142,7 +145,7 @@ Durante la V0, **solo el operador de Stepable** aprovisiona espacios nuevos y no
 
 ## Modelo mínimo para E1
 
-E1.5 conserva las entidades de acceso y añade invitaciones; la auditoría general se revisará en E1.7:
+E1.6 usa las entidades de acceso e invitaciones existentes; la auditoría general se revisará en E1.7:
 
 - `profiles`, con el UUID de `auth.users` como clave primaria y referencia restringida;
 - `spaces`, con UUID, `slug` único, nombre y responsable inicial;
@@ -150,11 +153,9 @@ E1.5 conserva las entidades de acceso y añade invitaciones; la auditoría gener
 - `invitations`, con espacio, correo normalizado, rol, emisor, hash de token único, vencimiento, entrega y estados `pendiente`/`aceptada`/`revocada`/`vencida`;
 - evento de auditoría de acceso sin secretos.
 
-Las operaciones que aceptan invitaciones, cambian roles o retiran miembros deben usar transacciones y restricciones de base. El control del último responsable no puede depender solo de ocultar un botón; requiere una estrategia transaccional probada contra concurrencia.
+Las operaciones que aceptan invitaciones, cambian roles o retiran miembros usan transacciones y restricciones de base. En E1.6, cambio, retiro y autosalida se serializan con un bloqueo asesor por espacio; después del bloqueo se vuelven a comprobar la membresía/rol del actor, el objetivo activo y el número de responsables activos. La restricción diferida de base sigue siendo respaldo y la interfaz nunca es la autoridad.
 
-## Decisiones aún abiertas después de E1.5
+## Decisiones aún abiertas después de E1.6
 
-- Concretar en E1.6 las operaciones de cambio/retiro y su estrategia de bloqueo concurrente para proteger al último responsable activo; la política, la revocación posterior al commit y el invariante ya están aceptados.
-- Concretar en E1.6 la reincorporación iniciada desde la futura administración, si existe; E1.5 ya establece que una nueva invitación válida reactiva con su rol y que un enlace consumido no puede reactivar de nuevo.
 - Completar RN-18 con límites y respuestas externas del entorno que se autorice para piloto; localmente el token es de alta entropía y el flujo de cuenta responde sin distinguir públicamente si ya existía.
 - PEN-06 sigue definiendo cuánto conservar membresías retiradas y auditoría. No bloquea implementar el rechazo inmediato, pero sí recibir datos reales del piloto.

@@ -12,8 +12,9 @@ const permissions: Record<SpaceRole, readonly SpaceAction[]> = {
     "consultar_espacio",
     "gestionar_invitaciones",
     "gestionar_miembros",
+    "abandonar_espacio",
   ],
-  integrante: ["consultar_espacio"],
+  integrante: ["consultar_espacio", "abandonar_espacio"],
 };
 
 function isMembershipStatus(value: unknown): value is MembershipStatus {
@@ -28,7 +29,8 @@ function isSpaceAction(value: unknown): value is SpaceAction {
   return (
     value === "consultar_espacio" ||
     value === "gestionar_invitaciones" ||
-    value === "gestionar_miembros"
+    value === "gestionar_miembros" ||
+    value === "abandonar_espacio"
   );
 }
 

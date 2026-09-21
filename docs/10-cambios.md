@@ -1,5 +1,21 @@
 # Historial de cambios
 
+## 2026-09-21 · 1.2 · Cierre de E1.6
+
+- El usuario confirmó que la comprobación manual de E1.6 funcionó correctamente y aceptó la entrega; no se le atribuyen comprobaciones manuales adicionales.
+- Se conserva por separado la evidencia automatizada ya aprobada: 24 pruebas de integración, 12 de navegador, 26 unitarias, formato, lint, tipos y build.
+- E1.6 queda cerrada y consolidada en el commit local solicitado, sin push. E1.7 no se inició y no se avanzó a E2, alojamiento o proveedores.
+
+## 2026-09-19 · 1.1 · Implementación de E1.6
+
+- Aceptadas para E1.6 la gestión de otros miembros y de la propia membresía, la autosalida del integrante, la visibilidad de revocadas y la reactivación exclusiva mediante nueva invitación.
+- Añadida `abandonar_espacio` a la política central; ambos roles activos pueden abandonar solo su propia membresía y únicamente responsables activos conservan `gestionar_miembros`.
+- Implementados listado administrativo aislado, cambio de rol, retiro y autosalida con confirmación y navegación posterior coherente.
+- Las mutaciones se serializan por espacio y revalidan dentro de la transacción los permisos actuales del actor, el objetivo y el último responsable activo; la restricción diferida permanece como respaldo.
+- No se añadió migración: el estado y el invariante de E1.4 cubren E1.6. No hubo reset ni modificación deliberada de datos manuales.
+- Aprobadas 6 pruebas nuevas de integración y 3 de navegador; la regresión completa suma 24 de integración, 12 de navegador y 26 unitarias, además de formato, lint, tipos y build. En ese momento, la comprobación manual de E1.6 y el commit permanecían pendientes.
+- Sin reactivación directa, auditoría de E1.7, E2, servicios externos, despliegue o push.
+
 ## 2026-09-19 · 1.0 · Cierre de E1.5
 
 - El usuario comprobó una invitación para identidad nueva: configuración de cuenta, inicio de sesión, aceptación y entrada al espacio como `integrante`; resultado correcto.
@@ -16,7 +32,7 @@
 - Añadido flujo local para identidades nuevas mediante un correo separado de Supabase Auth en Mailpit, sin registro público y sin cambiar contraseñas existentes.
 - Cubiertos usuario existente/nuevo, ambos roles, entrega fallida, rotación, cancelación, vencimiento, token/correo incorrectos, aislamiento, membresías activas/revocadas, doble aceptación y carreras con reenvío/cancelación.
 - Superadas la suite completa de integración (18), navegador (9), formato, lint, tipos, unidades (22) y build; la clave administrativa no aparece en recursos del navegador y los fixtures no dejaron datos residuales.
-- E1.5 espera comprobación manual y permanece sin commit ni push; E1.6, piloto y proveedores no se adelantaron.
+- En ese momento, E1.5 esperaba comprobación manual y permanecía sin commit ni push; E1.6, piloto y proveedores no se habían adelantado.
 
 ## 2026-09-18 · 0.9
 

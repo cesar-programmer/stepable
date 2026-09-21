@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-09-19 · Fase: E1.5 cerrada y comprobada localmente; E1.6 no iniciada · Versión documental: 1.0.
+Actualizado: 2026-09-21 · Fase: E1.6 cerrada y aceptada; E1.7 no iniciada · Versión documental: 1.2.
 
 ## Hechos acordados
 
@@ -11,10 +11,11 @@ Actualizado: 2026-09-19 · Fase: E1.5 cerrada y comprobada localmente; E1.6 no i
 - E1.3 acepta usuarios en varios espacios, membresía única por usuario/espacio, roles `responsable`/`integrante`, responsables múltiples y bootstrap privado por operador sobre una identidad existente.
 - E1.4 acepta la matriz mínima por espacio, revalidación en PostgreSQL por solicitud, membresías activas/revocadas y revocación sin cerrar sesión global ni afectar otros espacios.
 - E1.5 acepta invitaciones locales de siete días, integrante predeterminado, responsable explícito, cuenta Auth separada de aceptación Stepable, reactivación con el rol invitado y preservación del rol de membresías activas.
+- E1.6 acepta administración local: responsables activos gestionan miembros bajo la protección del último responsable; ambos roles activos pueden abandonar su propia membresía; revocadas solo se reactivan por una nueva invitación.
 
 ## Actualización más reciente
 
-Implementada E1.5 sobre el commit base `7fd303a657bdf7fd2efeb4c3b749cff95c1b8ebc`. Una migración incremental añade invitaciones sin alterar identidades, espacios o membresías existentes. Responsables activos pueden crear, listar, reenviar y cancelar desde el espacio. Usuarios existentes o nuevos revisan el enlace sin consumirlo y aceptan explícitamente con correo verificado; la membresía se crea o reactiva atómicamente. La suite automatizada pasa. El usuario comprobó la incorporación de una identidad nueva como `integrante` y, por separado, la rotación por reenvío y el bloqueo por cancelación. E1.5 queda cerrada.
+Implementada E1.6 sobre el commit base `3150b348151a4828f28502a299b868303c01b5ba`. Una interfaz reservada a responsables lista membresías activas/revocadas y permite cambios de rol o retiro con confirmación; cualquier miembro activo puede abandonar su propia membresía. Las mutaciones se serializan por espacio y revalidan actor, objetivo y último responsable dentro de la transacción. No hubo migración ni reset; los datos manuales permanecen intactos. Las suites automatizadas pasan y el usuario confirmó que la comprobación manual de E1.6 funcionó correctamente. La entrega queda aceptada y cerrada.
 
 ## Realizado
 
@@ -37,6 +38,10 @@ Implementada E1.5 sobre el commit base `7fd303a657bdf7fd2efeb4c3b749cff95c1b8ebc
 - Añadida aceptación explícita con vista GET no consumidora, token en fragmento retirado por el cliente y transacción de invitación/membresía.
 - Añadido flujo de identidad nueva mediante correo Auth separado en Mailpit, sin registro público ni cambio de contraseñas existentes.
 - Añadidos adaptadores locales de Mailpit y Auth administrativo; la clave de servicio permanece solo en entorno servidor ignorado.
+- Añadida la acción central `abandonar_espacio` para ambos roles activos, sin conceder administración a integrantes.
+- Añadido adaptador PostgreSQL de membresías con listado administrativo aislado y mutaciones transaccionales serializadas por espacio.
+- Añadida interfaz `/spaces/[spaceId]/members` para activas/revocadas, cambio de rol y retiro, y autosalida desde el detalle del espacio.
+- Tras autodegradarse, el usuario sale de administración; tras retirarse o abandonar, vuelve al listado. La sesión global y otras membresías no cambian.
 
 ## Evidencia y verificaciones reales
 
@@ -70,18 +75,25 @@ Implementada E1.5 sobre el commit base `7fd303a657bdf7fd2efeb4c3b749cff95c1b8ebc
 - Consulta agregada posterior: 1 identidad, 1 espacio, 1 membresía y 0 invitaciones persistentes; los fixtures E1.5 se eliminaron sin consultar ni registrar PII.
 - Primera comprobación manual del usuario: para una identidad nueva configuró la cuenta, inició sesión, aceptó la invitación y entró al espacio como `integrante`; funcionó correctamente. Esa comprobación no cubrió usuario existente, rol `responsable`, reenvío, cancelación, vencimiento ni concurrencia.
 - Comprobación manual posterior del usuario: reenviar invalidó el enlace anterior, el enlace nuevo mostró la invitación pendiente y cancelar impidió aceptarla; los tres resultados fueron correctos. No se le atribuyen mediante esta comprobación pruebas de aceptación con usuario existente, rol `responsable`, vencimiento o concurrencia.
+- `pnpm test:integration:memberships`: 1 archivo y 6 pruebas aprobadas contra PostgreSQL/Auth locales; cubre listado aislado, activas/revocadas, promoción, degradación, retiro, autosalida, último responsable, identificadores cruzados y carrera entre responsables con revalidación del actor.
+- `pnpm test:e2e:memberships`: 3 pruebas aprobadas en Chromium con dos sesiones; cubre administración denegada al integrante, autodegradación, restauración de rol, retiro con sesión global viva y otro espacio conservado, autosalida y último responsable.
+- `pnpm test:integration`: 4 archivos y 24 pruebas aprobadas; regresión completa de identidad, acceso, invitaciones y membresías contra servicios locales reales.
+- `pnpm test:e2e`: 12 pruebas aprobadas; regresión completa de E1.1–E1.6, incluida la ausencia de la clave administrativa en recursos del navegador.
+- `pnpm verify`: formato, ESLint, TypeScript, 7 archivos/26 pruebas unitarias y build de producción aprobados; la ruta dinámica `/spaces/[spaceId]/members` quedó incluida en el build.
+- Consulta agregada posterior: 0 espacios y 0 membresías de fixtures E1.6; permanecen 1 identidad, 1 espacio, 1 membresía y 0 invitaciones persistentes. No se consultó ni registró PII.
+- Comprobación manual del usuario del 2026-09-21: confirmó que la comprobación manual de E1.6 funcionó correctamente y aceptó la entrega. No se atribuyen mediante esta confirmación otros recorridos o resultados manuales.
 
 ## No realizado
 
-No se implementaron listado general de miembros, cambio de rol, retiro/autosalida, documentos, rutas, IA, E2, despliegue ni proveedor externo. La parte administrativa de RN-12/RN-16–RN-17 sigue en E1.6; auditoría/endurecimiento local en E1.7 y RN-18 externo en el piloto.
+No se implementaron reactivación administrativa directa, auditoría de eventos, documentos, rutas, IA, E2, despliegue ni proveedor externo. La reactivación permanece exclusivamente en invitaciones; auditoría/endurecimiento local corresponde a E1.7 y RN-18 externo al piloto.
 
 ## Próxima tarea concreta
 
-Antes de iniciar E1.6, resolver únicamente las reglas pendientes de administración en PEN-05: gestión entre responsables, modificación o retiro de la propia membresía, autosalida del integrante y tratamiento administrativo de membresías revocadas. Mantener la protección ya aceptada del último responsable activo. No adelantar piloto o proveedores.
+E1.7 es el siguiente paso del plan, pero no está iniciado: añadir la auditoría mínima de eventos de acceso, revisar errores/secretos y consolidar evidencia operativa repetible de CA-01. Debe mantener el alcance exclusivamente local y no adelantar E2 ni el piloto.
 
 ## Estado de Git y operación
 
-E1.4 está en `7fd303a657bdf7fd2efeb4c3b749cff95c1b8ebc`. E1.5 está cerrada y consolidada en el commit local solicitado, sin push; su migración está aplicada y los datos previos se conservaron. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
+E1.5 está cerrado en `3150b348151a4828f28502a299b868303c01b5ba`, sin push. E1.6 queda consolidada en el commit local de cierre solicitado, también sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
 
 ## Formato para futuras sesiones
 

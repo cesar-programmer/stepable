@@ -34,6 +34,11 @@ main {
   box-shadow: 0 1rem 3rem rgb(32 49 79 / 8%);
 }
 
+main.wide {
+  width: min(64rem, calc(100% - 2rem));
+  margin-top: 8vh;
+}
+
 h1 {
   margin: 0.25rem 0 0.75rem;
   font-size: clamp(2.5rem, 8vw, 4.5rem);
@@ -72,6 +77,10 @@ button {
 .button.secondary {
   background: #e2e8f0;
   color: #0f172a;
+}
+
+button.danger {
+  background: #b91c1c;
 }
 
 form {
@@ -213,4 +222,73 @@ button.secondary {
 
 .inline-form {
   margin: 0;
+}
+
+.member-list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+
+.member-list li {
+  align-items: start;
+  border: 1px solid #d9deea;
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.member-list li > div:last-child,
+.member-identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.member-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.member-controls .inline-form {
+  align-items: end;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.member-role,
+.status {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status {
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+}
+
+.status.activa {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.status.revocada {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.sr-only {
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }

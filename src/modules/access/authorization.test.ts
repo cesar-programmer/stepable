@@ -7,9 +7,11 @@ describe("space authorization policy", () => {
     ["responsable", "consultar_espacio", true],
     ["responsable", "gestionar_invitaciones", true],
     ["responsable", "gestionar_miembros", true],
+    ["responsable", "abandonar_espacio", true],
     ["integrante", "consultar_espacio", true],
     ["integrante", "gestionar_invitaciones", false],
     ["integrante", "gestionar_miembros", false],
+    ["integrante", "abandonar_espacio", true],
   ] as const)("evaluates %s and %s as %s", (role, action, expected) => {
     expect(allowsSpaceAction("activa", role, action)).toBe(expected);
   });

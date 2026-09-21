@@ -1,7 +1,7 @@
 # Flujos y reglas
 
-Estado: reglas base del alcance; identidad, autorización e invitaciones por espacio implementadas hasta E1.5, flujos posteriores propuestos.
-Actualizado: 2026-09-18.
+Estado: reglas base del alcance; ciclo local de membresía implementado hasta E1.6, flujos posteriores propuestos.
+Actualizado: 2026-09-19.
 
 ## Flujos principales
 
@@ -35,4 +35,4 @@ Integrante pregunta en el contexto de un espacio. El sistema comprueba acceso, r
 
 ## Casos por especificar
 
-Fuentes contradictorias, eliminación de fuentes citadas, ruta obsoleta y doble envío de respuestas siguen abiertos. E1.4 centraliza la autorización mínima, excluye membresías revocadas y vuelve a consultar membresía/rol por solicitud. E1.5 incorpora invitaciones locales con aceptación explícita y atómica. Las operaciones administrativas de retiro o cambio de rol permanecen en E1.6 según [datos y permisos](05-datos-y-permisos.md). Ver PEN-03 a PEN-06.
+Fuentes contradictorias, eliminación de fuentes citadas, ruta obsoleta y doble envío de respuestas siguen abiertos. E1.4 centraliza la autorización mínima, E1.5 incorpora invitaciones locales y E1.6 completa cambios de rol, retiro y autosalida con protección transaccional del último responsable. Ver [datos y permisos](05-datos-y-permisos.md) y PEN-03, PEN-04 y PEN-06.

@@ -4,6 +4,7 @@ export const spaceActions = [
   "consultar_espacio",
   "gestionar_invitaciones",
   "gestionar_miembros",
+  "abandonar_espacio",
 ] as const;
 
 export type SpaceRole = (typeof spaceRoles)[number];
