@@ -7,6 +7,10 @@ export const accessAuditActions = [
   "rol_membresia_cambiado",
   "membresia_retirada",
   "membresia_abandonada",
+  "fuente_cargada",
+  "fuente_reemplazada",
+  "procesamiento_reintentado",
+  "fuente_eliminada",
 ] as const;
 
 export const accessAuditActorTypes = ["identidad", "operador"] as const;
@@ -14,6 +18,7 @@ export const accessAuditTargetTypes = [
   "espacio",
   "invitacion",
   "membresia",
+  "fuente",
 ] as const;
 
 export type AccessAuditAction = (typeof accessAuditActions)[number];

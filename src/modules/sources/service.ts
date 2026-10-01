@@ -7,6 +7,7 @@ import {
 import type { AccessRepository } from "../access/contract.ts";
 
 import type {
+  DeleteSourceResult,
   RetryVersionResult,
   SourceSection,
   SourceFileStorage,
@@ -186,6 +187,31 @@ export async function replaceSourceFile(
     await removeQuietly(dependencies.storage, storageKey);
     throw error;
   }
+}
+
+/**
+ * Deletes a source with all its versions: it disappears for both roles when
+ * the transaction commits, and the worker purges originals and text.
+ */
+export async function deleteSource(
+  dependencies: ReadDependencies,
+  input: { identityId: string; spaceId: string; sourceId: string },
+): Promise<DeleteSourceResult> {
+  if (
+    !(await authorizeSpaceAction(
+      dependencies.accessRepository,
+      input.identityId,
+      input.spaceId,
+      "gestionar_fuentes",
+    ))
+  ) {
+    return { kind: "unauthorized" };
+  }
+  return dependencies.sourceRepository.deleteSource({
+    actorIdentityId: input.identityId,
+    spaceId: input.spaceId,
+    sourceId: input.sourceId,
+  });
 }
 
 /** Re-queues the latest failed version, up to the manual retry limit. */

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 import { AutoRefresh } from "@/app/components/auto-refresh";
+import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { maxManualRetries } from "@/modules/sources/contract";
 import { sourceIdentifiersSchema } from "@/modules/sources/input";
 import { readSourceContent } from "@/modules/sources/service";
@@ -15,7 +16,7 @@ import {
   sourceStatusLabels,
 } from "../messages";
 
-import { retrySourceAction } from "./actions";
+import { deleteSourceAction, retrySourceAction } from "./actions";
 
 type SourcePageProps = {
   params: Promise<{ spaceId: string; sourceId: string }>;
@@ -152,6 +153,27 @@ export default async function SourcePage({
               <button type="submit">Reemplazar archivo</button>
             </form>
           )}
+
+          <form action={deleteSourceAction} className="danger-zone">
+            <input name="spaceId" type="hidden" value={spaceId} />
+            <input name="sourceId" type="hidden" value={sourceId} />
+            <label className="checkbox">
+              <input
+                name="confirmacion"
+                required
+                type="checkbox"
+                value="eliminar"
+              />
+              Entiendo que se eliminarán la fuente, todas sus versiones y sus
+              archivos, sin papelera ni recuperación.
+            </label>
+            <ConfirmSubmitButton
+              className="danger"
+              message="¿Eliminar definitivamente esta fuente con todas sus versiones y archivos? No hay papelera."
+            >
+              Eliminar fuente
+            </ConfirmSubmitButton>
+          </form>
         </section>
       ) : null}
 

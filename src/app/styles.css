@@ -364,3 +364,15 @@ button.secondary {
   border-radius: 0.75rem;
   padding: 1rem;
 }
+
+.danger-zone {
+  border-top: 1px solid #fecaca;
+  padding-top: 0.75rem;
+}
+
+label.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 400;
+}

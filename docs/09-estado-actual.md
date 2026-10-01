@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E2.3 cerrada; E2.4 (eliminación y cierre de E2) autorizada · Versión documental: 2.1.
+Actualizado: 2026-10-01 · Fase: **E2 cerrada para el prototipo local**; E3 no iniciada · Versión documental: 2.3.
 
 ## Hechos acordados
 
@@ -18,15 +18,17 @@ Actualizado: 2026-10-01 · Fase: E2.3 cerrada; E2.4 (eliminación y cierre de E2
 
 - E2.3 autorizada el 2026-10-01: reemplazo con candidata, cambio atómico, hasta 3 reintentos manuales y conservación de versiones anteriores sin historial visible hasta E2.4.
 
+- E2.4 autorizada el 2026-10-01:
+  - conservación de versiones mientras exista la fuente;
+  - eliminación solo por responsables activos, con confirmación explícita y sin papelera;
+  - retiro inmediato y purga por el worker;
+  - metadatos mínimos y auditoría con el patrón existente.
+
+- E2 cerrada el 2026-10-01 para el prototipo local con documentos sintéticos. Archivos huérfanos aceptados como limitación hasta usar documentación real o desplegar (PEN-12).
+
 ## Actualización más reciente
 
-2026-10-01: E2.2 se cerró en el commit local `1ca2433` tras la comprobación manual del usuario. Después se implementó E2.3, sin commit:
-- reemplazo de fuentes con versión candidata y cambio atómico;
-- la vigente se conserva ante un fallo;
-- hasta 3 reintentos manuales sin duplicar trabajos;
-- sustitución de versiones fallidas.
-
-Detalle en el [documento 04 §19](04-arquitectura.md#reemplazo-y-reintento-manual-e23) y evidencia en el [documento 07](07-entregas-y-aceptacion.md#resultado-de-e23). La migración fue incremental y los datos locales se conservaron.
+2026-10-01: el usuario confirmó la prueba manual de E2.4 y aceptó la entrega. Aclaró además que la comprobación de E2.3 se hizo en otro entorno. E2.4 se consolidó en un commit local y E2 queda cerrada para el prototipo local, con las limitaciones del [documento 07](07-entregas-y-aceptacion.md#cierre-de-e2). Se reutilizó la verificación automática aprobada, porque solo cambió documentación. E3 no está iniciada.
 
 ## Realizado
 
@@ -66,6 +68,7 @@ Detalle en el [documento 04 §19](04-arquitectura.md#reemplazo-y-reintento-manua
 - E2.2: migración de páginas, extractor `pdfjs-dist` en `worker_threads`, validación de firma y límites PDF, mensajes y vistas por página.
 - E2.2: generador de PDF sintéticos para pruebas y comando `pnpm sources:sample-pdfs` para la prueba manual. Dependencia añadida: `pdfjs-dist` 6.3.289 exacta, publicada el 2026-08-29, sin excepciones de antigüedad.
 - E2.3: migración `manual_retries`, operaciones de reemplazo y reintento en repositorio y servicio, Route Handler de reemplazo con frontera HTTP compartida, Server Action de reintento, gestión en el detalle de la fuente y estado del reemplazo en el listado.
+- E2.4: migración de eliminación y purga, cola `purgar-fuente`, purga en el worker con re-encolado de purgas atascadas, eliminación con confirmación en el detalle, bloqueo fuente→versión al completar el procesamiento y 4 acciones de auditoría de fuentes.
 
 ## Evidencia y verificaciones reales
 
@@ -123,19 +126,24 @@ Detalle en el [documento 04 §19](04-arquitectura.md#reemplazo-y-reintento-manua
 - Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.2 funcionó correctamente y aceptó la entrega. No se le atribuyen comprobaciones adicionales. Estado agregado posterior: versiones Markdown `lista` 1, PDF `lista` 1 y PDF `fallida` 1; 3 objetos en el bucket; 0 trabajos pendientes. No se consultó contenido ni PII. Tras la verificación automática solo cambió el formato de `scripts/write-sample-pdfs.mjs`; se reutiliza esa evidencia.
 - E2.3, 2026-10-01: migración aplicada sin reset y con los datos conservados (2/1/2/2/7, 3 fuentes del usuario). Pruebas unitarias 46/46, `pnpm test:integration` 34/34, `pnpm test:e2e` 17/17, `pnpm verify` y `git diff --check` aprobados. Sin residuos ni trabajos pendientes.
 - Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E2.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 3 versiones (Markdown `lista` 1, PDF `lista` 1, PDF `fallida` 1), 3 objetos y 0 trabajos pendientes; no aparecen versiones de reemplazo en la base local. Se registra solo como dato agregado, sin consultar contenido ni PII. Tras la verificación automática no cambió código; se reutiliza esa evidencia.
+- E2.4, 2026-10-01: migración aplicada sin reset y con los datos conservados (2/1/2/2/7; 3 fuentes, 3 versiones, 5 segmentos y 3 objetos del usuario). Pruebas unitarias 48/48, `pnpm test:integration` 36/36, `pnpm test:e2e` 18/18, `pnpm verify` y `git diff --check` aprobados. Sin residuos ni trabajos pendientes.
+- Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.4 funcionó correctamente y aceptó la entrega. No se le atribuyen pasos adicionales. Estado agregado de esta base local tras la confirmación: 3 fuentes activas, 0 eliminadas, 3 objetos y 0 trabajos pendientes.
+- Aclaración del usuario del 2026-10-01: la comprobación manual de E2.3 se realizó en otro entorno; el conteo de esta base no la contradice. No se le atribuyen pasos adicionales.
+- Cierre de E2 sin cambios de código después de la verificación; se reutiliza esa evidencia.
 
 ## No realizado
 
-No se implementaron OCR, eliminación o purga de fuentes, historial visible de versiones, auditoría de fuentes, descarga de originales, reactivación administrativa directa, panel de auditoría, rutas, IA, despliegue ni proveedor externo. RN-18 externo, retención para datos reales, alojamiento y proveedores siguen pendientes de sus entregas o del piloto.
+No se implementaron OCR, papelera, historial visible de versiones, limpieza por antigüedad, conciliación de objetos huérfanos, panel de auditoría, descarga de originales, reactivación administrativa directa, rutas, IA, despliegue ni proveedor externo. RN-18 externo, retención para datos reales, alojamiento y proveedores siguen pendientes de sus entregas o del piloto.
 
 ## Próxima tarea concreta
 
-Implementar E2.4 con el alcance indicado por el usuario el 2026-10-01: conservar versiones mientras exista la fuente, eliminación solo por responsables activos con confirmación explícita, retiro inmediato, purga por el worker, metadatos mínimos y auditoría de fuentes con el patrón existente. No preparar el piloto por inferencia.
+Presentar al usuario el siguiente recorrido útil y el alcance mínimo de E3.1 (consulta con evidencia, RF-08/CA-03), con las decisiones de producto que requieren aprobación. No implementar E3 ni preparar el piloto sin autorización.
 
 ## Decisiones que requieren aprobación
 
-- **En E2.4:** retención de las versiones `reemplazada` y `descartada` (cuánto tiempo conservar original y texto, o purgar).
-- **En E2.4:** semántica de eliminación de fuentes (irreversible o con papelera) y metadatos que permanecen.
+- **Antes de E3:** las decisiones de producto de la consulta con evidencia (se presentan al usuario al proponer E3.1).
+- **Antes de E3/E4:** el destino de citas, lecciones o rutas que referencien versiones reemplazadas o eliminadas (PEN-04).
+- **Antes de datos reales o despliegue:** limpieza de objetos huérfanos (PEN-12) y retención (PEN-06).
 - **Sin definir:** descarga de originales y por quién.
 
 ## Pendientes menores de E1
@@ -147,7 +155,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E1 está cerrada en `7627580`, E2.1 en `7f53a26`, E2.2 en `1ca2433` y E2.3 en el commit local siguiente, todos sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados. Para usar las fuentes en local hace falta `pnpm worker` en una terminal aparte.
+E1 está cerrada en `7627580`; E2.1 en `7f53a26`, E2.2 en `1ca2433`, E2.3 en `5561489` y E2.4 en el commit local siguiente, todos sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados. Para usar las fuentes en local hace falta `pnpm worker` en una terminal aparte.
 
 ## Formato para futuras sesiones
 

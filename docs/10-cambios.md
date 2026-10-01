@@ -1,5 +1,21 @@
 # Historial de cambios
 
+## 2026-10-01 · 2.3 · Cierre de E2.4 y de E2
+
+- El usuario confirmó la prueba manual de E2.4 y aceptó la entrega. Aclaró que la comprobación de E2.3 se hizo en otro entorno. No se le atribuyen pasos adicionales.
+- La confirmación manual se registra separada de la evidencia automática, que se reutiliza porque solo cambió documentación.
+- Archivos huérfanos aceptados como limitación del prototipo local (PEN-12), pendientes antes de documentación real o despliegue; distintos de la purga de fuentes eliminadas, ya implementada.
+- E2 cerrada para el prototipo local; ADR-004 aceptado. Commit local, sin push. E3 no iniciada.
+
+## 2026-10-01 · 2.2 · Implementación de E2.4
+
+- Añadida la eliminación de fuentes por responsables activos, con casilla y diálogo de confirmación. El retiro es inmediato para ambos roles y no hay papelera.
+- El worker purga originales y texto de todas las versiones mediante la cola `purgar-fuente`, con reintentos y re-encolado de purgas pendientes. Quedan metadatos mínimos sin título ni SHA-256.
+- La finalización del procesamiento bloquea primero la fuente: trabajos pendientes o en curso no reactivan una fuente eliminada.
+- Auditoría de fuentes (cargar, reemplazar, reintentar, eliminar) en `access_audit_events`, en la misma transacción.
+- Documentada la política de conservación y la dependencia de futuras citas y lecciones; señalado como pendiente de cierre la conciliación de huérfanos.
+- Aprobadas 48 pruebas unitarias, 36 de integración y 18 de navegador. Sin comprobación manual atribuida, commit ni push.
+
 ## 2026-10-01 · 2.1 · Cierre de E2.3
 
 - El usuario confirmó que la comprobación manual de E2.3 funcionó correctamente y aceptó la entrega; no se le atribuyen escenarios adicionales.

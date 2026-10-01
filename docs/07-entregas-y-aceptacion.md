@@ -5,7 +5,7 @@ Actualizado: 2026-10-01.
 
 ## Etapa actual: E1 cerrada localmente
 
-Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2.1 (Markdown) está cerrada localmente tras la comprobación manual del usuario. E2.2 (PDF) está cerrada tras la comprobación manual del usuario. E2.3 está cerrada tras la confirmación manual del usuario. E2.4 está autorizada. Piloto y proveedores permanecen fuera del alcance.
+Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2.1 (Markdown) está cerrada localmente tras la comprobación manual del usuario. E2.2 (PDF) está cerrada tras la comprobación manual del usuario. E2.3 está cerrada tras la confirmación manual del usuario. E2.4 está cerrada y, con ella, E2 queda cerrada para el prototipo local. E3 no está iniciada. Piloto y proveedores permanecen fuera del alcance.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -108,14 +108,14 @@ Pasaron 26 pruebas de integración, 12 de navegador y 26 unitarias, además de f
 
 ## Plan de E2
 
-Estado: E2.1, E2.2 y E2.3 cerradas; E2.4 autorizada según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Exclusivamente local.
+Estado: **E2 cerrada para el prototipo local** el 2026-10-01 (E2.1–E2.4), con las limitaciones de abajo y del [documento 04 §19](04-arquitectura.md#limitaciones-conocidas-de-e21). Según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md).
 
 | Paso | Trabajo | Estado |
 | --- | --- | --- |
 | E2.1 Recorrido mínimo Markdown | Fuentes, versiones, segmentos, bucket privado, carga por Route Handler, pg-boss y `pnpm worker`, extracción Markdown, vistas por rol | Cerrada: verificación automática y comprobación manual del usuario |
 | E2.2 PDF con texto | `pdfjs-dist` en `worker_threads`, segmentos por página, firma, ≤ 8 MiB, ≤ 200 páginas, sin cifrado y sin OCR | Cerrada: verificación automática y comprobación manual del usuario |
 | E2.3 Reemplazo y reintentos | Versión candidata, cambio atómico, reemplazo fallido sin pérdida, hasta 3 reintentos manuales, conservación de versiones anteriores | Cerrada: verificación automática y confirmación manual del usuario |
-| E2.4 Eliminación y cierre | Eliminación, purga, conciliación de huérfanos, auditoría de fuentes, README y evidencia de CA-02 | Propuesta; la eliminación se decide entonces |
+| E2.4 Eliminación y cierre | Eliminación con confirmación, retiro inmediato, purga por el worker, metadatos mínimos y auditoría de fuentes | Cerrada: verificación automática y confirmación manual del usuario; huérfanos aceptados como limitación (PEN-12) |
 
 ### E2.1 · Criterios de aceptación
 
@@ -226,7 +226,7 @@ Evidencia:
   - integrante sin controles y con 404 al reemplazar por petición directa.
 - **Regresión:** `pnpm verify` (46 pruebas unitarias, higiene y build), `pnpm test:integration` 34/34, `pnpm test:e2e` 17/17 y `git diff --check`. Sin residuos de prueba.
 
-Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E2.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 3 versiones (Markdown `lista` 1, PDF `lista` 1, PDF `fallida` 1), 3 objetos y 0 trabajos pendientes; no aparecen versiones de reemplazo en la base local. Se registra solo como dato agregado, sin consultar contenido ni PII. E2.3 queda cerrada localmente.
+Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E2.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 3 versiones (Markdown `lista` 1, PDF `lista` 1, PDF `fallida` 1), 3 objetos y 0 trabajos pendientes; no aparecen versiones de reemplazo en la base local. Se registra solo como dato agregado, sin consultar contenido ni PII. E2.3 queda cerrada localmente. Aclaración del usuario del 2026-10-01: la comprobación manual de E2.3 se realizó en otro entorno; el conteo de esta base no la contradice. No se le atribuyen pasos adicionales.
 
 ### E2.3 · Prueba manual
 
@@ -235,3 +235,42 @@ Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación 
 3. Reemplazar con `danado.pdf`. Debe aparecer “Reemplazo · versión 3 … Falló” con su motivo, y el contenido anterior sigue visible.
 4. Pulsar **Reintentar procesamiento** hasta agotar los 3 intentos; después aparece el aviso de carga corregida. Cargar un archivo válido: pasa a ser la vigente.
 5. Como integrante, abrir la misma fuente: se ve solo el contenido vigente, sin controles.
+
+### Resultado de E2.4
+
+Implementado y verificado automáticamente el 2026-10-01 con el alcance indicado por el usuario. Las versiones se conservan mientras exista la fuente. Solo los responsables activos eliminan, con confirmación explícita y sin papelera. La fuente desaparece al instante para ambos roles y el worker purga originales y texto de todas las versiones. Una purga fallida deja la fuente inaccesible y se reintenta. Ningún trabajo pendiente o en curso la vuelve a publicar. Quedan solo metadatos mínimos y auditoría con identificadores.
+
+Evidencia:
+
+- **Migración** `20261001040000_e2_4_source_deletion.sql`: acciones de auditoría de fuentes, campos de eliminación y purga, título y SHA-256 anulables tras la purga. Aplicada con `pnpm db:migrate`, sin reset; datos locales conservados.
+- **`pnpm test:integration:sources`, 10/10.** Una prueba elimina una fuente con 3 versiones (reemplazada, vigente PDF y fallida) y comprueba:
+  - rechazo de integrante y de usuario ajeno;
+  - inaccesibilidad para ambos roles, con reemplazo y reintento en 404;
+  - 3 objetos y 2 segmentos purgados;
+  - metadatos sin título ni SHA-256;
+  - auditoría `fuente_cargada`, `fuente_reemplazada` ×2 y `fuente_eliminada`.
+
+  Otra prueba demuestra que un trabajo pendiente (sin worker) y uno en curso (ya iniciado) no reactivan la fuente eliminada.
+- **Pruebas unitarias de la purga:** fallo de Storage transitorio sin marcar la purga como hecha.
+- **`pnpm test:e2e:sources`, 6/6:** eliminación con casilla y diálogo, aviso, desaparición del listado y 404 posterior; el integrante no ve el botón.
+- **Regresión:** `pnpm verify` (48 pruebas unitarias, higiene y build), `pnpm test:integration` 36/36, `pnpm test:e2e` 18/18 y `git diff --check`. Sin residuos ni trabajos pendientes.
+
+**Confirmación manual (separada de la evidencia automática):** Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.4 funcionó correctamente y aceptó la entrega. No se le atribuyen pasos adicionales. Estado agregado de esta base local tras la confirmación: 3 fuentes activas, 0 eliminadas, 3 objetos y 0 trabajos pendientes. E2.4 queda cerrada localmente.
+
+### E2.4 · Prueba manual
+
+1. Ejecutar `pnpm db:migrate`. Luego, en dos terminales, `pnpm dev` y `pnpm worker`.
+2. Como responsable, cargar un `.md` desechable, por ejemplo `desechable.md`, y, si se quiere, reemplazarlo una vez.
+3. Abrir la fuente, marcar la casilla “Entiendo que se eliminarán…”, pulsar **Eliminar fuente** y aceptar el diálogo. Debe volver al listado con “Fuente eliminada” y la fuente ya no aparece.
+4. Abrir de nuevo la URL anterior de la fuente: 404. Como integrante, tampoco aparece en el listado.
+
+### Cierre de E2
+
+E2 queda cerrada el 2026-10-01 para el prototipo local con documentos sintéticos.
+
+- **RF-03/CA-02:** evidencia automática de E2.1–E2.4 (carga, procesamiento, estado listo o fallido, reintento sin duplicar, reemplazo y eliminación) y confirmaciones manuales del usuario de E2.1–E2.4. La de E2.3 se hizo en otro entorno.
+- **Limitaciones explícitas:**
+  - no hay OCR, papelera, historial visible de versiones, descarga de originales, limpieza por antigüedad ni panel de auditoría;
+  - la retención para datos reales sigue en PEN-06;
+  - el destino de futuras citas, lecciones y rutas ante reemplazo o eliminación sigue en PEN-04.
+- **Archivos huérfanos (PEN-12):** si la web cae entre subir un original y confirmar su transacción, puede quedar un objeto privado sin fila. No es accesible desde el navegador. El usuario lo aceptó el 2026-10-01 como limitación conocida del prototipo local con documentos sintéticos; su limpieza debe resolverse antes de usar documentación real o desplegar. Es distinto de la purga de fuentes eliminadas, que sí está implementada.

@@ -20,6 +20,7 @@ import {
   pdfMaxBytes,
 } from "../../src/modules/sources/contract.ts";
 import {
+  deleteSource,
   listSpaceSources,
   readSourceContent,
   replaceSourceFile,
@@ -524,6 +525,183 @@ describe("E2 Markdown and PDF sources", () => {
         (source) => source.status === "lista",
       ),
     ).toMatchObject({ versionNumber: 2, pending: null });
+  }, 120_000);
+
+  it("deletes a source with all its versions, hides it at once and purges its content", async () => {
+    const remove = (sourceId: string, identity = owner) =>
+      deleteSource(dependencies, {
+        identityId: identity.id,
+        spaceId,
+        sourceId,
+      });
+    const objectsOf = async (sourceId: string) =>
+      (await storedObjects(spaceId)).filter((name) =>
+        name.startsWith(`${spaceId}/${sourceId}/`),
+      );
+    const segmentsOf = async (sourceId: string) => {
+      const [row] = await connection.client`
+        select count(*)::int as count from public.source_segments segment
+        join public.source_versions version on version.id = segment.version_id
+        where version.source_id = ${sourceId}
+      `;
+      return row.count as number;
+    };
+    const waitForPurge = async (sourceId: string) => {
+      for (let attempt = 0; attempt < 80; attempt += 1) {
+        const [row] = await connection.client`
+          select purged_at from public.sources where id = ${sourceId}
+        `;
+        if (row?.purged_at) return;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      throw new Error("La purga no terminó a tiempo.");
+    };
+
+    // Three versions: replaced Markdown, current PDF and a failed candidate.
+    const sourceId = await queuedSourceId("desechable.md", "# Uno\nPrimera");
+    await waitForTerminalStatus(sourceId);
+    await replace(sourceId, "desechable.pdf", syntheticPdf(["Segunda"]));
+    await waitForSource(sourceId, (source) => source.versionNumber === 2);
+    await replace(sourceId, "rota.md", new Uint8Array([0xff, 0xfe, 0x00]));
+    await waitForSource(
+      sourceId,
+      (source) => source.pending?.status === "fallida",
+    );
+    expect(await objectsOf(sourceId)).toHaveLength(3);
+    expect(await segmentsOf(sourceId)).toBe(2);
+
+    await expect(remove(sourceId, member)).resolves.toEqual({
+      kind: "unauthorized",
+    });
+    await expect(remove(sourceId, foreignOwner)).resolves.toEqual({
+      kind: "unauthorized",
+    });
+    await expect(remove(sourceId)).resolves.toEqual({ kind: "deleted" });
+    await expect(remove(sourceId)).resolves.toEqual({ kind: "not_found" });
+
+    for (const onlyReady of [true, false]) {
+      expect(
+        await sourceRepository.findSource(spaceId, sourceId, onlyReady),
+      ).toBeNull();
+    }
+    for (const identity of [owner, member]) {
+      expect(
+        (
+          await listSpaceSources(dependencies, {
+            identityId: identity.id,
+            spaceId,
+          })
+        )?.sources.some((source) => source.id === sourceId),
+      ).toBe(false);
+      expect(
+        await readSourceContent(dependencies, {
+          identityId: identity.id,
+          spaceId,
+          sourceId,
+        }),
+      ).toBeNull();
+    }
+    await expect(retry(sourceId)).resolves.toEqual({ kind: "not_found" });
+    await expect(
+      replace(sourceId, "otra.md", encode("# Otra")),
+    ).resolves.toEqual({ kind: "not_found" });
+
+    await waitForPurge(sourceId);
+    expect(await objectsOf(sourceId)).toEqual([]);
+    expect(await segmentsOf(sourceId)).toBe(0);
+    const [metadata] = await connection.client`
+      select title, status, deleted_by,
+        (select count(*)::int from public.source_versions
+         where source_id = ${sourceId}) as versions,
+        (select count(*)::int from public.source_versions
+         where source_id = ${sourceId} and sha256 is not null) as fingerprints
+      from public.sources where id = ${sourceId}
+    `;
+    expect(metadata).toEqual({
+      title: null,
+      status: "eliminada",
+      deleted_by: owner.id,
+      versions: 3,
+      fingerprints: 0,
+    });
+    const events = await connection.client`
+      select action from public.access_audit_events
+      where target_type = 'fuente' and target_id = ${sourceId}
+      order by occurred_at
+    `;
+    expect(events.map((event) => event.action)).toEqual([
+      "fuente_cargada",
+      "fuente_reemplazada",
+      "fuente_reemplazada",
+      "fuente_eliminada",
+    ]);
+  }, 120_000);
+
+  it("never republishes a deleted source from a pending or running job", async () => {
+    // Pending: the job is queued while no worker runs.
+    await worker?.stop();
+    worker = null;
+    const pendingId = await queuedSourceId("pendiente.md", "# Pendiente");
+    await expect(
+      deleteSource(dependencies, {
+        identityId: owner.id,
+        spaceId,
+        sourceId: pendingId,
+      }),
+    ).resolves.toEqual({ kind: "deleted" });
+
+    // Running: processing started before the deletion committed.
+    const runningId = await queuedSourceId("en-curso.md", "# En curso");
+    const [version] = await connection.client<{ id: string }[]>`
+      select id from public.source_versions where source_id = ${runningId}
+    `;
+    const started = await sourceRepository.startProcessing(version.id);
+    expect(started).not.toBeNull();
+    await deleteSource(dependencies, {
+      identityId: owner.id,
+      spaceId,
+      sourceId: runningId,
+    });
+    expect(
+      await sourceRepository.completeProcessing(
+        version.id,
+        [
+          {
+            ordinal: 0,
+            headingPath: ["En curso"],
+            startLine: 1,
+            endLine: 1,
+            pageNumber: null,
+            content: "# En curso",
+          },
+        ],
+        null,
+      ),
+    ).toBe(false);
+
+    await startWorker();
+    for (const sourceId of [pendingId, runningId]) {
+      for (let attempt = 0; attempt < 80; attempt += 1) {
+        const [row] = await connection.client`
+          select purged_at from public.sources where id = ${sourceId}
+        `;
+        if (row.purged_at) break;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      const [row] = await connection.client`
+        select status, current_version_id, purged_at,
+          (select count(*)::int from public.source_segments segment
+           join public.source_versions version on version.id = segment.version_id
+           where version.source_id = ${sourceId}) as segments
+        from public.sources where id = ${sourceId}
+      `;
+      expect(row).toMatchObject({
+        status: "eliminada",
+        current_version_id: null,
+        segments: 0,
+      });
+      expect(row.purged_at).not.toBeNull();
+    }
   }, 120_000);
 
   it("isolates sources by space and role, including crossed identifiers", async () => {

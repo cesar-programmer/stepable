@@ -219,7 +219,7 @@ export const sources = pgTable(
     spaceId: uuid("space_id")
       .notNull()
       .references(() => spaces.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
+    title: text("title"),
     status: sourceStatus("status").notNull().default("activa"),
     currentVersionId: uuid("current_version_id"),
     createdBy: uuid("created_by")
@@ -231,6 +231,12 @@ export const sources = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedBy: uuid("deleted_by").references(() => profiles.identityId, {
+      onDelete: "restrict",
+    }),
+    purgeRequestedAt: timestamp("purge_requested_at", { withTimezone: true }),
+    purgedAt: timestamp("purged_at", { withTimezone: true }),
   },
   (table) => [
     unique("sources_id_space_key").on(table.id, table.spaceId),
@@ -247,7 +253,7 @@ export const sourceVersions = pgTable(
     number: integer("number").notNull(),
     format: sourceFormat("format").notNull(),
     byteSize: integer("byte_size").notNull(),
-    sha256: text("sha256").notNull(),
+    sha256: text("sha256"),
     storageKey: text("storage_key").notNull(),
     status: sourceVersionStatus("status").notNull().default("en_cola"),
     errorCode: text("error_code"),

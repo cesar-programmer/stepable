@@ -144,6 +144,12 @@ export type CreateReplacementResult =
       kind: "unauthorized" | "not_found" | "reemplazo_en_curso" | "sin_cambios";
     };
 
+export type DeleteSourceResult = {
+  kind: "deleted" | "unauthorized" | "not_found";
+};
+
+export type PurgeTarget = { storageKeys: string[] };
+
 export type RetryVersionResult =
   | { kind: "queued"; versionNumber: number }
   | {
@@ -174,6 +180,14 @@ export interface SourceRepository {
     spaceId: string;
     sourceId: string;
   }): Promise<RetryVersionResult>;
+  deleteSource(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    sourceId: string;
+  }): Promise<DeleteSourceResult>;
+  findPurgeTarget(sourceId: string): Promise<PurgeTarget | null>;
+  completePurge(sourceId: string): Promise<boolean>;
+  claimStalePurges(requestedBefore: Date): Promise<string[]>;
   listSources(spaceId: string, onlyReady: boolean): Promise<SourceSummary[]>;
   findSource(
     spaceId: string,
@@ -201,6 +215,7 @@ export interface SourceFileStorage {
   upload(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
   download(key: string): Promise<Uint8Array>;
   remove(key: string): Promise<void>;
+  removeMany(keys: string[]): Promise<void>;
 }
 
 export class TransientProcessingError extends Error {

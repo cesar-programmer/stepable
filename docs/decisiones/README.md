@@ -6,7 +6,7 @@ Un ADR conserva contexto, decisión, alternativas y consecuencias. No sustituye 
 | --- | --- | --- |
 | [ADR-001](ADR-001-enfoque-y-v0.md) | Aceptado como base de planificación | Software primero, dos usos y V0 delimitada |
 | [ADR-002](ADR-002-organizacion-modular.md) | Aceptado | Backend modular, web/API juntas y worker desde E2 |
-| [ADR-004](ADR-004-fuentes-locales-e2.md) | Aceptado parcialmente (E2.1) | Formatos, ciclo de vida, almacenamiento, trabajos, extracción y permisos de fuentes locales en E2 |
+| [ADR-004](ADR-004-fuentes-locales-e2.md) | Aceptado | Fuentes locales E2: formatos, ciclo de vida, Storage, pg-boss, extracción, permisos, eliminación y purga; E2 cerrada para el prototipo local |
 | [ADR-003](ADR-003-stack-y-acceso-e1.md) | Aceptado para E1 local | Stack, identidad, espacios, autorización, invitaciones, administración y auditoría locales aceptados; RN-18 externo y piloto pendientes |
 
 ## Plantilla para próximas decisiones

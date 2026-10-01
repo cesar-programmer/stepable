@@ -1,8 +1,10 @@
 import {
   createSourceBoss,
   sourceProcessingQueue,
+  sourcePurgeQueue,
   startSourceBoss,
   type SourceJobData,
+  type SourcePurgeJobData,
 } from "../adapters/pg-boss/source-queue.ts";
 import { WorkerThreadPdfExtractor } from "../adapters/pdfjs/pdf-text-extractor.ts";
 import { createPostgresDatabase } from "../adapters/postgres/database.ts";
@@ -13,6 +15,7 @@ import {
   TransientProcessingError,
 } from "../modules/sources/contract.ts";
 import { processSourceVersion } from "../modules/sources/processing.ts";
+import { purgeDeletedSource } from "../modules/sources/purge.ts";
 
 // Longer than three 60 s attempts plus their retry delays, so only a version
 // whose final attempt was lost (for example, a crash) is marked as timed out.
@@ -85,6 +88,39 @@ export async function startSourceWorker(options: {
         }
       },
     );
+    await boss.work<SourcePurgeJobData, void, typeof workOptions>(
+      sourcePurgeQueue,
+      workOptions,
+      async ([job]) => {
+        const startedAt = Date.now();
+        try {
+          const outcome = await purgeDeletedSource(
+            { sourceRepository: repository, storage },
+            { sourceId: job.data.sourceId },
+          );
+          log({
+            event: "source_purged",
+            jobId: job.id,
+            sourceId: job.data.sourceId,
+            attempt: job.retryCount + 1,
+            outcome,
+            durationMs: Date.now() - startedAt,
+          });
+        } catch (error) {
+          log({
+            event: "source_purge_retry",
+            jobId: job.id,
+            sourceId: job.data.sourceId,
+            attempt: job.retryCount + 1,
+            code:
+              error instanceof TransientProcessingError
+                ? error.code
+                : "error_interno",
+          });
+          throw error;
+        }
+      },
+    );
   } catch (error) {
     await boss.stop({ graceful: false }).catch(() => undefined);
     await connection.close();
@@ -98,6 +134,19 @@ export async function startSourceWorker(options: {
         if (count > 0) log({ event: "source_versions_timed_out", count });
       })
       .catch(() => log({ event: "source_stale_sweep_failed" }));
+    // Purges still pending after the queue's retries are enqueued again.
+    repository
+      .claimStalePurges(new Date(Date.now() - staleProcessingMilliseconds))
+      .then(async (sourceIds) => {
+        for (const sourceId of sourceIds) {
+          const data: SourcePurgeJobData = { sourceId };
+          await boss.send(sourcePurgeQueue, data);
+        }
+        if (sourceIds.length > 0) {
+          log({ event: "source_purges_requeued", count: sourceIds.length });
+        }
+      })
+      .catch(() => log({ event: "source_purge_sweep_failed" }));
   }, 60_000);
   sweep.unref();
 

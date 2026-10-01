@@ -46,6 +46,8 @@ export const sourceErrorMessages: Record<string, string> = {
   limite_de_reintentos:
     "Se alcanzó el máximo de 3 reintentos manuales. Carga un archivo corregido.",
   not_retryable: "No hay una versión fallida para reintentar.",
+  confirmacion_requerida:
+    "Para eliminar la fuente, confirma que entiendes que se borrarán todas sus versiones y archivos.",
 };
 
 export const sourceNoticeMessages: Record<string, string> = {
@@ -54,4 +56,6 @@ export const sourceNoticeMessages: Record<string, string> = {
     "Reemplazo recibido. La versión vigente sigue disponible mientras se procesa.",
   retry_queued: "Reintento en cola.",
   already_queued: "La versión ya está en cola o procesándose.",
+  source_deleted:
+    "Fuente eliminada. Sus archivos y texto se purgan en segundo plano.",
 };

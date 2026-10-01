@@ -5,6 +5,7 @@ import {
   eq,
   inArray,
   isNotNull,
+  isNull,
   lt,
   sql,
   type SQL,
@@ -17,6 +18,8 @@ import {
   maxManualRetries,
   type CreateReplacementResult,
   type CreateSourceResult,
+  type DeleteSourceResult,
+  type PurgeTarget,
   type NewReplacementVersion,
   type NewSourceVersion,
   type ProcessingErrorCode,
@@ -27,6 +30,7 @@ import {
   type VersionForProcessing,
 } from "../../modules/sources/contract.ts";
 
+import { recordAccessAuditEvent } from "./access-audit.ts";
 import type { StepableDatabase } from "./database.ts";
 import {
   memberships,
@@ -44,7 +48,29 @@ export type SourceJobEnqueuer = {
     transaction: Transaction,
     versionId: string,
   ): Promise<void>;
+  enqueuePurgeInTransaction(
+    transaction: Transaction,
+    sourceId: string,
+  ): Promise<void>;
 };
+
+function auditSource(
+  transaction: Transaction,
+  action:
+    | "fuente_cargada"
+    | "fuente_reemplazada"
+    | "procesamiento_reintentado"
+    | "fuente_eliminada",
+  input: { actorIdentityId: string; spaceId: string; sourceId: string },
+) {
+  return recordAccessAuditEvent(transaction, {
+    action,
+    actor: { type: "identidad", profileId: input.actorIdentityId },
+    spaceId: input.spaceId,
+    targetType: "fuente",
+    targetId: input.sourceId,
+  });
+}
 
 const segmentBatchSize = 500;
 const inProgressStatuses = ["en_cola", "procesando"] as const;
@@ -83,7 +109,7 @@ type NullableVersionRow = { [Key in keyof VersionRow]: VersionRow[Key] | null };
 function toSummary(
   row: {
     id: string;
-    title: string;
+    title: string | null;
     current: NullableVersionRow | null;
     latest: NullableVersionRow;
   },
@@ -104,7 +130,8 @@ function toSummary(
 
   return {
     id: row.id,
-    title: row.title,
+    // Only deleted sources lose their title (sources_title_required).
+    title: row.title ?? "",
     format: displayed.format,
     versionNumber: displayed.number,
     status: displayed.status,
@@ -204,6 +231,11 @@ export class PostgresSourceRepository implements SourceRepository {
         createdBy: input.createdBy,
       });
       await queue.enqueueInTransaction(transaction, input.versionId);
+      await auditSource(transaction, "fuente_cargada", {
+        actorIdentityId: input.createdBy,
+        spaceId: input.spaceId,
+        sourceId: input.sourceId,
+      });
 
       return { kind: "created" as const };
     });
@@ -283,6 +315,11 @@ export class PostgresSourceRepository implements SourceRepository {
         createdBy: input.createdBy,
       });
       await queue.enqueueInTransaction(transaction, input.versionId);
+      await auditSource(transaction, "fuente_reemplazada", {
+        actorIdentityId: input.createdBy,
+        spaceId: input.spaceId,
+        sourceId: input.sourceId,
+      });
 
       return { kind: "created" as const, versionNumber };
     });
@@ -346,9 +383,141 @@ export class PostgresSourceRepository implements SourceRepository {
         })
         .where(eq(sourceVersions.id, latest.id));
       await queue.enqueueInTransaction(transaction, latest.id);
+      await auditSource(transaction, "procesamiento_reintentado", input);
 
       return { kind: "queued" as const, versionNumber: latest.number };
     });
+  }
+
+  async deleteSource(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    sourceId: string;
+  }): Promise<DeleteSourceResult> {
+    const queue = this.requireQueue();
+
+    return this.database.transaction(async (transaction) => {
+      if (
+        !(await lockAndAuthorize(
+          transaction,
+          input.spaceId,
+          input.actorIdentityId,
+        ))
+      ) {
+        return { kind: "unauthorized" as const };
+      }
+
+      const [source] = await transaction
+        .select({ id: sources.id })
+        .from(sources)
+        .where(
+          and(
+            eq(sources.id, input.sourceId),
+            eq(sources.spaceId, input.spaceId),
+            eq(sources.status, "activa"),
+          ),
+        )
+        .limit(1)
+        .for("update");
+      if (!source) return { kind: "not_found" as const };
+
+      // Every read filters by status "activa", so the source disappears for
+      // both roles as soon as this commits; the worker purges its content.
+      await transaction
+        .update(sources)
+        .set({
+          status: "eliminada",
+          deletedAt: sql`now()`,
+          deletedBy: input.actorIdentityId,
+          purgeRequestedAt: sql`now()`,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(sources.id, input.sourceId));
+      await auditSource(transaction, "fuente_eliminada", input);
+      await queue.enqueuePurgeInTransaction(transaction, input.sourceId);
+
+      return { kind: "deleted" as const };
+    });
+  }
+
+  async findPurgeTarget(sourceId: string): Promise<PurgeTarget | null> {
+    const [source] = await this.database
+      .select({ id: sources.id })
+      .from(sources)
+      .where(
+        and(
+          eq(sources.id, sourceId),
+          eq(sources.status, "eliminada"),
+          isNull(sources.purgedAt),
+        ),
+      )
+      .limit(1);
+    if (!source) return null;
+
+    const versions = await this.database
+      .select({ storageKey: sourceVersions.storageKey })
+      .from(sourceVersions)
+      .where(eq(sourceVersions.sourceId, sourceId));
+    return { storageKeys: versions.map((version) => version.storageKey) };
+  }
+
+  /**
+   * Removes extracted text and content-derived metadata of a deleted source.
+   * Identifiers, version numbers, states and dates remain for cleanup and
+   * audit; title and SHA-256 are cleared.
+   */
+  async completePurge(sourceId: string): Promise<boolean> {
+    return this.database.transaction(async (transaction) => {
+      const [source] = await transaction
+        .select({ id: sources.id })
+        .from(sources)
+        .where(
+          and(
+            eq(sources.id, sourceId),
+            eq(sources.status, "eliminada"),
+            isNull(sources.purgedAt),
+          ),
+        )
+        .limit(1)
+        .for("update");
+      if (!source) return false;
+
+      await transaction
+        .delete(sourceSegments)
+        .where(
+          inArray(
+            sourceSegments.versionId,
+            transaction
+              .select({ id: sourceVersions.id })
+              .from(sourceVersions)
+              .where(eq(sourceVersions.sourceId, sourceId)),
+          ),
+        );
+      await transaction
+        .update(sourceVersions)
+        .set({ sha256: null, updatedAt: sql`now()` })
+        .where(eq(sourceVersions.sourceId, sourceId));
+      await transaction
+        .update(sources)
+        .set({ title: null, purgedAt: sql`now()`, updatedAt: sql`now()` })
+        .where(eq(sources.id, sourceId));
+      return true;
+    });
+  }
+
+  async claimStalePurges(requestedBefore: Date): Promise<string[]> {
+    const claimed = await this.database
+      .update(sources)
+      .set({ purgeRequestedAt: sql`now()` })
+      .where(
+        and(
+          eq(sources.status, "eliminada"),
+          isNull(sources.purgedAt),
+          lt(sources.purgeRequestedAt, requestedBefore),
+        ),
+      )
+      .returning({ id: sources.id });
+    return claimed.map((source) => source.id);
   }
 
   private selectSummaries(condition: SQL | undefined) {
@@ -483,19 +652,36 @@ export class PostgresSourceRepository implements SourceRepository {
     pageCount: number | null,
   ): Promise<boolean> {
     return this.database.transaction(async (transaction) => {
+      // Lock the source before the version, in the same order as deletion,
+      // so a committed deletion always prevents republishing.
+      const [source] = await transaction
+        .select({
+          id: sources.id,
+          status: sources.status,
+          currentVersionId: sources.currentVersionId,
+        })
+        .from(sources)
+        .where(
+          sql`${sources.id} = (
+            select version.source_id from public.source_versions version
+            where version.id = ${versionId}
+          )`,
+        )
+        .limit(1)
+        .for("update");
+      if (!source || source.status !== "activa") return false;
+
       const [version] = await transaction
         .select({ sourceId: sourceVersions.sourceId })
         .from(sourceVersions)
-        .innerJoin(sources, eq(sources.id, sourceVersions.sourceId))
         .where(
           and(
             eq(sourceVersions.id, versionId),
             eq(sourceVersions.status, "procesando"),
-            eq(sources.status, "activa"),
           ),
         )
         .limit(1)
-        .for("update", { of: sourceVersions });
+        .for("update");
       if (!version) return false;
 
       // Replacing the rows keeps a repeated completion idempotent.
@@ -529,12 +715,7 @@ export class PostgresSourceRepository implements SourceRepository {
         .where(eq(sourceVersions.id, versionId));
       // The candidate becomes current atomically; the previous current
       // version is kept as "reemplazada" until E2.4 defines retention.
-      const [source] = await transaction
-        .select({ currentVersionId: sources.currentVersionId })
-        .from(sources)
-        .where(eq(sources.id, version.sourceId))
-        .for("update");
-      if (source?.currentVersionId && source.currentVersionId !== versionId) {
+      if (source.currentVersionId && source.currentVersionId !== versionId) {
         await transaction
           .update(sourceVersions)
           .set({ status: "reemplazada", updatedAt: sql`now()` })

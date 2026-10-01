@@ -38,9 +38,13 @@ export class SupabaseSourceStorage implements SourceFileStorage {
   }
 
   async remove(key: string): Promise<void> {
-    const { error } = await this.client.storage
-      .from(sourceBucket)
-      .remove([key]);
+    await this.removeMany([key]);
+  }
+
+  /** Missing objects are ignored, so a repeated purge is idempotent. */
+  async removeMany(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    const { error } = await this.client.storage.from(sourceBucket).remove(keys);
     if (error) {
       throw new Error("No fue posible eliminar el original.", {
         cause: error,

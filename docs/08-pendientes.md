@@ -7,11 +7,12 @@ Estado: abierto · Actualizado: 2026-10-01.
 | PEN-01 | Presupuesto orientativo confirmado: 10 USD/mes para primeras pruebas. Correo externo, dominios, alojamiento y costos se reevalúan sin proveedor elegido | Preparar/autorizar piloto |
 | PEN-02 | Identidad, invitaciones y revisión de seguridad local resueltas hasta E1.7. Falta completar RN-18 para operación externa: límites, correo y respuestas del entorno de piloto sin enumeración | Antes del piloto |
 | PEN-03 | Cómo aprobar, reintentar, desbloquear pasos y aceptar variantes de código | E5 |
-| PEN-04 | Fuente vigente, contradicciones, sustitución, eliminación y rutas obsoletas. Vigencia, primera versión, reemplazo y reintento aplicados en E2.1–E2.3 (RN-19–RN-23, RN-25). La eliminación se decide en E2.4; contradicciones y referencias históricas siguen abiertas | E2.4, completar antes de E4 |
-| PEN-06 | Retención, eliminación, acceso operativo y datos enviados a proveedores. Desde E2.3 se conservan todas las versiones; retención, purga y eliminación se deciden en E2.4. Solo documentos sintéticos hasta entonces | E2.4 y piloto |
+| PEN-04 | Fuente vigente, contradicciones, sustitución, eliminación y rutas obsoletas. Vigencia, reemplazo, reintento y eliminación aplicados en E2.1–E2.4 (RN-19–RN-25). Siguen abiertos las contradicciones entre fuentes y el destino de citas, lecciones o rutas que referencien versiones reemplazadas o eliminadas: debe resolverse antes de implementarlas | E3/E4 |
+| PEN-06 | Retención, eliminación, acceso operativo y datos enviados a proveedores. Política local aceptada en E2.3–E2.4 (documento 05). Siguen abiertos los plazos para datos reales, el acceso operativo y los proveedores | Antes del piloto |
 | PEN-07 | Stack local, Supabase CLI, Storage local, `pg-boss` y extracción PDF con `pdfjs-dist` resueltos (ADR-003, ADR-004). Siguen abiertos búsqueda/IA y todos los servicios alojados del piloto | Antes de cada entrega afectada/piloto |
 | PEN-08 | Límites de archivos, consumo, latencias y umbrales de calidad. Límites de Markdown, PDF y procesamiento aplicados en E2.1–E2.2 (04 §19); consumo, latencias y calidad siguen abiertos | Entregas afectadas y piloto |
 | PEN-09 | Quién probará, con qué documentación autorizada y qué objetivo de aprendizaje | Preparar piloto |
+| PEN-12 | Limpieza de objetos huérfanos en Storage (originales subidos cuya transacción no confirmó). Aceptado el 2026-10-01 como limitación del prototipo local con documentos sintéticos; distinto de la purga de fuentes eliminadas, ya implementada | Antes de usar documentación real o desplegar |
 | PEN-10 | Producto de Atlassian usado: Confluence o Jira | Planear integración futura; no bloquea V0 manual |
 
 Al resolver: registrar respuesta y fundamento en el documento canónico; para decisiones significativas crear ADR y enlazarlo aquí. No borrar el historial ni registrar una propuesta como aceptación del usuario.

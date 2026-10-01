@@ -263,7 +263,9 @@ test.describe.serial("E2 sources in the browser", () => {
     await memberPage.goto(detailUrl);
     await expect(memberPage.getByText("Texto nuevo en PDF")).toBeVisible();
     await expect(
-      memberPage.getByRole("button", { name: /Reemplazar archivo|Reintentar/ }),
+      memberPage.getByRole("button", {
+        name: /Reemplazar archivo|Reintentar|Eliminar fuente/,
+      }),
     ).toHaveCount(0);
     const memberReplace = await memberPage.request.post(
       `${detailUrl}/replace`,
@@ -280,6 +282,30 @@ test.describe.serial("E2 sources in the browser", () => {
     );
     expect(memberReplace.status()).toBe(404);
     await context.close();
+  });
+
+  test("a responsible deletes a disposable source after explicit confirmation", async ({
+    page,
+  }) => {
+    await login(page, owner);
+    await page.goto(`/spaces/${spaceId}/sources`);
+    await uploadFile(
+      page,
+      "desechable.md",
+      Buffer.from("# Desechable\nBorrar"),
+    );
+    const row = page.getByRole("listitem").filter({ hasText: "desechable" });
+    await expect(row.getByText("Lista")).toBeVisible({ timeout: 20_000 });
+    await row.getByRole("link", { name: "desechable" }).click();
+    await expect(page).toHaveURL(/\/sources\/[0-9a-f-]{36}$/);
+    const detailUrl = page.url();
+
+    await page.getByLabel(/Entiendo que se eliminarán la fuente/).check();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Eliminar fuente" }).click();
+    await expect(page.getByText("Fuente eliminada.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "desechable" })).toHaveCount(0);
+    expect((await page.goto(detailUrl))?.status()).toBe(404);
   });
 
   test("a member reads only ready sources and other spaces get 404", async ({

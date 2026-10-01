@@ -8,6 +8,7 @@ type Transaction = Parameters<
 >[0];
 
 export const sourceProcessingQueue = "procesar-fuente";
+export const sourcePurgeQueue = "purgar-fuente";
 
 // Three attempts in total (one plus two retries), 60 s per attempt. An attempt
 // that exceeds expireInSeconds, including a worker crash, is retried by the
@@ -22,6 +23,7 @@ export const sourceProcessingQueueOptions: QueueOptions = {
 };
 
 export type SourceJobData = { versionId: string };
+export type SourcePurgeJobData = { sourceId: string };
 
 export function createSourceBoss(
   connectionString: string,
@@ -52,6 +54,7 @@ export function createSourceBoss(
 export async function startSourceBoss(boss: PgBoss): Promise<void> {
   await boss.start();
   await boss.createQueue(sourceProcessingQueue, sourceProcessingQueueOptions);
+  await boss.createQueue(sourcePurgeQueue, sourceProcessingQueueOptions);
 }
 
 export class PgBossSourceQueue {
@@ -71,6 +74,19 @@ export class PgBossSourceQueue {
     });
     if (!jobId) {
       throw new Error("pg-boss no registró el trabajo de procesamiento.");
+    }
+  }
+
+  async enqueuePurgeInTransaction(
+    transaction: Transaction,
+    sourceId: string,
+  ): Promise<void> {
+    const data: SourcePurgeJobData = { sourceId };
+    const jobId = await this.#boss.send(sourcePurgeQueue, data, {
+      db: fromDrizzle(transaction, sql),
+    });
+    if (!jobId) {
+      throw new Error("pg-boss no registró el trabajo de purga.");
     }
   }
 }

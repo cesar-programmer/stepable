@@ -171,7 +171,7 @@ Estado: las acciones, el modelo y la restricción a documentos sintéticos se ap
 | Acción explícita | Responsable activo | Integrante activo |
 | --- | --- | --- |
 | `consultar_fuentes`: listar y leer el contenido de las fuentes **vigentes** del espacio | Sí | Sí |
-| `gestionar_fuentes`: cargar, reemplazar, reintentar y ver estados, versiones pendientes y motivos de error; la eliminación llega en E2.4 | Sí | No |
+| `gestionar_fuentes`: cargar, reemplazar, reintentar, eliminar y ver estados, versiones pendientes y motivos de error | Sí | No |
 | Descargar el original | Sin definir | Sin definir |
 
 Se aplican RN-11 y el patrón de E1.7:
@@ -193,15 +193,19 @@ Se aplican RN-11 y el patrón de E1.7:
 
 ### Conservación y eliminación
 
-Comportamiento actual (E2.1–E2.3): originales, texto y metadatos de todas las versiones, incluidas las `reemplazada` y `descartada`, se conservan mientras exista el espacio. No se borran silenciosamente ni se exponen como historial. pg-boss elimina los trabajos completados a los 2 días. Los logs contienen solo identificadores, duración y código de resultado.
+Política aceptada por el usuario para el prototipo local el 2026-10-01 (E2.3–E2.4):
 
-La propuesta inicial, aún no aprobada y que se decidirá en E2.3/E2.4, era:
-
-| Dato | Se conservaría | Se eliminaría |
+| Dato | Se conserva | Se elimina |
 | --- | --- | --- |
-| Original y texto extraído | Mientras su versión sea vigente o candidata | Al completarse un reemplazo, al descartar la candidata o al eliminar la fuente, mediante una purga asíncrona |
-| Versión fallida | Hasta descartarla o reemplazarla | Junto con su original y su texto |
-| Metadatos mínimos | Mientras exista el espacio | Título, tamaño y SHA-256 se borrarían tras la purga |
-| Auditoría de fuentes (solo identificadores) | Sin plazo en local | Plazo definitivo en PEN-06 |
+| Originales y texto de la versión vigente, de las `reemplazada` y de las `descartada` | Mientras exista la fuente | Al eliminar la fuente: el worker purga originales y segmentos de todas sus versiones |
+| Título y SHA-256 | Mientras exista la fuente | En la purga se anulan |
+| Metadatos mínimos (identificadores de fuente, versión y espacio; número, formato, tamaño, estado y código de error de cada versión; fechas; autor de la eliminación; marcas de purga solicitada y realizada) | Mientras exista el espacio | No se eliminan en local; su plazo para datos reales sigue en PEN-06 |
+| Auditoría de fuentes (acción, actor, espacio, fuente, fecha) | Sin plazo en local | Plazo para datos reales en PEN-06 |
+| Trabajos pg-boss | 2 días tras completarse | Los borra pg-boss |
+| Logs del worker | Solo identificadores, duración y resultado; nunca contenido ni títulos | Rotación del entorno local |
+
+La eliminación es irreversible y sin papelera, y no hay limpieza por antigüedad.
+
+**Dependencias futuras:** antes de implementar citas (E3) o lecciones y rutas (E4) que referencien versiones o segmentos, hay que resolver qué ocurre con esas referencias al reemplazar o eliminar una fuente: conservar, bloquear o marcar como obsoletas. Hoy la eliminación purga todo el texto y una cita futura quedaría sin destino (PEN-04).
 
 Restricción aceptada: durante esta etapa solo se cargan documentos sintéticos, nunca documentación real de una empresa.

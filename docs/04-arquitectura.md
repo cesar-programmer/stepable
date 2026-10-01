@@ -272,7 +272,7 @@ Supabase ofrece `pgvector` en PostgreSQL y documenta índices HNSW/IVFFlat; no s
 
 ## 19. Fuentes locales en E2
 
-Estado: E2.1 (Markdown), E2.2 (PDF con texto) y E2.3 (reemplazo y reintento manual) cerradas el 2026-10-01 según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). La eliminación sigue en E2.4. Sin IA, embeddings, búsqueda, lecciones, conectores ni servicios contratados.
+Estado: E2.1–E2.4 cerradas; **E2 cerrada para el prototipo local** el 2026-10-01 según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Sin IA, embeddings, búsqueda, lecciones, conectores ni servicios contratados.
 
 ### Formatos y límites
 
@@ -332,6 +332,23 @@ Estado: E2.1 (Markdown), E2.2 (PDF con texto) y E2.3 (reemplazo y reintento manu
 - **Reintento manual:** un Server Action re-encola la última versión si está `fallida` y le quedan intentos. Bloquea su fila e incrementa `manual_retries`; si ya está en cola o en proceso, responde `already_queued` sin encolar otro trabajo.
 - **Conservación:** las versiones `reemplazada` y `descartada` conservan su original y su texto; no hay historial en la interfaz ni purga. La retención se decide en E2.4.
 
+### Eliminación y purga (E2.4)
+
+- **Eliminación:** un Server Action exige la casilla de confirmación, validada también en el servidor. `deleteSource` toma el bloqueo por espacio, revalida al actor y bloquea la fila de la fuente. En la misma transacción:
+  - marca la fuente `eliminada` con autor y fecha;
+  - registra `fuente_eliminada`;
+  - encola `purgar-fuente`.
+
+  Todas las lecturas filtran por `activa`, así que la fuente desaparece al confirmar; reemplazo y reintento responden 404.
+- **Sin republicación:** `completeProcessing` bloquea la fila de la fuente antes que la de la versión, en el mismo orden que la eliminación. Si la eliminación confirmó antes, el trabajo no escribe; un trabajo pendiente la encuentra eliminada y termina sin efecto.
+- **Purga:** el worker borra los originales de todas las versiones en Storage, sin error si ya no existen. Después, en una transacción:
+  - borra los segmentos;
+  - anula título y SHA-256;
+  - registra `purged_at`.
+
+  Un fallo de Storage es transitorio: pg-boss lo reintenta y el barrido del worker vuelve a encolar las purgas que sigan pendientes 15 min después. Mientras tanto, la fuente sigue inaccesible.
+- **Auditoría:** se reutiliza `access_audit_events` con `fuente_cargada`, `fuente_reemplazada`, `procesamiento_reintentado` y `fuente_eliminada` (destino `fuente`), escritos en la misma transacción que la mutación y solo con identificadores. No hay panel ni un sistema nuevo.
+
 ### Extracción
 
 - **Markdown (implementado):** decodificación UTF-8 estricta y saltos de línea normalizados. Se segmenta por encabezados ATX (`#`–`######`) fuera de bloques de código cercados. Cada segmento se ubica por su ruta de encabezados y su rango de líneas. Los encabezados de tipo Setext quedan como texto. No hay renderizado ni dependencia nueva.
@@ -350,12 +367,12 @@ Los estados visibles son “En cola”, “Procesando”, “Lista” y “Fall�
 
 ### Limitaciones conocidas de E2.1
 
-- Markdown y PDF con texto, con reemplazo y reintento manual. No hay eliminación, purga, historial visible de versiones, auditoría de fuentes, descarga de originales ni OCR; tampoco se rechazan los PDF parcialmente escaneados mientras alguna página tenga texto.
-- Las versiones anteriores ocupan espacio en Storage y PostgreSQL hasta que E2.4 defina la retención.
+- Markdown y PDF con texto, con reemplazo, reintento manual y eliminación con purga. No hay historial visible de versiones, papelera, descarga de originales, panel de auditoría ni OCR; tampoco se rechazan los PDF parcialmente escaneados mientras alguna página tenga texto.
+- Las versiones anteriores ocupan espacio en Storage y PostgreSQL mientras exista la fuente; no hay limpieza por antigüedad.
 - El worker es un proceso aparte (`pnpm worker`). Sin él, las cargas quedan “En cola” y se procesan al arrancarlo.
 - Si se pierde el último intento por una caída, el barrido del worker marca la versión `tiempo_agotado` a los 15 min.
 - La extracción PDF está aislada en un hilo con 256 MiB y 45 s; el Markdown se procesa en el hilo principal del worker, acotado por su tamaño máximo de 1 MiB.
-- Si la web cae entre subir el original y confirmar la transacción, puede quedar un objeto privado sin fila; su conciliación llega en E2.4.
+- Archivos huérfanos: si la web cae entre subir el original y confirmar la transacción, puede quedar un objeto privado sin fila, inaccesible desde el navegador. Se acepta como limitación del prototipo local (PEN-12): debe resolverse antes de documentación real o despliegue. No confundir con la purga de fuentes eliminadas, que sí está implementada.
 - El contenido se muestra como texto plano por secciones; no se renderiza Markdown.
 - Un cuerpo de más de 10 MB lo guarda en memoria el proxy de Next antes de rechazarlo por `Content-Length`; el original nunca se acepta por encima de 1 MiB.
 - Actualizar pg-boss requiere generar una migración nueva con su CLI.

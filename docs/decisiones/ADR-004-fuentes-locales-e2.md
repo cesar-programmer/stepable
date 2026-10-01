@@ -1,6 +1,6 @@
 # ADR-004 · Fuentes locales para E2
 
-Fecha: 2026-10-01 · Estado: **aceptado parcialmente**: E2.1–E2.3 cerradas; E2.4 autorizada.
+Fecha: 2026-10-01 · Estado: **aceptado**; E2 cerrada para el prototipo local (E2.1–E2.4). Archivos huérfanos aceptados como limitación (PEN-12).
 
 ## Contexto
 
@@ -56,6 +56,19 @@ El usuario autorizó el reemplazo y el reintento manual:
 
 Decidió conservar por ahora todas las versiones anteriores, sin historial visible y sin purga, hasta resolver la retención en E2.4. Esto sustituye, por ahora, la propuesta inicial de purgar las versiones reemplazadas.
 
+## Resolución de E2.4 del 2026-10-01
+
+El usuario definió la política del prototipo local:
+- conservar versiones anteriores y descartadas mientras exista la fuente;
+- eliminación solo por responsables activos, con confirmación explícita y sin papelera;
+- retiro inmediato;
+- purga de originales y texto por el worker, reintentable;
+- ningún trabajo pendiente puede volver a publicar la fuente;
+- metadatos mínimos sin contenido;
+- auditoría con el patrón existente.
+
+No se añaden limpieza por antigüedad ni infraestructura nueva. La conciliación de objetos huérfanos queda fuera de este alcance y se señala como pendiente de cierre.
+
 ## Alternativas consideradas
 
 | Tema | Alternativa | Evaluación |
@@ -90,4 +103,3 @@ Decidió conservar por ahora todas las versiones anteriores, sin historial visib
 ## Aprobaciones pendientes
 
 Se resumen en el [estado actual](../09-estado-actual.md#decisiones-que-requieren-aprobación).
-
