@@ -77,7 +77,7 @@ Flujo propuesto:
 5. Solo al completar el procesamiento marca la versión como lista. Las consultas descartan índices incompletos o referencias no elegibles.
 6. Si falla, conserva un estado de error recuperable. Un reintento no crea otra versión documental por accidente.
 
-Estados de trabajo propuestos: pendiente, ejecutando, completado, fallido. La elegibilidad documental es separada: una tarea completada no hace vigente una fuente retirada. Límites de intentos y cancelación quedan en PEN-08/PEN-04.
+Concreción de E2 en §19. Estados de trabajo propuestos: pendiente, ejecutando, completado, fallido. La elegibilidad documental es separada: una tarea completada no hace vigente una fuente retirada. Límites de intentos y cancelación quedan en PEN-08/PEN-04.
 
 El mecanismo de trabajos debe recuperar una ejecución interrumpida, por ejemplo mediante una reserva con vencimiento. Su contrato debe tolerar procesamiento repetido: registrar el resultado una sola vez por trabajo lógico, aunque el proveedor externo pudiera haber cobrado más de un intento.
 
@@ -199,8 +199,8 @@ Estado: **aceptado e implementado para E1.1**. Versiones exactas fijadas en `pac
 | Validación | Zod en fronteras de entrada y configuración | Esquemas explícitos y reutilizables; no reemplaza restricciones de base. |
 | Persistencia | PostgreSQL, Drizzle ORM para acceso tipado y migraciones SQL canónicas de Supabase CLI | Relacional encaja con membresías, unicidad e integridad. Habrá un solo historial de migraciones en `supabase/migrations`; no una segunda base o motor de migración de Drizzle. |
 | Autenticación local | Supabase Auth mediante adaptadores `@supabase/ssr`/`supabase-js` | E1.2 implementa correo/contraseña, sesión y recuperación; E1.5 añade establecimiento de cuenta invitada separado de la aceptación Stepable. El proveedor alojado sigue pendiente. |
-| Archivos | Pendiente de E2/piloto | E1.1 no usa Storage ni MinIO; se elegirá sin duplicar servicios innecesarios. |
-| Trabajos | Propuesta pendiente: `pg-boss` sobre PostgreSQL y ejecutable Node separado desde E2 | La activación del worker está aceptada para E2, pero la biblioteca de cola se validará al iniciar esa entrega. |
+| Archivos | Supabase Storage local, bucket privado `fuentes` (§19) | Aceptado e implementado en E2.1; reutiliza la pila existente, sin MinIO. Proveedor del piloto pendiente. |
+| Trabajos | `pg-boss` 12.35.0 sobre PostgreSQL, esquema por migración y ejecutable `pnpm worker` (§19) | Aceptado e implementado en E2.1; se priorizó frente a una cola propia. |
 | Correo local | Mailpit incluido en Supabase CLI | Captura sin envío real. Correo externo y proveedor quedan pendientes del piloto. |
 | Pruebas | Vitest para unidades/integración y Playwright para recorridos web | Pirámide pequeña: reglas rápidas, PostgreSQL real para autorización y pocos recorridos críticos. |
 | Observabilidad | Logs estructurados con identificador de solicitud y métricas de consumo propias | Suficiente para piloto; no se contrata una plataforma adicional en E1. |
@@ -269,3 +269,82 @@ Mantener estas opciones dentro de PostgreSQL para el primer piloto:
 5. proveedor de generación detrás de un adaptador con salida estructurada, medición de tokens/costo y posibilidad de cambiar de modelo.
 
 Supabase ofrece `pgvector` en PostgreSQL y documenta índices HNSW/IVFFlat; no se propone una base vectorial separada para el volumen esperado del piloto. [Columnas vectoriales](https://supabase.com/docs/guides/ai/vector-columns) e [índices](https://supabase.com/docs/guides/ai/vector-indexes). La elección de modelo y sus precios se verifica al planear E2/E3, porque cambian y todavía faltan PEN-06, PEN-08 y la carga de evaluación. E1 no instala SDKs de IA ni hace llamadas a modelos.
+
+## 19. Fuentes locales en E2
+
+Estado: E2.1 (Markdown) implementada y verificada automáticamente el 2026-10-01 según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). PDF, reemplazo, reintento manual y eliminación siguen propuestos. Sin IA, embeddings, búsqueda, lecciones, conectores ni servicios contratados.
+
+### Formatos y límites
+
+| Límite | Valor | Estado |
+| --- | --- | --- |
+| Markdown | `.md`/`.markdown`, ≤ 1 MiB, UTF-8 estricto (BOM tolerado), sin bytes nulos | Implementado |
+| Contenido mínimo | Al menos un carácter no blanco; si no, `contenido_vacio` | Implementado; se aceptan documentos cortos |
+| Texto máximo | ≤ 2 000 000 caracteres | Implementado |
+| Fuentes por espacio | ≤ 50 activas | Implementado |
+| Versiones en curso | 1 por fuente (índice único parcial) | Implementado como restricción; el reemplazo llega en E2.3 |
+| Título | 1–120 caracteres; por defecto el nombre del archivo | Implementado |
+| Intento | 60 s mediante `expireInSeconds` de pg-boss | Implementado; aislamiento en `worker_threads` en E2.2 |
+| Reintentos automáticos | 3 intentos en total para errores transitorios; espera exponencial desde 30 s, máximo 120 s | Implementado |
+| Versión atascada | `procesando` sin cambios durante 15 min pasa a `fallida` con `tiempo_agotado` | Implementado mediante el barrido del worker |
+| PDF | `.pdf` con firma `%PDF-`, ≤ 8 MiB, ≤ 200 páginas, sin cifrado | Propuesto para E2.2 |
+| Reintentos manuales | Hasta 3 por versión | Propuesto para E2.3 |
+
+### Carga
+
+1. Route Handler `POST /spaces/[spaceId]/sources/upload` con `multipart/form-data`, porque los Server Actions están limitados a 1 MB.
+   - Rechaza con 403 un `Origin` distinto de `Host`.
+   - Antes de leer el cuerpo exige identidad y `gestionar_fuentes`; si no los hay, responde 404.
+   - Rechaza un `Content-Length` excesivo y vuelve a medir el archivo después de leerlo.
+2. Valida extensión, tamaño y título y calcula el SHA-256.
+3. Sube el original al bucket privado `fuentes` con clave `{space_id}/{source_id}/{version_id}` mediante `SupabaseSourceStorage`. La clave de servicio solo existe en el servidor y el worker.
+4. Ejecuta una transacción que:
+   - toma el bloqueo por espacio y revalida al actor;
+   - comprueba la cuota;
+   - inserta la fuente y su versión 1 `en_cola`;
+   - encola el trabajo con `fromDrizzle` de pg-boss. Si la transacción no confirma, el trabajo no existe.
+5. Si la transacción se rechaza o falla, elimina el objeto (mejor esfuerzo).
+
+### Worker y trabajos con pg-boss
+
+- **Versión y esquema:** `pg-boss` 12.35.0, con esquema en la versión 43.
+  - El esquema `pgboss` se instala con la migración `20261001000000_e2_1_pgboss.sql`, generada con `pg-boss plans create --dry-run`.
+  - Las instancias usan `migrate: false` y `createSchema: false`, así que `supabase/migrations` sigue siendo el único historial.
+  - Actualizar pg-boss exige otra migración generada con `plans migrate --dry-run`.
+- **Cola `procesar-fuente`:** `retryLimit` 2, `retryDelay` 30 s con `retryBackoff`, `retryDelayMax` 120 s, `expireInSeconds` 60 y `deleteAfterSeconds` de 2 días. La expiración y la supervisión de pg-boss recuperan los intentos interrumpidos por una caída.
+- **Procesos:** la web solo encola y no supervisa. `pnpm worker` (`src/worker/main.ts`) supervisa la cola y procesa un trabajo a la vez. Registra JSON con identificadores, intento, resultado y duración; nunca contenido ni títulos.
+- **`processSourceVersion`:**
+  1. Toma la versión si sigue `en_cola` o `procesando` y la fuente está activa.
+  2. Descarga el original y lo extrae.
+  3. Cierra en una transacción que sustituye los segmentos, lo que la hace idempotente, y marca la versión `lista` como vigente.
+  4. Un error de contenido la deja `fallida` sin reintento. Un error transitorio se relanza para que pg-boss reintente; en el último intento la versión queda `fallida` con su código.
+- **Acceso:** `anon` y `authenticated` no tienen `USAGE` sobre `pgboss`.
+
+### Extracción
+
+- **Markdown (implementado):** decodificación UTF-8 estricta y saltos de línea normalizados. Se segmenta por encabezados ATX (`#`–`######`) fuera de bloques de código cercados. Cada segmento se ubica por su ruta de encabezados y su rango de líneas. Los encabezados de tipo Setext quedan como texto. No hay renderizado ni dependencia nueva.
+- **PDF (propuesto para E2.2):** `pdfjs-dist` en versión exacta, con `isEvalSupported: false` y la corrección de CVE-2024-4367. Se extrae un segmento por página y `PasswordException` se trata como `pdf_protegido`. La compatibilidad con Node 24 se verifica al iniciar E2.2.
+
+### Errores visibles
+
+| Código | Tipo | Momento |
+| --- | --- | --- |
+| `formato_no_admitido`, `archivo_vacio`, `archivo_demasiado_grande`, `titulo_invalido`, `limite_de_fuentes` | Rechazo | En la carga; no se guarda nada |
+| `codificacion_invalida`, `contenido_vacio`, `texto_demasiado_extenso` | Permanente | En el procesamiento; sin reintento |
+| `almacenamiento_no_disponible`, `error_interno`, `tiempo_agotado` | Transitorio | Se reintenta; al agotar los intentos queda `fallida` |
+| `pdf_danado`, `pdf_protegido`, `demasiadas_paginas`, `sin_texto_extraible` | Permanente | Propuestos para E2.2 |
+
+Los estados visibles son “En cola”, “Procesando”, “Lista” y “Falló” con su motivo; el motivo solo lo ve el responsable. El listado se refresca cada 2 s mientras haya trabajo pendiente.
+
+### Limitaciones conocidas de E2.1
+
+- Solo Markdown. PDF, reemplazo, reintento manual, descarte, eliminación, purga, auditoría de fuentes y descarga de originales no están implementados.
+- Una fuente fallida queda visible para el responsable sin acción posible hasta E2.3/E2.4.
+- El worker es un proceso aparte (`pnpm worker`). Sin él, las cargas quedan “En cola” y se procesan al arrancarlo.
+- Si se pierde el último intento por una caída, el barrido del worker marca la versión `tiempo_agotado` a los 15 min.
+- El límite de 60 s lo aplica la expiración de pg-boss; el aislamiento en `worker_threads` con memoria limitada llega con PDF en E2.2.
+- Si la web cae entre subir el original y confirmar la transacción, puede quedar un objeto privado sin fila; su conciliación llega en E2.4.
+- El contenido se muestra como texto plano por secciones; no se renderiza Markdown.
+- Un cuerpo de más de 10 MB lo guarda en memoria el proxy de Next antes de rechazarlo por `Content-Length`; el original nunca se acepta por encima de 1 MiB.
+- Actualizar pg-boss requiere generar una migración nueva con su CLI.
+- Solo se usan documentos sintéticos; la conservación para datos reales sigue en PEN-06.

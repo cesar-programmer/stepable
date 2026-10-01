@@ -1,6 +1,6 @@
 # Stepable · Base documental V0
 
-Versión documental: 1.4 · Fecha: 2026-10-01 · Estado: E1 cerrada localmente; E2 y piloto pendientes de autorización.
+Versión documental: 1.7 · Fecha: 2026-10-01 · Estado: E1 y E2.1 (fuentes Markdown) cerradas localmente; E2.2 (PDF) en curso.
 
 Este repositorio contiene la base documental y la aplicación local de Stepable. E1 implementa identidad, espacios, invitaciones, membresías, autorización vigente y auditoría mínima de mutaciones de acceso. El piloto y los proveedores siguen pendientes.
 
@@ -22,7 +22,8 @@ pnpm install --frozen-lockfile
 pnpm env:start
 pnpm env:status
 pnpm db:migrate
-pnpm dev
+pnpm dev        # terminal 1: aplicación web
+pnpm worker     # terminal 2: procesamiento de fuentes (pg-boss)
 ```
 
 `env:start` crea o reutiliza una sola pila local de PostgreSQL/Auth/Mailpit y sincroniza `.env.local`; el archivo está ignorado por Git. Supabase CLI puede mostrar claves locales en esa terminal: no copiarlas a reportes ni compartirlas. `db:migrate` aplica solo migraciones pendientes y no reinicia la base. La aplicación abre en `http://127.0.0.1:3000`, Supabase Studio en `http://127.0.0.1:54323` y Mailpit en `http://127.0.0.1:54324`.
@@ -43,12 +44,12 @@ pnpm test:e2e           # recorridos web; requiere Chromium de Playwright
 pnpm security:check     # archivos versionables, secretos y correos no reservados
 ```
 
-Comandos focalizados disponibles: `test:integration:auth`, `test:integration:access`, `test:integration:invitations`, `test:integration:memberships`, `test:integration:audit`, `test:e2e:auth`, `test:e2e:access`, `test:e2e:invitations` y `test:e2e:memberships`.
+Comandos focalizados disponibles: `test:integration:auth`, `test:integration:access`, `test:integration:invitations`, `test:integration:memberships`, `test:integration:audit`, `test:e2e:auth`, `test:e2e:access`, `test:integration:sources`, `test:e2e:invitations`, `test:e2e:memberships` y `test:e2e:sources`. Las pruebas de fuentes arrancan su propio worker.
 
 Detención y reanudación:
 
 ```bash
-# detener pnpm dev con Ctrl+C
+# detener pnpm dev y pnpm worker con Ctrl+C
 pnpm env:stop
 
 # reanudar sin borrar datos
@@ -114,6 +115,10 @@ Usar dos identidades con membresía activa en el mismo espacio, una `responsable
 5. Como responsable restante, comprobar en **Gestionar miembros** que la membresía aparece `revocada` y no ofrece cambio de rol ni reactivación directa.
 
 No intentar retirar o degradar simultáneamente a ambos responsables durante la comprobación manual; las carreras y la protección del último responsable se cubren con fixtures automatizados.
+
+### Comprobación manual de E2.1
+
+Usar solo documentos sintéticos. Seguir la [prueba manual de E2.1](docs/07-entregas-y-aceptacion.md#e21--prueba-manual). Sin `pnpm worker` en marcha, las fuentes quedan “En cola”.
 
 `env:start` crea o reutiliza la red Docker `stepable-local` y publica los puertos solo en `127.0.0.1`. Supabase CLI puede mostrar el aviso genérico `All services bind to 0.0.0.0`; la comprobación válida es el enlace efectivo de Docker. Con esta red, `docker inspect` debe mostrar `127.0.0.1` —no `0.0.0.0` ni `::`— para los puertos publicados.
 

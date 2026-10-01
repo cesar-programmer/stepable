@@ -1,3 +1,4 @@
+import { spaceActions } from "./contract.ts";
 import type {
   AccessRepository,
   MembershipStatus,
@@ -13,8 +14,10 @@ const permissions: Record<SpaceRole, readonly SpaceAction[]> = {
     "gestionar_invitaciones",
     "gestionar_miembros",
     "abandonar_espacio",
+    "consultar_fuentes",
+    "gestionar_fuentes",
   ],
-  integrante: ["consultar_espacio", "abandonar_espacio"],
+  integrante: ["consultar_espacio", "abandonar_espacio", "consultar_fuentes"],
 };
 
 function isMembershipStatus(value: unknown): value is MembershipStatus {
@@ -26,12 +29,7 @@ function isSpaceRole(value: unknown): value is SpaceRole {
 }
 
 function isSpaceAction(value: unknown): value is SpaceAction {
-  return (
-    value === "consultar_espacio" ||
-    value === "gestionar_invitaciones" ||
-    value === "gestionar_miembros" ||
-    value === "abandonar_espacio"
-  );
+  return spaceActions.some((action) => action === value);
 }
 
 export function allowsSpaceAction(

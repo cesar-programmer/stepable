@@ -15,9 +15,16 @@ const serverEnvironmentSchema = localEnvironmentSchema.extend({
   STEPABLE_MAILPIT_URL: z.url(),
 });
 
+const workerEnvironmentSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.url(),
+  DATABASE_URL: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+});
+
 export type PublicEnvironment = z.infer<typeof publicEnvironmentSchema>;
 export type LocalEnvironment = z.infer<typeof localEnvironmentSchema>;
 export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
+export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>;
 
 export function parsePublicEnvironment(
   values: Record<string, string | undefined>,
@@ -37,6 +44,12 @@ export function parseServerEnvironment(
   return serverEnvironmentSchema.parse(values);
 }
 
+export function parseWorkerEnvironment(
+  values: Record<string, string | undefined>,
+): WorkerEnvironment {
+  return workerEnvironmentSchema.parse(values);
+}
+
 export function getPublicEnvironment(): PublicEnvironment {
   return parsePublicEnvironment(process.env);
 }
@@ -47,4 +60,8 @@ export function getLocalEnvironment(): LocalEnvironment {
 
 export function getServerEnvironment(): ServerEnvironment {
   return parseServerEnvironment(process.env);
+}
+
+export function getWorkerEnvironment(): WorkerEnvironment {
+  return parseWorkerEnvironment(process.env);
 }

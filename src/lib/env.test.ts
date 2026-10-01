@@ -4,6 +4,7 @@ import {
   parseLocalEnvironment,
   parsePublicEnvironment,
   parseServerEnvironment,
+  parseWorkerEnvironment,
 } from "./env";
 
 describe("parseLocalEnvironment", () => {
@@ -53,5 +54,21 @@ describe("parseLocalEnvironment", () => {
       STEPABLE_APP_URL: "http://127.0.0.1:3000",
       STEPABLE_MAILPIT_URL: "http://127.0.0.1:54324",
     });
+  });
+
+  it("validates only what the worker needs", () => {
+    expect(
+      parseWorkerEnvironment({
+        NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+        DATABASE_URL: "postgresql://postgres:local@127.0.0.1:54322/postgres",
+        SUPABASE_SERVICE_ROLE_KEY: "server-only-key",
+        STEPABLE_MAILPIT_URL: "http://127.0.0.1:54324",
+      }),
+    ).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+      DATABASE_URL: "postgresql://postgres:local@127.0.0.1:54322/postgres",
+      SUPABASE_SERVICE_ROLE_KEY: "server-only-key",
+    });
+    expect(() => parseWorkerEnvironment({ DATABASE_URL: "x" })).toThrow();
   });
 });

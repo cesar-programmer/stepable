@@ -161,3 +161,47 @@ Las tablas `profiles`, `spaces`, `memberships`, `invitations` y `access_audit_ev
 
 - Completar RN-18 con límites y respuestas externas del entorno que se autorice para piloto; localmente el token es de alta entropía y el flujo de cuenta responde sin distinguir públicamente si ya existía.
 - PEN-06 sigue definiendo cuánto conservar membresías retiradas y auditoría. No bloquea implementar el rechazo inmediato, pero sí recibir datos reales del piloto.
+
+## Fuentes (E2)
+
+Estado: las acciones, el modelo y la restricción a documentos sintéticos se aplican desde E2.1 (2026-10-01). La conservación de versiones y la eliminación quedan pendientes de decisión del usuario en E2.3/E2.4 ([ADR-004](decisiones/ADR-004-fuentes-locales-e2.md)). Las reglas de comportamiento son RN-19–RN-25 del [documento 03](03-flujos-y-reglas.md#ciclo-de-vida-de-fuentes-e2).
+
+### Acciones
+
+| Acción explícita | Responsable activo | Integrante activo |
+| --- | --- | --- |
+| `consultar_fuentes`: listar y leer el contenido de las fuentes **vigentes** del espacio | Sí | Sí |
+| `gestionar_fuentes`: en E2.1, cargar y ver estados y motivos de error; reemplazar, reintentar, descartar y eliminar llegan en E2.3/E2.4 | Sí | No |
+| Descargar el original | Sin definir | Sin definir |
+
+Se aplican RN-11 y el patrón de E1.7:
+
+- Cada solicitud valida la identidad en el servidor y consulta la membresía vigente.
+- La carga revalida al actor dentro de su transacción, bajo un bloqueo por espacio.
+- Un identificador de otro espacio, o una combinación cruzada de espacio y fuente, responde 404.
+- El integrante no ve fuentes en curso ni fallidas, ni sus motivos.
+- El worker no actúa en nombre de un usuario. Antes de escribir resultados comprueba que la fuente siga `activa` y que la versión siga en curso.
+
+### Modelo implementado
+
+- `sources`: espacio, título, estado, versión vigente opcional, autor y fechas.
+- `source_versions`: fuente y espacio con clave compuesta, número, formato, tamaño, SHA-256, clave de almacenamiento, estado, código de error, número de secciones, intentos y fechas. Hay como máximo una versión en curso por fuente.
+- `source_segments`: versión, orden, ruta de encabezados, rango de líneas y texto. Es contenido derivado que se puede reconstruir desde el original.
+- Trabajos: cola pg-boss `procesar-fuente` en el esquema `pgboss`, con el `versionId` como único dato. No hay una tabla propia de trabajos.
+- Las tablas nuevas tienen RLS habilitada y los privilegios revocados a `anon`/`authenticated`; esos roles no tienen `USAGE` sobre `pgboss`.
+- Bucket privado `fuentes` sin políticas para los roles del navegador.
+
+### Conservación y eliminación
+
+Comportamiento actual en E2.1: originales, texto y metadatos se conservan mientras exista el espacio, porque no hay reemplazo ni borrado de fuentes. pg-boss elimina los trabajos completados a los 2 días. Los logs contienen solo identificadores, duración y código de resultado.
+
+La propuesta inicial, aún no aprobada y que se decidirá en E2.3/E2.4, era:
+
+| Dato | Se conservaría | Se eliminaría |
+| --- | --- | --- |
+| Original y texto extraído | Mientras su versión sea vigente o candidata | Al completarse un reemplazo, al descartar la candidata o al eliminar la fuente, mediante una purga asíncrona |
+| Versión fallida | Hasta descartarla o reemplazarla | Junto con su original y su texto |
+| Metadatos mínimos | Mientras exista el espacio | Título, tamaño y SHA-256 se borrarían tras la purga |
+| Auditoría de fuentes (solo identificadores) | Sin plazo en local | Plazo definitivo en PEN-06 |
+
+Restricción aceptada: durante esta etapa solo se cargan documentos sintéticos, nunca documentación real de una empresa.

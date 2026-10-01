@@ -1,12 +1,15 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   index,
+  integer,
   pgEnum,
   pgSchema,
   pgTable,
   primaryKey,
   text,
+  unique,
   timestamp,
   uniqueIndex,
   uuid,
@@ -27,6 +30,12 @@ import {
   membershipStatuses,
   spaceRoles,
 } from "../../modules/access/contract.ts";
+
+import {
+  sourceFormats,
+  sourceStatuses,
+  sourceVersionStatuses,
+} from "../../modules/sources/contract.ts";
 
 const authSchema = pgSchema("auth");
 
@@ -194,4 +203,88 @@ export const accessAuditEvents = pgTable(
       sql`(${table.actorType} = 'identidad' and ${table.actorProfileId} is not null) or (${table.actorType} = 'operador' and ${table.actorProfileId} is null)`,
     ),
   ],
+);
+
+export const sourceStatus = pgEnum("source_status", sourceStatuses);
+export const sourceFormat = pgEnum("source_format", sourceFormats);
+export const sourceVersionStatus = pgEnum(
+  "source_version_status",
+  sourceVersionStatuses,
+);
+
+export const sources = pgTable(
+  "sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    status: sourceStatus("status").notNull().default("activa"),
+    currentVersionId: uuid("current_version_id"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => profiles.identityId, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("sources_id_space_key").on(table.id, table.spaceId),
+    index("sources_space_created_at_idx").on(table.spaceId, table.createdAt),
+  ],
+);
+
+export const sourceVersions = pgTable(
+  "source_versions",
+  {
+    id: uuid("id").primaryKey(),
+    sourceId: uuid("source_id").notNull(),
+    spaceId: uuid("space_id").notNull(),
+    number: integer("number").notNull(),
+    format: sourceFormat("format").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    sha256: text("sha256").notNull(),
+    storageKey: text("storage_key").notNull(),
+    status: sourceVersionStatus("status").notNull().default("en_cola"),
+    errorCode: text("error_code"),
+    sectionCount: integer("section_count"),
+    attempts: integer("attempts").notNull().default(0),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => profiles.identityId, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "source_versions_source_fkey",
+      columns: [table.sourceId, table.spaceId],
+      foreignColumns: [sources.id, sources.spaceId],
+    }).onDelete("cascade"),
+    unique("source_versions_number_key").on(table.sourceId, table.number),
+  ],
+);
+
+export const sourceSegments = pgTable(
+  "source_segments",
+  {
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => sourceVersions.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    headingPath: text("heading_path").array().notNull().default([]),
+    startLine: integer("start_line").notNull(),
+    endLine: integer("end_line").notNull(),
+    content: text("content").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.versionId, table.ordinal] })],
 );

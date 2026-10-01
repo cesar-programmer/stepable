@@ -1,5 +1,34 @@
 # Historial de cambios
 
+## 2026-10-01 · 1.7 · Cierre de E2.1
+
+- El usuario confirmó que la prueba manual de E2.1 funcionó correctamente y aceptó la entrega; no se le atribuyen escenarios adicionales.
+- Se reutiliza la verificación automática aprobada, porque el código no cambió después de ella.
+- E2.1 queda consolidada en un commit local, sin push. E2.2 queda autorizada con PDF ≤ 8 MiB, ≤ 200 páginas, sin cifrado y sin OCR.
+
+## 2026-10-01 · 1.6 · Implementación de E2.1
+
+- Implementado el recorrido mínimo de fuentes Markdown:
+  - carga por Route Handler a un bucket privado de Storage;
+  - encolado transaccional en `pg-boss` y procesamiento en `pnpm worker`;
+  - segmentación por encabezados;
+  - estados visibles y lectura por rol.
+- Ajustes del usuario a ADR-004:
+  - se aceptan documentos cortos y solo se rechazan los vacíos;
+  - `pg-boss` en lugar de cola propia, con su esquema versionado como migración generada por su CLI;
+  - conservación y eliminación se deciden en E2.3/E2.4.
+- Añadidas las acciones centrales `consultar_fuentes` y `gestionar_fuentes`. Tablas, bucket y esquema `pgboss` quedan cerrados a los roles del navegador.
+- Aprobadas 6 pruebas de integración y 3 de navegador nuevas, más la regresión completa: 41 unitarias, 32 de integración y 15 de navegador.
+- Migraciones incrementales sin reset; datos locales conservados. Sin comprobación manual atribuida, commit ni push.
+
+## 2026-10-01 · 1.5 · Planificación propuesta de E2
+
+- Propuesto ADR-004: Supabase Storage local con bucket privado, cola propia en PostgreSQL, worker separado, `pdfjs-dist` para PDF, Markdown sin dependencia y carga por Route Handler.
+- Propuestos formatos, límites, errores y procesamiento (04 §19), RN-19–RN-25 de vigencia, reemplazo y eliminación (03), acciones, modelo y conservación (05) y el plan E2.1–E2.4 (07).
+- Actualizados PEN-04, PEN-06, PEN-07 y PEN-08 con las propuestas, sin cerrarlos.
+- Registrados como pendientes menores de E1 los textos “E1.6” y la diferencia de longitud mínima de contraseña.
+- E1 se conserva cerrada. Sin código, dependencias, cambios de base, commit ni despliegue.
+
 ## 2026-10-01 · 1.4 · Cierre de E1.7 y de E1
 
 - Repetida la evidencia automática sin cambios de código: verify, 26 de integración, 12 de navegador y `git diff --check` aprobados.

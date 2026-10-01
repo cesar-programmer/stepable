@@ -5,7 +5,7 @@ Actualizado: 2026-10-01.
 
 ## Etapa actual: E1 cerrada localmente
 
-Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2 requiere autorización separada. Piloto y proveedores permanecen fuera del alcance.
+Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2.1 (Markdown) está cerrada localmente tras la comprobación manual del usuario. E2.2 (PDF) está autorizada; E2.3–E2.4 siguen propuestas. Piloto y proveedores permanecen fuera del alcance.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -105,3 +105,61 @@ Implementado y verificado automáticamente el 2026-09-21 sobre el commit base `8
 La revisión de cierre corrigió la revalidación transaccional de permisos al crear, reenviar o cancelar invitaciones si el actor pierde acceso mientras espera. También cerró a `anon`/`authenticated` la vía Data API sobre todas las tablas E1 con RLS y revocación de privilegios, amplió la prueba de navegador para buscar credenciales de servidor en HTML/bundles y añadió una comprobación de higiene de archivos versionados o versionables. La operación diaria, migraciones conservadoras, suites y detención están consolidadas en README.
 
 Pasaron 26 pruebas de integración, 12 de navegador y 26 unitarias, además de formato, lint, tipos, higiene, build y `git diff --check`. Las migraciones se aplicaron sin `db reset`; los fixtures se eliminaron y los datos locales existentes se conservaron. Reverificación del 2026-10-01 sin cambios de código: 6 migraciones aplicadas, `pnpm verify` (26 unitarias, higiene de 118 archivos y build), `pnpm test:integration` 26/26, `pnpm test:e2e` 12/12 y `git diff --check` aprobados. Comprobación manual del usuario del 2026-10-01: revisó el diff, confirmó que la Data API rechaza con `42501` las cinco tablas E1 y recorrió desde la interfaz invitaciones, aceptación de una identidad nueva, cambios de rol, autosalida y el rechazo del último responsable; informó que todo funcionó correctamente. La consulta agregada posterior registró 7 eventos (2 `invitacion_creada`, 1 `invitacion_cancelada`, 1 `invitacion_aceptada`, 2 `rol_membresia_cambiado`, 1 `membresia_abandonada`) y 0 eventos con correos. No hubo eventos `invitacion_reenviada` ni `membresia_retirada` en ese recorrido: ambos tipos conservan solo evidencia automatizada y no se atribuyen a la comprobación manual. E1.7 y E1 quedan cerradas localmente.
+
+## Plan de E2
+
+Estado: E2.1 cerrada; E2.2 autorizada; el resto sigue propuesto en [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Exclusivamente local.
+
+| Paso | Trabajo | Estado |
+| --- | --- | --- |
+| E2.1 Recorrido mínimo Markdown | Fuentes, versiones, segmentos, bucket privado, carga por Route Handler, pg-boss y `pnpm worker`, extracción Markdown, vistas por rol | Cerrada: verificación automática y comprobación manual del usuario |
+| E2.2 PDF con texto | `pdfjs-dist`, segmentos por página, límites, aislamiento por `worker_threads` | Propuesta |
+| E2.3 Reemplazo y reintentos | Versión candidata, cambio atómico, reemplazo fallido sin pérdida, reintento manual, conservación de versiones | Propuesta; la conservación se decide entonces |
+| E2.4 Eliminación y cierre | Eliminación, purga, conciliación de huérfanos, auditoría de fuentes, README y evidencia de CA-02 | Propuesta; la eliminación se decide entonces |
+
+### E2.1 · Criterios de aceptación
+
+1. Un responsable activo carga un `.md` válido de hasta 1 MiB, incluso uno corto. La fuente pasa por “En cola”, “Procesando” y “Lista”, y muestra cuántas secciones tiene.
+2. Un `.md` vacío, solo con espacios en blanco o con bytes no UTF-8 termina en “Falló” con un motivo comprensible y sin segmentos.
+3. Un archivo vacío, de más de 1 MiB o con extensión no admitida se rechaza en la carga. No queda fila ni objeto.
+4. Con el worker detenido, la carga queda “En cola” y se procesa al arrancarlo. Un intento interrumpido lo reintenta pg-boss, y repetir el cierre no duplica segmentos.
+5. Un integrante activo lista y lee solo las fuentes listas, sin controles de gestión. La carga directa de un integrante, de un usuario ajeno o con identificadores cruzados se rechaza con 404, y con 403 si el origen es ajeno.
+6. Los roles `anon`/`authenticated` no leen las tablas nuevas, no usan el esquema `pgboss` y no listan ni descargan el bucket.
+7. Ningún log contiene texto ni títulos de documentos.
+
+### Resultado de E2.1
+
+Implementado y verificado automáticamente el 2026-10-01. El usuario ajustó la propuesta en tres puntos:
+- se aceptan documentos cortos y solo se rechazan los vacíos;
+- la cola usa pg-boss en lugar de una cola propia;
+- conservación y eliminación se deciden en E2.3 y E2.4.
+
+Evidencia:
+
+- **Migraciones:** `20261001000000_e2_1_pgboss.sql` y `20261001010000_e2_1_sources.sql`, aplicadas con `pnpm db:migrate`, sin reset. Los conteos de identidades, espacios, membresías, invitaciones y auditoría quedaron iguales antes y después (2/1/2/2/7).
+- **`pnpm test:integration:sources`, 6 pruebas contra PostgreSQL, Storage y pg-boss reales:**
+  - carga encolada en la misma transacción y procesada por el worker;
+  - contenido corto aceptado;
+  - vacío y no UTF-8 marcados `fallida`;
+  - rechazos sin objeto;
+  - aislamiento por rol, espacio, identificadores cruzados y membresía revocada;
+  - cierre idempotente y barrido de versiones atascadas;
+  - tablas, bucket y `pgboss` cerrados a `anon`/`authenticated`.
+- **`pnpm test:e2e:sources`, 3 pruebas en Chromium con el worker real:**
+  - carga, procesamiento y lectura por el responsable;
+  - rechazo `.txt` y fallo UTF-8 visible;
+  - lectura del integrante limitada a fuentes listas;
+  - 404 para la carga del integrante y para otro espacio;
+  - 403 para un origen ajeno.
+- **Regresión:** `pnpm verify` (41 pruebas unitarias, higiene y build), `pnpm test:integration` 32/32, `pnpm test:e2e` 15/15 y `git diff --check`.
+- **Residuos:** las pruebas no dejaron fuentes, objetos ni trabajos pendientes.
+
+Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.1 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 1 fuente en estado `lista` y 1 objeto en el bucket; no se consultó contenido ni PII. E2.1 queda cerrada localmente. Las limitaciones están en el [documento 04 §19](04-arquitectura.md#limitaciones-conocidas-de-e21).
+
+### E2.1 · Prueba manual
+
+1. Ejecutar `pnpm env:start` y `pnpm db:migrate`. Luego, en dos terminales, `pnpm dev` y `pnpm worker`.
+2. Como responsable, abrir el espacio y luego **Fuentes**. Cargar un `.md` sintético con dos o tres encabezados y comprobar que llega a “Lista” con ese número de secciones. Abrirlo y ver el texto por secciones.
+3. Cargar un `.md` que contenga solo espacios y comprobar “Falló” con el motivo “El archivo no contiene texto.”. Cargar un `.txt` y comprobar el rechazo.
+4. Detener el worker (Ctrl+C), cargar otro `.md`, ver “En cola”, arrancar `pnpm worker` y comprobar que pasa a “Lista”.
+5. Con un integrante del espacio, que puede requerir una nueva invitación, comprobar que solo ve y lee las fuentes listas y no ve el formulario.

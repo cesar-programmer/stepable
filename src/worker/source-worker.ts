@@ -1,0 +1,108 @@
+import {
+  createSourceBoss,
+  sourceProcessingQueue,
+  startSourceBoss,
+  type SourceJobData,
+} from "../adapters/pg-boss/source-queue.ts";
+import { createPostgresDatabase } from "../adapters/postgres/database.ts";
+import { PostgresSourceRepository } from "../adapters/postgres/source-repository.ts";
+import { SupabaseSourceStorage } from "../adapters/supabase/source-storage.ts";
+import { TransientProcessingError } from "../modules/sources/contract.ts";
+import { processSourceVersion } from "../modules/sources/processing.ts";
+
+// Longer than three 60 s attempts plus their retry delays, so only a version
+// whose final attempt was lost (for example, a crash) is marked as timed out.
+const staleProcessingMilliseconds = 15 * 60 * 1000;
+
+export type SourceWorker = { stop(): Promise<void> };
+
+function log(entry: Record<string, unknown>) {
+  console.log(JSON.stringify({ at: new Date().toISOString(), ...entry }));
+}
+
+export async function startSourceWorker(options: {
+  databaseUrl: string;
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  pollingIntervalSeconds?: number;
+}): Promise<SourceWorker> {
+  const connection = createPostgresDatabase(options.databaseUrl);
+  const repository = new PostgresSourceRepository(connection.database, null);
+  const storage = new SupabaseSourceStorage(
+    options.supabaseUrl,
+    options.serviceRoleKey,
+  );
+  const boss = createSourceBoss(options.databaseUrl, "worker");
+
+  try {
+    await startSourceBoss(boss);
+    const workOptions = {
+      includeMetadata: true,
+      batchSize: 1,
+      pollingIntervalSeconds: options.pollingIntervalSeconds ?? 1,
+    } as const;
+    await boss.work<SourceJobData, void, typeof workOptions>(
+      sourceProcessingQueue,
+      workOptions,
+      async ([job]) => {
+        const startedAt = Date.now();
+        const attempt = job.retryCount + 1;
+        try {
+          const outcome = await processSourceVersion(
+            { sourceRepository: repository, storage },
+            {
+              versionId: job.data.versionId,
+              finalAttempt: job.retryCount >= job.retryLimit,
+            },
+          );
+          log({
+            event: "source_version_processed",
+            jobId: job.id,
+            versionId: job.data.versionId,
+            attempt,
+            outcome,
+            durationMs: Date.now() - startedAt,
+          });
+        } catch (error) {
+          log({
+            event: "source_version_retry",
+            jobId: job.id,
+            versionId: job.data.versionId,
+            attempt,
+            code:
+              error instanceof TransientProcessingError
+                ? error.code
+                : "error_interno",
+            durationMs: Date.now() - startedAt,
+          });
+          throw error;
+        }
+      },
+    );
+  } catch (error) {
+    await boss.stop({ graceful: false }).catch(() => undefined);
+    await connection.close();
+    throw error;
+  }
+
+  const sweep = setInterval(() => {
+    repository
+      .failStaleProcessing(new Date(Date.now() - staleProcessingMilliseconds))
+      .then((count) => {
+        if (count > 0) log({ event: "source_versions_timed_out", count });
+      })
+      .catch(() => log({ event: "source_stale_sweep_failed" }));
+  }, 60_000);
+  sweep.unref();
+
+  log({ event: "source_worker_started", queue: sourceProcessingQueue });
+
+  return {
+    async stop() {
+      clearInterval(sweep);
+      await boss.stop({ graceful: true });
+      await connection.close();
+      log({ event: "source_worker_stopped" });
+    },
+  };
+}

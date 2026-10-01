@@ -1,13 +1,13 @@
 # Flujos y reglas
 
 Estado: reglas base del alcance; ciclo local de membresía implementado hasta E1.6, flujos posteriores propuestos.
-Actualizado: 2026-09-19.
+Actualizado: 2026-10-01.
 
 ## Flujos principales
 
 ### F-01 Preparar conocimiento
 
-Durante la V0, el operador aprovisiona el espacio y designa su primer responsable según RN-10. El responsable agrega una fuente y ve su procesamiento. Si falla, recibe un error comprensible y puede reintentar. Solo contenido listo se utiliza para responder o generar rutas. Reemplazar una fuente conserva su identidad y registra una versión; política de selección pendiente PEN-04.
+Durante la V0, el operador aprovisiona el espacio y designa su primer responsable según RN-10. El responsable agrega una fuente y ve su procesamiento. Si falla, recibe un error comprensible y puede reintentar. Solo contenido listo se utiliza para responder o generar rutas. Reemplazar una fuente conserva su identidad y registra una versión; política de selección pendiente PEN-04. Ciclo de vida de E2 en RN-19–RN-25.
 
 ### F-02 Crear onboarding
 
@@ -36,3 +36,19 @@ Integrante pregunta en el contexto de un espacio. El sistema comprueba acceso, r
 ## Casos por especificar
 
 Fuentes contradictorias, eliminación de fuentes citadas, ruta obsoleta y doble envío de respuestas siguen abiertos. E1.4 centraliza la autorización mínima, E1.5 incorpora invitaciones locales y E1.6 completa cambios de rol, retiro y autosalida con protección transaccional del último responsable. Ver [datos y permisos](05-datos-y-permisos.md) y PEN-03, PEN-04 y PEN-06.
+
+## Ciclo de vida de fuentes (E2)
+
+Estado: RN-19, RN-20 y RN-25 se aplican desde E2.1 (2026-10-01) a la primera versión de fuentes Markdown. RN-21–RN-24 siguen **propuestas**: conservación de versiones y eliminación se decidirán al implementar reemplazo (E2.3) y borrado (E2.4). Contradicciones, rutas obsoletas y referencias históricas siguen abiertas para E3/E4 ([ADR-004](decisiones/ADR-004-fuentes-locales-e2.md)).
+
+Estados de versión: `en_cola`, `procesando`, `lista`, `fallida`, `reemplazada`, `descartada`. Estados de fuente: `activa`, `eliminada`.
+
+| ID | Regla | Estado |
+| --- | --- | --- |
+| RN-19 | Una fuente está **vigente** cuando está `activa` y tiene una versión vigente en estado `lista`. Cada fuente tiene como máximo una versión vigente. Solo el contenido de esa versión será elegible en entregas posteriores. | Aplicada en E2.1 |
+| RN-20 | La primera carga crea la fuente y su versión 1 `en_cola`. Si el procesamiento falla, la fuente existe sin versión vigente y muestra el motivo al responsable. | Aplicada en E2.1; reintento manual y eliminación en E2.3/E2.4 |
+| RN-21 | Reemplazar crea una versión candidata. La vigente lo sigue siendo hasta que la candidata quede `lista`; entonces el cambio es atómico. Solo puede haber una candidata en curso por fuente. Un archivo idéntico (SHA-256) a la vigente se rechaza como “sin cambios”. | Propuesta para E2.3 |
+| RN-22 | Si la candidata falla, la versión vigente no cambia ni pierde contenido. El responsable puede reintentar, descartar la candidata o cargar otro archivo. | Propuesta para E2.3 |
+| RN-23 | Reintentar procesa la misma versión: no crea otra versión ni duplica el texto extraído. Límites en el [documento 04 §19](04-arquitectura.md#19-fuentes-locales-en-e2). | Los reintentos automáticos se aplican en E2.1; los manuales, en E2.3 |
+| RN-24 | Eliminar retira la fuente de listados y elegibilidad en la misma transacción. La conservación posterior se decide en E2.4 ([documento 05](05-datos-y-permisos.md#fuentes-e2)). | Propuesta para E2.4 |
+| RN-25 | Fuente, versiones, texto, archivos y trabajos pertenecen a un único espacio. Toda lectura y escritura filtra por espacio y pasa por la autorización central. La clave de almacenamiento nunca es autorización. | Aplicada en E2.1 |

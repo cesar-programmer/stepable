@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E1 cerrada localmente; E2 pendiente de autorización · Versión documental: 1.4.
+Actualizado: 2026-10-01 · Fase: E2.1 cerrada localmente; E2.2 autorizada · Versión documental: 1.7.
 
 ## Hechos acordados
 
@@ -12,10 +12,13 @@ Actualizado: 2026-10-01 · Fase: E1 cerrada localmente; E2 pendiente de autoriza
 - E1.4 acepta la matriz mínima por espacio, revalidación en PostgreSQL por solicitud, membresías activas/revocadas y revocación sin cerrar sesión global ni afectar otros espacios.
 - E1.5 acepta invitaciones locales de siete días, integrante predeterminado, responsable explícito, cuenta Auth separada de aceptación Stepable, reactivación con el rol invitado y preservación del rol de membresías activas.
 - E1.6 acepta administración local: responsables activos gestionan miembros bajo la protección del último responsable; ambos roles activos pueden abandonar su propia membresía; revocadas solo se reactivan por una nueva invitación.
+- E2.1 autorizada el 2026-10-01: Markdown, Storage privado, `pg-boss`, permisos por espacio, estados visibles y documentos sintéticos. Se aceptan documentos cortos; solo se rechazan los vacíos. Conservación y eliminación se deciden en E2.3/E2.4 ([ADR-004](decisiones/ADR-004-fuentes-locales-e2.md)).
 
 ## Actualización más reciente
 
-Implementada E1.7 sobre el commit base `8387cefc20495a7dba10a2a0ef9753cbb1a9376d`. La auditoría local conserva solo acción, actor, espacio, objetivo y fecha mediante identificadores, dentro de la misma transacción que cada mutación exitosa. La revisión corrigió la revalidación concurrente al crear, reenviar o cancelar invitaciones, cerró a `anon`/`authenticated` la Data API sobre las tablas E1, amplió la búsqueda de credenciales en recursos del navegador y añadió una comprobación reproducible de higiene del repositorio. Las migraciones fueron incrementales, sin reset; los datos manuales permanecen intactos. El 2026-10-01 se repitió la evidencia automática completa y el usuario realizó la comprobación manual y aceptó la entrega. E1 queda cerrada localmente.
+2026-10-01: E2.1 aceptada por el usuario tras su comprobación manual y consolidada en un commit local, sin push. Se implementó sobre `7627580`. Un responsable carga un Markdown, el worker lo procesa con `pg-boss` y la fuente queda “Lista” o “Falló” con su motivo. Responsable e integrante leen el contenido por secciones según su rol, aislado por espacio. El detalle técnico y las limitaciones están en el [documento 04 §19](04-arquitectura.md#19-fuentes-locales-en-e2); criterios y evidencia, en el [documento 07](07-entregas-y-aceptacion.md#resultado-de-e21). Las migraciones fueron incrementales y los datos locales se conservaron.
+
+Antes, el mismo día: planificación de E2 (ADR-004) y cierre de E1 en `7627580` tras la revisión manual de E1.7.
 
 ## Realizado
 
@@ -47,6 +50,11 @@ Implementada E1.7 sobre el commit base `8387cefc20495a7dba10a2a0ef9753cbb1a9376d
 - Añadido `pnpm security:check` para revisar archivos versionados o versionables y ampliada la prueba E2E que busca credenciales de servidor en HTML/bundles.
 - Habilitada RLS y revocados todos los privilegios a `anon`/`authenticated` en las cinco tablas de negocio E1; el servidor conserva el único acceso de aplicación a esos datos.
 - Consolidada en README la instalación, arranque, migración conservadora, verificación, detención y advertencia sobre `db:reset`.
+- E2.1: migraciones de pg-boss (esquema 43, generado con su CLI) y de fuentes, versiones, segmentos y bucket privado `fuentes`, con RLS y privilegios revocados.
+- E2.1: módulo `sources` (validación, extracción Markdown, servicio y procesamiento), adaptadores PostgreSQL, Storage y pg-boss, y `pnpm worker`.
+- E2.1: Route Handler de carga con comprobación de origen, vistas `/spaces/[spaceId]/sources` y `/sources/[sourceId]`, y acceso desde el detalle del espacio.
+- E2.1: acciones centrales `consultar_fuentes` (ambos roles) y `gestionar_fuentes` (responsable).
+- Dependencia añadida: `pg-boss` 12.35.0 exacta, con `pg` 8.23.0. Se descartaron versiones publicadas hace menos del plazo `minimumReleaseAge` de pnpm, sin añadir excepciones.
 
 ## Evidencia y verificaciones reales
 
@@ -96,18 +104,37 @@ Implementada E1.7 sobre el commit base `8387cefc20495a7dba10a2a0ef9753cbb1a9376d
 - Reverificación del 2026-10-01 sin cambios de código: 6 migraciones aplicadas, `pnpm verify` (26 unitarias, higiene de 118 archivos y build), `pnpm test:integration` 26/26, `pnpm test:e2e` 12/12 y `git diff --check` aprobados.
 - Comprobación manual del usuario del 2026-10-01: revisó el diff, confirmó que la Data API rechaza con `42501` las cinco tablas E1 y recorrió desde la interfaz invitaciones, aceptación de una identidad nueva, cambios de rol, autosalida y el rechazo del último responsable; informó que todo funcionó correctamente. La consulta agregada posterior registró 7 eventos (2 `invitacion_creada`, 1 `invitacion_cancelada`, 1 `invitacion_aceptada`, 2 `rol_membresia_cambiado`, 1 `membresia_abandonada`) y 0 eventos con correos. No hubo eventos `invitacion_reenviada` ni `membresia_retirada` en ese recorrido: ambos tipos conservan solo evidencia automatizada y no se atribuyen a la comprobación manual.
 - Estado agregado posterior: 2 identidades, 1 espacio, 2 membresías y 2 invitaciones; los datos del recorrido manual se conservan en la base local. No se consultó ni registró PII.
+- E2.1, 2026-10-01: migraciones aplicadas con `pnpm db:migrate`, sin reset. Identidades, espacios, membresías, invitaciones y auditoría quedaron igual antes y después (2/1/2/2/7).
+- E2.1: `pnpm test:integration:sources` 6/6 y `pnpm test:e2e:sources` 3/3 contra servicios locales reales, con el worker real. `pnpm verify` aprobado con 41 pruebas unitarias, higiene de 142 archivos y build. Regresión completa: `pnpm test:integration` 32/32 y `pnpm test:e2e` 15/15. `git diff --check` aprobado.
+- E2.1: tras las suites quedaron 0 fuentes, 0 objetos y 0 trabajos pendientes de prueba. El arranque y la parada limpia de `pnpm worker` se comprobaron por separado.
+- Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.1 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 1 fuente en estado `lista` y 1 objeto en el bucket; no se consultó contenido ni PII. No hubo cambios de código después de la verificación automática; se reutiliza esa evidencia.
 
 ## No realizado
 
-No se implementaron reactivación administrativa directa, panel de auditoría, documentos, rutas, IA, E2, despliegue ni proveedor externo. La reactivación permanece exclusivamente en invitaciones. RN-18 externo, retención, alojamiento y proveedores continúan pendientes del piloto o de sus entregas correspondientes.
+No se implementaron PDF, reemplazo, reintento manual, eliminación o purga de fuentes, auditoría de fuentes, descarga de originales, reactivación administrativa directa, panel de auditoría, rutas, IA, despliegue ni proveedor externo. RN-18 externo, retención para datos reales, alojamiento y proveedores siguen pendientes de sus entregas o del piloto.
 
 ## Próxima tarea concreta
 
-Planificar E2 (RF-03, fuentes) solo cuando el usuario lo autorice: resolver antes PEN-04, PEN-06 y PEN-08 en lo que afecte a la carga, y proponer almacenamiento de archivos y biblioteca de trabajos con justificación. Ajustes menores conocidos, sin impacto funcional: los textos "E1.6" de la portada y `/spaces`, y `minimum_password_length = 6` de Supabase frente al mínimo de 8 de la aplicación. No preparar el piloto por inferencia.
+Implementar E2.2 (PDF con texto) con los límites aceptados: ≤ 8 MiB, ≤ 200 páginas, sin cifrado y sin OCR. Reutilizar almacenamiento, worker, permisos, estados e interfaz de E2.1. Sin reemplazo, eliminación ni IA. No preparar el piloto por inferencia.
+
+## Decisiones que requieren aprobación
+
+- **En E2.3:** conservar o no las versiones reemplazadas (original y texto).
+- **En E2.4:** semántica de eliminación (irreversible o con papelera) y metadatos que permanecen.
+- **Sin definir:** descarga de originales y por quién.
+
+Los límites de PDF quedaron aceptados por el usuario el 2026-10-01.
+
+## Pendientes menores de E1
+
+No están resueltos. No afectan al comportamiento y no implican un rediseño de identidad.
+
+- La portada (`src/app/page.tsx`) y `/spaces` muestran todavía el texto “Acceso local E1.6”.
+- `supabase/config.toml` declara `minimum_password_length = 6`, mientras la aplicación y `auth:create-local-user` exigen 8 caracteres.
 
 ## Estado de Git y operación
 
-E1.6 está cerrado en `8387cefc20495a7dba10a2a0ef9753cbb1a9376d`. E1.7 se consolida en el commit local siguiente, sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
+E1 está cerrada en `7627580` y E2.1 en el commit local siguiente, ambos sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados. Para usar las fuentes en local hace falta `pnpm worker` en una terminal aparte.
 
 ## Formato para futuras sesiones
 

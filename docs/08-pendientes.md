@@ -1,16 +1,16 @@
 # Decisiones pendientes
 
-Estado: abierto · Actualizado: 2026-09-21.
+Estado: abierto · Actualizado: 2026-10-01.
 
 | ID | Pregunta | Resolver antes de |
 | --- | --- | --- |
 | PEN-01 | Presupuesto orientativo confirmado: 10 USD/mes para primeras pruebas. Correo externo, dominios, alojamiento y costos se reevalúan sin proveedor elegido | Preparar/autorizar piloto |
 | PEN-02 | Identidad, invitaciones y revisión de seguridad local resueltas hasta E1.7. Falta completar RN-18 para operación externa: límites, correo y respuestas del entorno de piloto sin enumeración | Antes del piloto |
 | PEN-03 | Cómo aprobar, reintentar, desbloquear pasos y aceptar variantes de código | E5 |
-| PEN-04 | Fuente vigente, contradicciones, sustitución, eliminación y rutas obsoletas | E2/E3, completar antes de E4 |
-| PEN-06 | Retención, eliminación, acceso operativo y datos enviados a proveedores | E2/E3 |
-| PEN-07 | Stack local y Supabase CLI resueltos en ADR-003. Siguen abiertos jobs, archivos, búsqueda/IA y todos los servicios alojados del piloto | Antes de cada entrega afectada/piloto |
-| PEN-08 | Límites de archivos, consumo, latencias y umbrales de calidad | Entregas afectadas y piloto |
+| PEN-04 | Fuente vigente, contradicciones, sustitución, eliminación y rutas obsoletas. Vigencia y primera versión aplicadas en E2.1 (RN-19, RN-20, RN-25). Reemplazo y eliminación se deciden en E2.3/E2.4; contradicciones y referencias históricas siguen abiertas | E2.3/E2.4, completar antes de E4 |
+| PEN-06 | Retención, eliminación, acceso operativo y datos enviados a proveedores. Conservación de versiones y eliminación de fuentes se deciden en E2.3/E2.4; solo documentos sintéticos hasta entonces | E2.3/E2.4 y piloto |
+| PEN-07 | Stack local, Supabase CLI, Storage local y `pg-boss` resueltos (ADR-003, ADR-004). Siguen abiertos la extracción de PDF (E2.2), búsqueda/IA y todos los servicios alojados del piloto | Antes de cada entrega afectada/piloto |
+| PEN-08 | Límites de archivos, consumo, latencias y umbrales de calidad. Límites de Markdown y procesamiento aplicados en E2.1; los de PDF están propuestos para E2.2 (04 §19) | Entregas afectadas y piloto |
 | PEN-09 | Quién probará, con qué documentación autorizada y qué objetivo de aprendizaje | Preparar piloto |
 | PEN-10 | Producto de Atlassian usado: Confluence o Jira | Planear integración futura; no bloquea V0 manual |
 
