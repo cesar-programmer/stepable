@@ -1,6 +1,6 @@
 # ADR-007 · Recorrido de rutas publicadas (E5.1)
 
-Fecha: 2026-10-01 · Estado: **aceptado** para el prototipo local: reglas aprobadas, implementación y comprobación manual del usuario.
+Fecha: 2026-10-01 · Estado: **aceptado** para el prototipo local en E5.1 y E5.2 (comprobaciones manuales del usuario).
 
 ## Contexto
 
@@ -32,3 +32,12 @@ E5 cubre RF-06/RF-07 y CA-05. El usuario aprobó el recorrido mínimo: empezar u
 - Sin reinicio de ruta: una vez resuelto, un paso no se puede repetir.
 - La vista de progreso del equipo (RF-09) y el reinicio quedan para entregas posteriores.
 - Retención del progreso para datos reales en PEN-06.
+
+## Resolución de E5.2 (2026-10-01)
+
+El usuario aprobó una vista de progreso del equipo por ruta publicada:
+- **Acceso:** solo responsables activos, mediante la acción central `consultar_progreso_equipo`, comprobada en el servidor.
+- **Contenido:** resumen de miembros activos, cuántos empezaron y cuántos completaron, y una fila por miembro activo, responsables incluidos y ordenados por nombre (correo), con estado, pasos resueltos, pasos acertados, inicio y finalización.
+- **Límites:** solo totales por persona, sin respuestas ni detalle por paso. Los retirados se ocultan y su progreso se conserva. Solo cuenta el progreso de la versión publicada actual; no se mezclan versiones.
+- **Significados:** “No empezada” significa que no hay progreso registrado, no que exista una asignación obligatoria. La vista recuerda que completar no implica dominio.
+- **Alcance:** solo lectura, sin IA, rankings, gráficos ni exportación.

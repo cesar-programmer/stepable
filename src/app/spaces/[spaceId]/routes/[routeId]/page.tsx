@@ -336,6 +336,14 @@ export default async function RoutePage({
             Recorrer ruta
           </Link>
         ) : null}
+        {canManage && route.status === "publicada" ? (
+          <Link
+            className="button secondary"
+            href={`/spaces/${spaceId}/routes/${route.id}/progress`}
+          >
+            Progreso del equipo
+          </Link>
+        ) : null}
         <Link className="button secondary" href={`/spaces/${spaceId}/routes`}>
           Volver a rutas
         </Link>

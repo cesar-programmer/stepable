@@ -441,3 +441,17 @@ textarea {
   display: grid;
   gap: 0.4rem;
 }
+
+.team-progress {
+  width: 100%;
+  margin-top: 1.25rem;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.team-progress th,
+.team-progress td {
+  border-bottom: 1px solid #d9deea;
+  padding: 0.5rem;
+  text-align: left;
+}

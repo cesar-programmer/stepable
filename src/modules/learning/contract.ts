@@ -59,6 +59,28 @@ export type AnswerResult =
         | "invalid";
     };
 
+export type TeamMemberProgress = {
+  profileId: string;
+  email: string | null;
+  role: "responsable" | "integrante";
+  /** "no_empezada" only means there is no recorded progress. */
+  state: "no_empezada" | "en_progreso" | "completada";
+  resolvedSteps: number;
+  correctSteps: number;
+  startedAt: Date | null;
+  completedAt: Date | null;
+};
+
+export type TeamProgress = {
+  routeId: string;
+  title: string;
+  totalSteps: number;
+  activeMembers: number;
+  started: number;
+  completed: number;
+  members: TeamMemberProgress[];
+};
+
 export interface LearningRepository {
   startProgress(input: {
     identityId: string;
@@ -70,6 +92,24 @@ export interface LearningRepository {
     identityId: string,
     routeId: string,
   ): Promise<{ startedAt: Date; attempts: AttemptRecord[] } | null>;
+  /**
+   * Active members of the space with their progress on this published
+   * version only; revoked members are excluded (their progress is kept).
+   */
+  listTeamProgress(input: {
+    spaceId: string;
+    routeId: string;
+    publishedAt: Date;
+  }): Promise<{
+    members: {
+      profileId: string;
+      email: string | null;
+      role: "responsable" | "integrante";
+      startedAt: Date | null;
+      completedAt: Date | null;
+    }[];
+    attempts: (AttemptRecord & { profileId: string })[];
+  }>;
   recordAnswer(input: {
     identityId: string;
     spaceId: string;

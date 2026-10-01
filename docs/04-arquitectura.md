@@ -445,3 +445,7 @@ Estado: prototipo local implementado el 2026-10-01 ([ADR-007](decisiones/ADR-007
   - Los pasos bloqueados solo muestran su título.
   - Cada formulario lleva un identificador de envío generado en el servidor.
   - Se resumen los pasos resueltos y los acertados.
+
+### Progreso del equipo (E5.2)
+
+`/spaces/[spaceId]/routes/[routeId]/progress`, solo lectura y sin migración. `readTeamProgress` autoriza `consultar_progreso_equipo` y lee la versión publicada. `listTeamProgress` une las membresías activas con el progreso de esa versión (comparación al milisegundo de `route_published_at`) y sus intentos. Los totales se derivan con las mismas reglas de E5.1 ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md)).

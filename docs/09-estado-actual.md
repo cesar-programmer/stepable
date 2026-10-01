@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E5.1 cerrada para el prototipo local; E5.2 (progreso del equipo) por proponer · Versión documental: 3.0.
+Actualizado: 2026-10-01 · Fase: E5.1 y E5.2 cerradas para el prototipo local · Versión documental: 3.2.
 
 ## Hechos acordados
 
@@ -34,7 +34,7 @@ Actualizado: 2026-10-01 · Fase: E5.1 cerrada para el prototipo local; E5.2 (pro
 
 ## Actualización más reciente
 
-2026-10-01: el usuario confirmó las pruebas manuales de E5.1 y aceptó la entrega. E5.1 se cierra en un commit local, reutilizando la verificación técnica (solo cambió documentación). No hubo llamadas de IA. Siguiente: proponer E5.2 sin implementarla.
+2026-10-01: el usuario confirmó la comprobación manual de E5.2 y aceptó la entrega. E5.2 se cierra en un commit local, reutilizando la verificación técnica (solo cambió documentación); sin llamadas de IA.
 
 ## Realizado
 
@@ -155,19 +155,21 @@ Actualizado: 2026-10-01 · Fase: E5.1 cerrada para el prototipo local; E5.2 (pro
 - E5.1, 2026-10-01 (pruebas técnicas): 67 unitarias, integración 55/55 (4 de aprendizaje), navegador 24/24 (2 de aprendizaje), `pnpm verify` y `git diff --check`. Sin procesos de desarrollo en marcha, sin trabajos fuera del namespace `pruebas` y sin progreso residual.
 - Comprobación manual del usuario del 2026-10-01: confirmó que realizó las pruebas manuales de E5.1 y funcionaron correctamente, y aceptó la entrega. No se le atribuyen comprobaciones adicionales. Estado agregado posterior: 1 ruta publicada, 1 progreso completado y 4 intentos.
 
+- E5.2, 2026-10-01 (pruebas técnicas): 69 unitarias, `pnpm test:integration:team-progress` 2/2, integración 57/57, `pnpm test:e2e:learning` 3/3, `pnpm test:e2e:routes` 2/2, `pnpm verify` y `git diff --check`. Sin procesos de desarrollo en marcha, sin trabajos fuera de `pruebas` y con los datos conservados.
+- Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E5.2 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 2 membresías activas, 1 retirada y 1 progreso completado.
+
 ## No realizado
 
-No se implementaron progreso del equipo (RF-09), reinicio de rutas, ejercicios de código, gamificación, versiones nuevas o historial de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
+No se implementaron detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Presentar al usuario el alcance mínimo de E5.2 (progreso del equipo por ruta para responsables: avance, finalización y pasos acertados) y sus decisiones. No implementarla sin autorización.
+Contrastar el prototipo con el alcance V0 y recomendar una siguiente entrega pequeña de demostración y validación con documentos sintéticos, sin implementarla.
 
 ## Decisiones que requieren aprobación
 
-- **Siguiente de E5:** alcance del seguimiento del progreso del equipo para responsables (RF-09) y reinicio de rutas.
+- **Siguientes entregas:** reinicio de rutas y actualización de una ruta publicada con una versión nueva (PEN-04).
 - **Antes de ampliar el uso de IA:** límite de gasto acumulado y consultas por usuario (PEN-08).
-- **Rutas:** cómo actualizar una ruta publicada con una versión nueva (PEN-04).
 - **Antes de datos reales o despliegue:** objetos huérfanos (PEN-12) y retención, incluidos progreso y contenido derivado (PEN-06).
 
 ## Pendientes menores de E1
@@ -179,7 +181,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E4.1 está cerrada en `d81de07` y E5.1 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
+E5.1 está cerrada en `68d3163` y E5.2 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
 
 ## Formato para futuras sesiones
 

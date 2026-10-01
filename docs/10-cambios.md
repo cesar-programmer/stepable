@@ -1,5 +1,17 @@
 # Historial de cambios
 
+## 2026-10-01 · 3.2 · Cierre de E5.2
+
+- El usuario confirmó la comprobación manual de E5.2 y aceptó la entrega; no se le atribuyen escenarios adicionales.
+- Se reutilizó la verificación técnica aprobada (solo cambió documentación); sin llamadas de IA.
+- E5.2 cerrada para el prototipo local en un commit local, sin push. E5 sigue abierta para RF-06 (lectura de código y completar fragmentos).
+
+## 2026-10-01 · 3.1 · Implementación de E5.2
+
+- Añadida la vista de solo lectura del progreso del equipo por ruta publicada, para responsables activos: resumen y totales por miembro activo (estado, pasos resueltos, pasos acertados, fechas).
+- Sin respuestas ni detalle por paso. Los retirados se ocultan y conservan su progreso; no se mezclan versiones. “No empezada” no implica obligación, y completar no es dominar.
+- Pruebas técnicas: 69 unitarias, 57 de integración y navegador afectado (aprendizaje 3/3, rutas 2/2). Sin IA, comprobación manual atribuida, commit ni push.
+
 ## 2026-10-01 · 3.0 · Cierre de E5.1
 
 - El usuario confirmó las pruebas manuales de E5.1 y aceptó la entrega; no se le atribuyen comprobaciones adicionales.

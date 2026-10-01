@@ -1,6 +1,6 @@
 # Stepable · Base documental V0
 
-Versión documental: 3.0 · Fecha: 2026-10-01 · Estado: E1, E2, E3, E4.1 y E5.1 cerradas localmente (prototipo con documentos sintéticos).
+Versión documental: 3.2 · Fecha: 2026-10-01 · Estado: E1, E2, E3, E4.1, E5.1 y E5.2 cerradas localmente (prototipo con documentos sintéticos).
 
 Este repositorio contiene la base documental y la aplicación local de Stepable. E1 implementa identidad, espacios, invitaciones, membresías, autorización vigente y auditoría mínima de mutaciones de acceso. El piloto y los proveedores siguen pendientes.
 

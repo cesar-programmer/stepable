@@ -153,6 +153,34 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
     );
   });
 
+  test("the responsible sees team totals; members cannot open them", async ({
+    page,
+    browser,
+  }) => {
+    const progressUrl = learnUrl.replace(/\/learn$/, "/progress");
+    await login(page, owner);
+    await page.goto(progressUrl);
+    await expect(page.getByTestId("team-summary")).toContainText(
+      "Miembros activos: 2 · empezaron: 1 · completaron: 1",
+    );
+    const row = page.getByRole("row", { name: new RegExp(member.email) });
+    await expect(row).toContainText("Completada");
+    await expect(row.getByRole("cell").nth(1)).toHaveText("2 de 2");
+    await expect(row.getByRole("cell").nth(2)).toHaveText("1 de 2");
+    await expect(
+      page.getByRole("row", { name: new RegExp(owner.email) }),
+    ).toContainText("No empezada");
+    await expect(
+      page.getByText("no implica dominio del contenido"),
+    ).toBeVisible();
+
+    const context = await browser.newContext();
+    const memberPage = await context.newPage();
+    await login(memberPage, member);
+    expect((await memberPage.goto(progressUrl))?.status()).toBe(404);
+    await context.close();
+  });
+
   test("another space cannot open the learner view", async ({ page }) => {
     await login(page, foreign);
     expect((await page.goto(learnUrl))?.status()).toBe(404);

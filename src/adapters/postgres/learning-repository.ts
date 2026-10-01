@@ -113,6 +113,66 @@ export class PostgresLearningRepository implements LearningRepository {
     };
   }
 
+  async listTeamProgress(input: {
+    spaceId: string;
+    routeId: string;
+    publishedAt: Date;
+  }) {
+    // Progress belongs to one published version; JavaScript dates carry
+    // milliseconds while PostgreSQL keeps microseconds.
+    const publishedAt = input.publishedAt.toISOString();
+    const members = await rows<{
+      profile_id: string;
+      email: string | null;
+      role: "responsable" | "integrante";
+      started_at: Date | null;
+      completed_at: Date | null;
+    }>(
+      this.database,
+      sql`select member.profile_id, account.email, member.role,
+            progress.started_at, progress.completed_at
+          from public.memberships member
+          join auth.users account on account.id = member.profile_id
+          left join public.route_progress progress
+            on progress.route_id = ${input.routeId}
+            and progress.profile_id = member.profile_id
+            and date_trunc('milliseconds', progress.route_published_at)
+              = date_trunc('milliseconds', ${publishedAt}::timestamptz)
+          where member.space_id = ${input.spaceId}
+            and member.status = 'activa'
+          order by lower(coalesce(account.email, '')), member.profile_id`,
+    );
+    const attempts = await rows<AttemptRow & { profile_id: string }>(
+      this.database,
+      sql`select attempt.profile_id, attempt.step_id, attempt.attempt_number,
+            attempt.selected_option, attempt.correct
+          from public.route_step_attempts attempt
+          join public.route_progress progress
+            on progress.route_id = attempt.route_id
+            and progress.profile_id = attempt.profile_id
+          join public.memberships member
+            on member.space_id = ${input.spaceId}
+            and member.profile_id = attempt.profile_id
+            and member.status = 'activa'
+          where attempt.route_id = ${input.routeId}
+            and date_trunc('milliseconds', progress.route_published_at)
+              = date_trunc('milliseconds', ${publishedAt}::timestamptz)`,
+    );
+    return {
+      members: members.map((member) => ({
+        profileId: member.profile_id,
+        email: member.email,
+        role: member.role,
+        startedAt: member.started_at ? new Date(member.started_at) : null,
+        completedAt: member.completed_at ? new Date(member.completed_at) : null,
+      })),
+      attempts: attempts.map((attempt) => ({
+        ...toAttempt(attempt),
+        profileId: attempt.profile_id,
+      })),
+    };
+  }
+
   async recordAnswer(input: {
     identityId: string;
     spaceId: string;

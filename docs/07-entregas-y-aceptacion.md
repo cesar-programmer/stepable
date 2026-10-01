@@ -13,7 +13,7 @@ Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003.
 | E2 Fuentes | RF-03 | CA-02: archivo permitido llega a listo, error se ve y se puede reintentar sin duplicar resultados |
 | E3 Asistente | RF-08 | CA-03: preguntas de referencia producen evidencia resoluble; preguntas sin respaldo reconocen insuficiencia; aislamiento por espacio. Prototipo local cerrado el 2026-10-01; historial de conversaciones (“chats aislados” persistentes) pospuesto |
 | E4 Autoría | RF-04, RF-05 | CA-04: borrador editable, publicación solo por responsable y versión publicada estable. E4.1 cerrada en el prototipo local el 2026-10-01 |
-| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 (recorrido individual) cerrada el 2026-10-01; seguimiento del equipo (E5.2) pendiente |
+| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 y E5.2 cerradas para opción múltiple; RF-06 (lectura de código y completar fragmentos) pendiente |
 | E6 Piloto | Recorrido completo | CA-06: prueba documentada con usuarios invitados, incidencias y consumo registrado |
 
 RF-10 es transversal: errores y límites deben incorporarse en las entregas que consumen recursos. El chat contextual de lecciones se integra en E5; E3 entrega el chat general.
@@ -370,3 +370,23 @@ Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-007](decisiones/
 4. Salir y volver: el progreso se conserva.
 5. Agotar los 3 intentos en un paso: se revela la respuesta y se desbloquea el siguiente.
 6. Al terminar: “Ruta completada”, con pasos resueltos y acertados por separado. Con el responsable, comprobar que su progreso es independiente.
+
+## E5.2 · Progreso del equipo por ruta
+
+Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md), resolución de E5.2).
+
+**Entregado:** resumen (miembros activos, empezaron, completaron) y tabla por miembro activo, ordenada por nombre, con estado, pasos resueltos, pasos acertados, inicio y finalización. Acceso solo para responsables activos. Aviso de que completar no es dominar. Solo lectura y sin IA.
+
+- **Pruebas técnicas:**
+  - 69 unitarias (matriz de la nueva acción);
+  - `pnpm test:integration:team-progress` 2/2: totales exactos de un miembro completado con 1 de 2 acertados y de otro en progreso, miembros sin progreso con el responsable incluido, retirado oculto, progreso de otra versión no mezclado, y rechazo de integrante, usuario ajeno y borrador;
+  - `pnpm test:e2e:learning` 3/3, con la vista del equipo y el 404 para el integrante;
+  - regresión afectada: integración 57/57, `pnpm test:e2e:routes` 2/2, `pnpm verify` y `git diff --check`.
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E5.2 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 2 membresías activas, 1 retirada y 1 progreso completado. Se reutilizó la verificación técnica: después solo cambió documentación.
+
+### E5.2 · Prueba manual
+
+1. `pnpm dev`.
+2. Como responsable: abrir una ruta publicada → **Progreso del equipo**. Comprobar el resumen y que cada miembro activo, incluido el responsable, aparece con su estado y con resueltos y acertados por separado.
+3. Comprobar que un miembro sin progreso aparece como “No empezada” y que un miembro retirado no aparece.
+4. Como integrante: abrir la misma URL de progreso → 404.

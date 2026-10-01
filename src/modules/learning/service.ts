@@ -9,6 +9,7 @@ import type {
   LearnerView,
   LearningRepository,
   StartResult,
+  TeamProgress,
 } from "./contract.ts";
 import { deriveProgress, isResolved } from "./rules.ts";
 
@@ -125,4 +126,63 @@ export async function answerStep(
     return { kind: "unauthorized" };
   }
   return dependencies.learningRepository.recordAnswer(input);
+}
+
+/**
+ * Read-only team view of a published route for active responsibles. Totals
+ * use the same rules as the learner view; completing is not mastery.
+ */
+export async function readTeamProgress(
+  dependencies: Dependencies,
+  input: { identityId: string; spaceId: string; routeId: string },
+): Promise<TeamProgress | null> {
+  if (
+    !(await authorizeSpaceAction(
+      dependencies.accessRepository,
+      input.identityId,
+      input.spaceId,
+      "consultar_progreso_equipo",
+    ))
+  ) {
+    return null;
+  }
+  const route = await dependencies.routeRepository.findRoute(
+    input.spaceId,
+    input.routeId,
+    true,
+  );
+  if (!route?.publishedAt) return null;
+
+  const team = await dependencies.learningRepository.listTeamProgress({
+    spaceId: input.spaceId,
+    routeId: input.routeId,
+    publishedAt: route.publishedAt,
+  });
+  const stepIds = route.steps.map((step) => step.id);
+  const members = team.members.map((member) => {
+    const derived = deriveProgress(
+      stepIds,
+      team.attempts.filter((attempt) => attempt.profileId === member.profileId),
+    );
+    const started = member.startedAt !== null;
+    return {
+      ...member,
+      state: !started
+        ? ("no_empezada" as const)
+        : derived.completed
+          ? ("completada" as const)
+          : ("en_progreso" as const),
+      resolvedSteps: started ? derived.resolvedSteps : 0,
+      correctSteps: started ? derived.correctSteps : 0,
+    };
+  });
+  return {
+    routeId: route.id,
+    title: route.title ?? "Ruta",
+    totalSteps: stepIds.length,
+    activeMembers: members.length,
+    started: members.filter((member) => member.state !== "no_empezada").length,
+    completed: members.filter((member) => member.state === "completada").length,
+    members,
+  };
 }

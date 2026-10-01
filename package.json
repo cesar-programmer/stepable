@@ -23,6 +23,7 @@
     "test:integration:access": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/access.test.ts",
     "test:integration:invitations": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/invitations.test.ts",
     "test:integration:learning": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/learning.test.ts",
+    "test:integration:team-progress": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/team-progress.test.ts",
     "test:integration:memberships": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/memberships.test.ts",
     "test:integration:audit": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/audit.test.ts",
     "test:integration:isolation": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/job-isolation.test.ts",
