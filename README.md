@@ -1,6 +1,6 @@
 # Stepable · Base documental V0
 
-Versión documental: 1.9 · Fecha: 2026-10-01 · Estado: E1, E2.1 y E2.2 cerradas localmente; E2.3 (reemplazo y reintento manual) en curso.
+Versión documental: 2.1 · Fecha: 2026-10-01 · Estado: E1 y E2.1–E2.3 cerradas localmente; E2.4 (eliminación de fuentes) en curso.
 
 Este repositorio contiene la base documental y la aplicación local de Stepable. E1 implementa identidad, espacios, invitaciones, membresías, autorización vigente y auditoría mínima de mutaciones de acceso. El piloto y los proveedores siguen pendientes.
 
@@ -123,6 +123,10 @@ Usar solo documentos sintéticos. Seguir la [prueba manual de E2.1](docs/07-entr
 ### Comprobación manual de E2.2
 
 `pnpm sources:sample-pdfs` escribe PDF sintéticos de ejemplo (con texto, corto, escaneado, cifrado, dañado y de 201 páginas) en la carpeta temporal del sistema. Seguir la [prueba manual de E2.2](docs/07-entregas-y-aceptacion.md#e22--prueba-manual).
+
+### Comprobación manual de E2.3
+
+Seguir la [prueba manual de E2.3](docs/07-entregas-y-aceptacion.md#e23--prueba-manual).
 
 `env:start` crea o reutiliza la red Docker `stepable-local` y publica los puertos solo en `127.0.0.1`. Supabase CLI puede mostrar el aviso genérico `All services bind to 0.0.0.0`; la comprobación válida es el enlace efectivo de Docker. Con esta red, `docker inspect` debe mostrar `127.0.0.1` —no `0.0.0.0` ni `::`— para los puertos publicados.
 

@@ -1,13 +1,28 @@
-import { and, asc, eq, inArray, lt, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  lt,
+  sql,
+  type SQL,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { allowsSpaceAction } from "../../modules/access/authorization.ts";
 import {
   maxActiveSourcesPerSpace,
+  maxManualRetries,
+  type CreateReplacementResult,
   type CreateSourceResult,
-  type SourceSection,
+  type NewReplacementVersion,
   type NewSourceVersion,
   type ProcessingErrorCode,
+  type RetryVersionResult,
   type SourceRepository,
+  type SourceSection,
   type SourceSummary,
   type VersionForProcessing,
 } from "../../modules/sources/contract.ts";
@@ -32,33 +47,105 @@ export type SourceJobEnqueuer = {
 };
 
 const segmentBatchSize = 500;
+const inProgressStatuses = ["en_cola", "procesando"] as const;
 
-const summaryColumns = {
-  id: sources.id,
-  title: sources.title,
-  format: sourceVersions.format,
-  versionNumber: sourceVersions.number,
-  status: sourceVersions.status,
-  errorCode: sourceVersions.errorCode,
-  sectionCount: sourceVersions.sectionCount,
-  pageCount: sourceVersions.pageCount,
-  updatedAt: sourceVersions.updatedAt,
+const currentVersion = alias(sourceVersions, "current_version");
+const latestVersion = alias(sourceVersions, "latest_version");
+
+function versionColumns(version: typeof currentVersion | typeof latestVersion) {
+  return {
+    id: version.id,
+    number: version.number,
+    format: version.format,
+    status: version.status,
+    errorCode: version.errorCode,
+    sectionCount: version.sectionCount,
+    pageCount: version.pageCount,
+    manualRetries: version.manualRetries,
+    updatedAt: version.updatedAt,
+  };
+}
+
+type VersionRow = {
+  id: string;
+  number: number;
+  format: SourceSummary["format"];
+  status: SourceSummary["status"];
+  errorCode: string | null;
+  sectionCount: number | null;
+  pageCount: number | null;
+  manualRetries: number;
+  updatedAt: Date;
 };
 
-// Readers see only the current ready version; managers see the latest one.
-function versionJoin(onlyReady: boolean) {
-  return onlyReady
-    ? and(
-        eq(sourceVersions.id, sources.currentVersionId),
-        eq(sourceVersions.status, "lista"),
-      )
-    : and(
-        eq(sourceVersions.sourceId, sources.id),
-        sql`${sourceVersions.number} = (
-          select max(latest.number) from public.source_versions latest
-          where latest.source_id = ${sources.id}
-        )`,
-      );
+type NullableVersionRow = { [Key in keyof VersionRow]: VersionRow[Key] | null };
+
+function toSummary(
+  row: {
+    id: string;
+    title: string;
+    current: NullableVersionRow | null;
+    latest: NullableVersionRow;
+  },
+  onlyReady: boolean,
+): SourceSummary {
+  // A left-joined alias comes back with nullable columns; the inner join
+  // guarantees the latest version and current_version_id the current one.
+  const current = row.current?.id ? (row.current as VersionRow) : null;
+  const latest = row.latest as VersionRow;
+  const displayed = current ?? latest;
+  const pending =
+    !onlyReady &&
+    current &&
+    latest.id !== current.id &&
+    ["en_cola", "procesando", "fallida"].includes(latest.status)
+      ? latest
+      : null;
+
+  return {
+    id: row.id,
+    title: row.title,
+    format: displayed.format,
+    versionNumber: displayed.number,
+    status: displayed.status,
+    errorCode: displayed.errorCode,
+    sectionCount: displayed.sectionCount,
+    pageCount: displayed.pageCount,
+    manualRetries: displayed.manualRetries,
+    updatedAt: displayed.updatedAt,
+    pending: pending && {
+      versionNumber: pending.number,
+      format: pending.format,
+      status: pending.status,
+      errorCode: pending.errorCode,
+      manualRetries: pending.manualRetries,
+    },
+  };
+}
+
+// Serializes source mutations per space and revalidates the actor inside the
+// transaction, as E1.7 does for access mutations.
+async function lockAndAuthorize(
+  transaction: Transaction,
+  spaceId: string,
+  actorIdentityId: string,
+): Promise<boolean> {
+  await transaction.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`sources:${spaceId}`}, 0))`,
+  );
+  const [actor] = await transaction
+    .select({ role: memberships.role, status: memberships.status })
+    .from(memberships)
+    .where(
+      and(
+        eq(memberships.spaceId, spaceId),
+        eq(memberships.profileId, actorIdentityId),
+      ),
+    )
+    .limit(1);
+  return Boolean(
+    actor && allowsSpaceAction(actor.status, actor.role, "gestionar_fuentes"),
+  );
 }
 
 export class PostgresSourceRepository implements SourceRepository {
@@ -70,32 +157,21 @@ export class PostgresSourceRepository implements SourceRepository {
     this.queue = queue;
   }
 
+  private requireQueue(): SourceJobEnqueuer {
+    if (!this.queue) {
+      throw new Error("Esta operación requiere una cola configurada.");
+    }
+    return this.queue;
+  }
+
   async createSourceWithFirstVersion(
     input: NewSourceVersion,
   ): Promise<CreateSourceResult> {
-    const queue = this.queue;
-    if (!queue) {
-      throw new Error("La carga de fuentes requiere una cola configurada.");
-    }
+    const queue = this.requireQueue();
 
     return this.database.transaction(async (transaction) => {
-      await transaction.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${`sources:${input.spaceId}`}, 0))`,
-      );
-
-      const [actor] = await transaction
-        .select({ role: memberships.role, status: memberships.status })
-        .from(memberships)
-        .where(
-          and(
-            eq(memberships.spaceId, input.spaceId),
-            eq(memberships.profileId, input.createdBy),
-          ),
-        )
-        .limit(1);
       if (
-        !actor ||
-        !allowsSpaceAction(actor.status, actor.role, "gestionar_fuentes")
+        !(await lockAndAuthorize(transaction, input.spaceId, input.createdBy))
       ) {
         return { kind: "unauthorized" as const };
       }
@@ -133,16 +209,183 @@ export class PostgresSourceRepository implements SourceRepository {
     });
   }
 
+  async createReplacementVersion(
+    input: NewReplacementVersion,
+  ): Promise<CreateReplacementResult> {
+    const queue = this.requireQueue();
+
+    return this.database.transaction(async (transaction) => {
+      if (
+        !(await lockAndAuthorize(transaction, input.spaceId, input.createdBy))
+      ) {
+        return { kind: "unauthorized" as const };
+      }
+
+      const [source] = await transaction
+        .select({ currentVersionId: sources.currentVersionId })
+        .from(sources)
+        .where(
+          and(
+            eq(sources.id, input.sourceId),
+            eq(sources.spaceId, input.spaceId),
+            eq(sources.status, "activa"),
+          ),
+        )
+        .limit(1)
+        .for("update");
+      if (!source) return { kind: "not_found" as const };
+
+      const versions = await transaction
+        .select({
+          id: sourceVersions.id,
+          number: sourceVersions.number,
+          status: sourceVersions.status,
+          sha256: sourceVersions.sha256,
+        })
+        .from(sourceVersions)
+        .where(eq(sourceVersions.sourceId, input.sourceId))
+        .orderBy(desc(sourceVersions.number));
+      if (
+        versions.some((version) =>
+          (inProgressStatuses as readonly string[]).includes(version.status),
+        )
+      ) {
+        return { kind: "reemplazo_en_curso" as const };
+      }
+      const current = versions.find(
+        (version) => version.id === source.currentVersionId,
+      );
+      if (current?.sha256 === input.sha256) {
+        return { kind: "sin_cambios" as const };
+      }
+
+      // A failed version that is not current is superseded, never deleted.
+      await transaction
+        .update(sourceVersions)
+        .set({ status: "descartada", errorCode: null, updatedAt: sql`now()` })
+        .where(
+          and(
+            eq(sourceVersions.sourceId, input.sourceId),
+            eq(sourceVersions.status, "fallida"),
+          ),
+        );
+
+      const versionNumber = (versions[0]?.number ?? 0) + 1;
+      await transaction.insert(sourceVersions).values({
+        id: input.versionId,
+        sourceId: input.sourceId,
+        spaceId: input.spaceId,
+        number: versionNumber,
+        format: input.format,
+        byteSize: input.byteSize,
+        sha256: input.sha256,
+        storageKey: input.storageKey,
+        createdBy: input.createdBy,
+      });
+      await queue.enqueueInTransaction(transaction, input.versionId);
+
+      return { kind: "created" as const, versionNumber };
+    });
+  }
+
+  async retryFailedVersion(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    sourceId: string;
+  }): Promise<RetryVersionResult> {
+    const queue = this.requireQueue();
+
+    return this.database.transaction(async (transaction) => {
+      if (
+        !(await lockAndAuthorize(
+          transaction,
+          input.spaceId,
+          input.actorIdentityId,
+        ))
+      ) {
+        return { kind: "unauthorized" as const };
+      }
+
+      const [latest] = await transaction
+        .select({
+          id: sourceVersions.id,
+          number: sourceVersions.number,
+          status: sourceVersions.status,
+          manualRetries: sourceVersions.manualRetries,
+        })
+        .from(sourceVersions)
+        .innerJoin(sources, eq(sources.id, sourceVersions.sourceId))
+        .where(
+          and(
+            eq(sources.id, input.sourceId),
+            eq(sources.spaceId, input.spaceId),
+            eq(sources.status, "activa"),
+          ),
+        )
+        .orderBy(desc(sourceVersions.number))
+        .limit(1)
+        .for("update", { of: sourceVersions });
+      if (!latest) return { kind: "not_found" as const };
+      if (latest.status === "en_cola" || latest.status === "procesando") {
+        return { kind: "already_queued" as const };
+      }
+      if (latest.status !== "fallida") {
+        return { kind: "not_retryable" as const };
+      }
+      if (latest.manualRetries >= maxManualRetries) {
+        return { kind: "limite_de_reintentos" as const };
+      }
+
+      await transaction
+        .update(sourceVersions)
+        .set({
+          status: "en_cola",
+          errorCode: null,
+          manualRetries: latest.manualRetries + 1,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(sourceVersions.id, latest.id));
+      await queue.enqueueInTransaction(transaction, latest.id);
+
+      return { kind: "queued" as const, versionNumber: latest.number };
+    });
+  }
+
+  private selectSummaries(condition: SQL | undefined) {
+    return this.database
+      .select({
+        id: sources.id,
+        title: sources.title,
+        current: versionColumns(currentVersion),
+        latest: versionColumns(latestVersion),
+      })
+      .from(sources)
+      .innerJoin(
+        latestVersion,
+        and(
+          eq(latestVersion.sourceId, sources.id),
+          sql`${latestVersion.number} = (
+            select max(candidate.number) from public.source_versions candidate
+            where candidate.source_id = ${sources.id}
+          )`,
+        ),
+      )
+      .leftJoin(currentVersion, eq(currentVersion.id, sources.currentVersionId))
+      .where(condition);
+  }
+
   async listSources(
     spaceId: string,
     onlyReady: boolean,
   ): Promise<SourceSummary[]> {
-    return this.database
-      .select(summaryColumns)
-      .from(sources)
-      .innerJoin(sourceVersions, versionJoin(onlyReady))
-      .where(and(eq(sources.spaceId, spaceId), eq(sources.status, "activa")))
-      .orderBy(asc(sources.title), asc(sources.id));
+    const rows = await this.selectSummaries(
+      and(
+        eq(sources.spaceId, spaceId),
+        eq(sources.status, "activa"),
+        onlyReady ? isNotNull(sources.currentVersionId) : undefined,
+      ),
+    ).orderBy(asc(sources.title), asc(sources.id));
+    return rows.map((row) => toSummary(row, onlyReady));
   }
 
   async findSource(
@@ -150,19 +393,15 @@ export class PostgresSourceRepository implements SourceRepository {
     sourceId: string,
     onlyReady: boolean,
   ): Promise<SourceSummary | null> {
-    const [source] = await this.database
-      .select(summaryColumns)
-      .from(sources)
-      .innerJoin(sourceVersions, versionJoin(onlyReady))
-      .where(
-        and(
-          eq(sources.id, sourceId),
-          eq(sources.spaceId, spaceId),
-          eq(sources.status, "activa"),
-        ),
-      )
-      .limit(1);
-    return source ?? null;
+    const [row] = await this.selectSummaries(
+      and(
+        eq(sources.id, sourceId),
+        eq(sources.spaceId, spaceId),
+        eq(sources.status, "activa"),
+        onlyReady ? isNotNull(sources.currentVersionId) : undefined,
+      ),
+    ).limit(1);
+    return row ? toSummary(row, onlyReady) : null;
   }
 
   async listCurrentSections(
@@ -288,7 +527,19 @@ export class PostgresSourceRepository implements SourceRepository {
           updatedAt: sql`now()`,
         })
         .where(eq(sourceVersions.id, versionId));
-      // E2.1 only has first versions; replacement rules arrive in E2.3.
+      // The candidate becomes current atomically; the previous current
+      // version is kept as "reemplazada" until E2.4 defines retention.
+      const [source] = await transaction
+        .select({ currentVersionId: sources.currentVersionId })
+        .from(sources)
+        .where(eq(sources.id, version.sourceId))
+        .for("update");
+      if (source?.currentVersionId && source.currentVersionId !== versionId) {
+        await transaction
+          .update(sourceVersions)
+          .set({ status: "reemplazada", updatedAt: sql`now()` })
+          .where(eq(sourceVersions.id, source.currentVersionId));
+      }
       await transaction
         .update(sources)
         .set({ currentVersionId: versionId, updatedAt: sql`now()` })

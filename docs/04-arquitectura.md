@@ -272,7 +272,7 @@ Supabase ofrece `pgvector` en PostgreSQL y documenta índices HNSW/IVFFlat; no s
 
 ## 19. Fuentes locales en E2
 
-Estado: E2.1 (Markdown) y E2.2 (PDF con texto) implementadas y cerradas el 2026-10-01 según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Reemplazo, reintento manual y eliminación siguen pendientes de E2.3/E2.4. Sin IA, embeddings, búsqueda, lecciones, conectores ni servicios contratados.
+Estado: E2.1 (Markdown), E2.2 (PDF con texto) y E2.3 (reemplazo y reintento manual) cerradas el 2026-10-01 según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). La eliminación sigue en E2.4. Sin IA, embeddings, búsqueda, lecciones, conectores ni servicios contratados.
 
 ### Formatos y límites
 
@@ -282,13 +282,13 @@ Estado: E2.1 (Markdown) y E2.2 (PDF con texto) implementadas y cerradas el 2026-
 | Contenido mínimo | Al menos un carácter no blanco; si no, `contenido_vacio` | Implementado; se aceptan documentos cortos |
 | Texto máximo | ≤ 2 000 000 caracteres | Implementado |
 | Fuentes por espacio | ≤ 50 activas | Implementado |
-| Versiones en curso | 1 por fuente (índice único parcial) | Implementado como restricción; el reemplazo llega en E2.3 |
+| Versiones en curso | 1 por fuente (índice único parcial), sea primera carga o candidata de reemplazo | Implementado |
 | Título | 1–120 caracteres; por defecto el nombre del archivo | Implementado |
 | Intento | Extracción PDF en `worker_threads` con 256 MiB y 45 s; expiración del trabajo pg-boss en 60 s | Implementado |
 | Reintentos automáticos | 3 intentos en total para errores transitorios; espera exponencial desde 30 s, máximo 120 s | Implementado |
 | Versión atascada | `procesando` sin cambios durante 15 min pasa a `fallida` con `tiempo_agotado` | Implementado mediante el barrido del worker |
 | PDF | `.pdf` con firma `%PDF-` en los primeros 1024 bytes, ≤ 8 MiB, ≤ 200 páginas, sin cifrado (ni contraseña de usuario ni de propietario), sin OCR; al menos una página con texto | Implementado en E2.2 |
-| Reintentos manuales | Hasta 3 por versión | Propuesto para E2.3 |
+| Reintentos manuales | Hasta 3 por versión fallida (`manual_retries`) | Implementado en E2.3 |
 
 ### Carga
 
@@ -320,6 +320,18 @@ Estado: E2.1 (Markdown) y E2.2 (PDF con texto) implementadas y cerradas el 2026-
   4. Un error de contenido la deja `fallida` sin reintento. Un error transitorio se relanza para que pg-boss reintente; en el último intento la versión queda `fallida` con su código.
 - **Acceso:** `anon` y `authenticated` no tienen `USAGE` sobre `pgboss`.
 
+### Reemplazo y reintento manual (E2.3)
+
+- **Reemplazo:** `POST /spaces/[spaceId]/sources/[sourceId]/replace` reutiliza la frontera HTTP de la carga (`upload-request.ts`), los formatos y los límites. La transacción:
+  - toma el bloqueo por espacio y revalida al actor;
+  - comprueba que la fuente siga activa y que no haya otra versión en curso (`reemplazo_en_curso`);
+  - rechaza un SHA-256 igual al vigente (`sin_cambios`);
+  - deja las versiones fallidas como `descartada`;
+  - inserta la versión `n+1` y la encola en la misma transacción.
+- **Cambio de vigente:** al completar el procesamiento, en una sola transacción, la versión anterior pasa a `reemplazada` y `current_version_id` apunta a la nueva. Los integrantes siguen leyendo la vigente durante todo el proceso.
+- **Reintento manual:** un Server Action re-encola la última versión si está `fallida` y le quedan intentos. Bloquea su fila e incrementa `manual_retries`; si ya está en cola o en proceso, responde `already_queued` sin encolar otro trabajo.
+- **Conservación:** las versiones `reemplazada` y `descartada` conservan su original y su texto; no hay historial en la interfaz ni purga. La retención se decide en E2.4.
+
 ### Extracción
 
 - **Markdown (implementado):** decodificación UTF-8 estricta y saltos de línea normalizados. Se segmenta por encabezados ATX (`#`–`######`) fuera de bloques de código cercados. Cada segmento se ubica por su ruta de encabezados y su rango de líneas. Los encabezados de tipo Setext quedan como texto. No hay renderizado ni dependencia nueva.
@@ -338,8 +350,8 @@ Los estados visibles son “En cola”, “Procesando”, “Lista” y “Fall�
 
 ### Limitaciones conocidas de E2.1
 
-- Markdown y PDF con texto. Reemplazo, reintento manual, descarte, eliminación, purga, auditoría de fuentes y descarga de originales no están implementados. No hay OCR ni rechazo de PDF parcialmente escaneados mientras alguna página tenga texto.
-- Una fuente fallida queda visible para el responsable sin acción posible hasta E2.3/E2.4.
+- Markdown y PDF con texto, con reemplazo y reintento manual. No hay eliminación, purga, historial visible de versiones, auditoría de fuentes, descarga de originales ni OCR; tampoco se rechazan los PDF parcialmente escaneados mientras alguna página tenga texto.
+- Las versiones anteriores ocupan espacio en Storage y PostgreSQL hasta que E2.4 defina la retención.
 - El worker es un proceso aparte (`pnpm worker`). Sin él, las cargas quedan “En cola” y se procesan al arrancarlo.
 - Si se pierde el último intento por una caída, el barrido del worker marca la versión `tiempo_agotado` a los 15 min.
 - La extracción PDF está aislada en un hilo con 256 MiB y 45 s; el Markdown se procesa en el hilo principal del worker, acotado por su tamaño máximo de 1 MiB.

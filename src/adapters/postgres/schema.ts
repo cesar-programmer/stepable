@@ -254,6 +254,7 @@ export const sourceVersions = pgTable(
     sectionCount: integer("section_count"),
     pageCount: integer("page_count"),
     attempts: integer("attempts").notNull().default(0),
+    manualRetries: integer("manual_retries").notNull().default(0),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => profiles.identityId, { onDelete: "restrict" }),

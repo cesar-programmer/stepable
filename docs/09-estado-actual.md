@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E2.2 cerrada; E2.3 (reemplazo y reintento manual) autorizada · Versión documental: 1.9.
+Actualizado: 2026-10-01 · Fase: E2.3 cerrada; E2.4 (eliminación y cierre de E2) autorizada · Versión documental: 2.1.
 
 ## Hechos acordados
 
@@ -16,14 +16,17 @@ Actualizado: 2026-10-01 · Fase: E2.2 cerrada; E2.3 (reemplazo y reintento manua
 
 - E2.2 autorizada el 2026-10-01: PDF con texto ≤ 8 MiB y ≤ 200 páginas, sin cifrar y sin OCR, reutilizando la infraestructura de E2.1.
 
+- E2.3 autorizada el 2026-10-01: reemplazo con candidata, cambio atómico, hasta 3 reintentos manuales y conservación de versiones anteriores sin historial visible hasta E2.4.
+
 ## Actualización más reciente
 
-2026-10-01: E2.1 se cerró en el commit local `7f53a26` tras la comprobación manual del usuario. Después se implementó E2.2, sin commit:
-- PDF con texto extraído por página con `pdfjs-dist` 6.3.289 en un hilo aislado;
-- rechazos comprensibles para PDF sin texto, cifrados, dañados o fuera de límites;
-- Markdown sin cambios.
+2026-10-01: E2.2 se cerró en el commit local `1ca2433` tras la comprobación manual del usuario. Después se implementó E2.3, sin commit:
+- reemplazo de fuentes con versión candidata y cambio atómico;
+- la vigente se conserva ante un fallo;
+- hasta 3 reintentos manuales sin duplicar trabajos;
+- sustitución de versiones fallidas.
 
-Detalle técnico en el [documento 04 §19](04-arquitectura.md#19-fuentes-locales-en-e2) y evidencia en el [documento 07](07-entregas-y-aceptacion.md#resultado-de-e22). La migración fue incremental y los datos locales se conservaron.
+Detalle en el [documento 04 §19](04-arquitectura.md#reemplazo-y-reintento-manual-e23) y evidencia en el [documento 07](07-entregas-y-aceptacion.md#resultado-de-e23). La migración fue incremental y los datos locales se conservaron.
 
 ## Realizado
 
@@ -62,6 +65,7 @@ Detalle técnico en el [documento 04 §19](04-arquitectura.md#19-fuentes-locales
 - Dependencia añadida: `pg-boss` 12.35.0 exacta, con `pg` 8.23.0. Se descartaron versiones publicadas hace menos del plazo `minimumReleaseAge` de pnpm, sin añadir excepciones.
 - E2.2: migración de páginas, extractor `pdfjs-dist` en `worker_threads`, validación de firma y límites PDF, mensajes y vistas por página.
 - E2.2: generador de PDF sintéticos para pruebas y comando `pnpm sources:sample-pdfs` para la prueba manual. Dependencia añadida: `pdfjs-dist` 6.3.289 exacta, publicada el 2026-08-29, sin excepciones de antigüedad.
+- E2.3: migración `manual_retries`, operaciones de reemplazo y reintento en repositorio y servicio, Route Handler de reemplazo con frontera HTTP compartida, Server Action de reintento, gestión en el detalle de la fuente y estado del reemplazo en el listado.
 
 ## Evidencia y verificaciones reales
 
@@ -117,22 +121,22 @@ Detalle técnico en el [documento 04 §19](04-arquitectura.md#19-fuentes-locales
 - Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.1 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 1 fuente en estado `lista` y 1 objeto en el bucket; no se consultó contenido ni PII. No hubo cambios de código después de la verificación automática; se reutiliza esa evidencia.
 - E2.2, 2026-10-01: migración aplicada sin reset y con los datos conservados. Pruebas unitarias 46/46 (extractor con pdf.js real), `pnpm test:integration` 33/33, `pnpm test:e2e` 16/16, `pnpm verify` y `git diff --check` aprobados. Tras las suites no quedaron residuos; persisten solo la fuente y el objeto de la prueba manual de E2.1.
 - Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.2 funcionó correctamente y aceptó la entrega. No se le atribuyen comprobaciones adicionales. Estado agregado posterior: versiones Markdown `lista` 1, PDF `lista` 1 y PDF `fallida` 1; 3 objetos en el bucket; 0 trabajos pendientes. No se consultó contenido ni PII. Tras la verificación automática solo cambió el formato de `scripts/write-sample-pdfs.mjs`; se reutiliza esa evidencia.
+- E2.3, 2026-10-01: migración aplicada sin reset y con los datos conservados (2/1/2/2/7, 3 fuentes del usuario). Pruebas unitarias 46/46, `pnpm test:integration` 34/34, `pnpm test:e2e` 17/17, `pnpm verify` y `git diff --check` aprobados. Sin residuos ni trabajos pendientes.
+- Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E2.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 3 versiones (Markdown `lista` 1, PDF `lista` 1, PDF `fallida` 1), 3 objetos y 0 trabajos pendientes; no aparecen versiones de reemplazo en la base local. Se registra solo como dato agregado, sin consultar contenido ni PII. Tras la verificación automática no cambió código; se reutiliza esa evidencia.
 
 ## No realizado
 
-No se implementaron OCR, reemplazo, reintento manual, eliminación o purga de fuentes, auditoría de fuentes, descarga de originales, reactivación administrativa directa, panel de auditoría, rutas, IA, despliegue ni proveedor externo. RN-18 externo, retención para datos reales, alojamiento y proveedores siguen pendientes de sus entregas o del piloto.
+No se implementaron OCR, eliminación o purga de fuentes, historial visible de versiones, auditoría de fuentes, descarga de originales, reactivación administrativa directa, panel de auditoría, rutas, IA, despliegue ni proveedor externo. RN-18 externo, retención para datos reales, alojamiento y proveedores siguen pendientes de sus entregas o del piloto.
 
 ## Próxima tarea concreta
 
-Implementar E2.3, reemplazo de fuentes y reintento manual, según las reglas indicadas por el usuario el 2026-10-01. Las versiones anteriores se conservan sin purga hasta E2.4. No preparar el piloto por inferencia.
+Implementar E2.4 con el alcance indicado por el usuario el 2026-10-01: conservar versiones mientras exista la fuente, eliminación solo por responsables activos con confirmación explícita, retiro inmediato, purga por el worker, metadatos mínimos y auditoría de fuentes con el patrón existente. No preparar el piloto por inferencia.
 
 ## Decisiones que requieren aprobación
 
-- **En E2.3:** conservar o no las versiones reemplazadas (original y texto).
-- **En E2.4:** semántica de eliminación (irreversible o con papelera) y metadatos que permanecen.
+- **En E2.4:** retención de las versiones `reemplazada` y `descartada` (cuánto tiempo conservar original y texto, o purgar).
+- **En E2.4:** semántica de eliminación de fuentes (irreversible o con papelera) y metadatos que permanecen.
 - **Sin definir:** descarga de originales y por quién.
-
-Los límites de PDF quedaron aceptados por el usuario el 2026-10-01.
 
 ## Pendientes menores de E1
 
@@ -143,7 +147,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E1 está cerrada en `7627580`, E2.1 en `7f53a26` y E2.2 en el commit local siguiente, todos sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados. Para usar las fuentes en local hace falta `pnpm worker` en una terminal aparte.
+E1 está cerrada en `7627580`, E2.1 en `7f53a26`, E2.2 en `1ca2433` y E2.3 en el commit local siguiente, todos sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados. Para usar las fuentes en local hace falta `pnpm worker` en una terminal aparte.
 
 ## Formato para futuras sesiones
 

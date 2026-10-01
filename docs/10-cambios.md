@@ -1,5 +1,18 @@
 # Historial de cambios
 
+## 2026-10-01 · 2.1 · Cierre de E2.3
+
+- El usuario confirmó que la comprobación manual de E2.3 funcionó correctamente y aceptó la entrega; no se le atribuyen escenarios adicionales.
+- El estado agregado de la base local no muestra versiones de reemplazo; se registra como dato, sin interpretación.
+- Se reutiliza la verificación automática aprobada; no cambió código después de ella. E2.3 queda en un commit local, sin push, y E2.4 queda autorizada.
+
+## 2026-10-01 · 2.0 · Implementación de E2.3
+
+- Añadidos el reemplazo de fuentes con versión candidata y cambio atómico de la vigente, y el reintento manual (hasta 3 por versión fallida) sin trabajos duplicados.
+- Una candidata fallida no afecta a la vigente y muestra su motivo. Un archivo corregido deja la fallida como `descartada`; las anteriores se conservan como `reemplazada`, sin historial visible ni purga hasta E2.4.
+- Migración incremental `manual_retries`; datos locales conservados.
+- Aprobadas 46 pruebas unitarias, 34 de integración y 17 de navegador. Sin comprobación manual atribuida, commit ni push.
+
 ## 2026-10-01 · 1.9 · Cierre de E2.2
 
 - El usuario confirmó que la prueba manual de E2.2 funcionó correctamente y aceptó la entrega; no se le atribuyen comprobaciones adicionales.

@@ -42,8 +42,12 @@ export default async function SourcesPage({
   const parameters = await searchParams;
   const notice = typeof parameters.notice === "string" ? parameters.notice : "";
   const error = typeof parameters.error === "string" ? parameters.error : "";
+  const isBusy = (status: string) =>
+    status === "en_cola" || status === "procesando";
   const inProgress = listing.sources.some(
-    (source) => source.status === "en_cola" || source.status === "procesando",
+    (source) =>
+      isBusy(source.status) ||
+      (source.pending !== null && isBusy(source.pending.status)),
   );
 
   return (
@@ -95,7 +99,7 @@ export default async function SourcesPage({
           {listing.sources.map((source) => (
             <li key={source.id}>
               <div>
-                {source.status === "lista" ? (
+                {source.status === "lista" || listing.canManage ? (
                   <Link href={`/spaces/${spaceId}/sources/${source.id}`}>
                     {source.title}
                   </Link>
@@ -121,6 +125,12 @@ export default async function SourcesPage({
                   <span className="error-detail">
                     {sourceErrorMessages[source.errorCode] ??
                       "No fue posible procesar la fuente."}
+                  </span>
+                ) : null}
+                {source.pending ? (
+                  <span className="muted">
+                    Reemplazo v{source.pending.versionNumber}:{" "}
+                    {sourceStatusLabels[source.pending.status]}
                   </span>
                 ) : null}
               </div>

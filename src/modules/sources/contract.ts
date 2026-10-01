@@ -7,6 +7,7 @@ export const uploadMaxBytes = Math.max(markdownMaxBytes, pdfMaxBytes);
 export const maxActiveSourcesPerSpace = 50;
 export const maxExtractedCharacters = 2_000_000;
 export const sourceTitleMaxLength = 120;
+export const maxManualRetries = 3;
 
 export const sourceVersionStatuses = [
   "en_cola",
@@ -29,6 +30,8 @@ export const uploadRejectionCodes = [
   "titulo_invalido",
   "limite_de_fuentes",
   "almacenamiento_no_disponible",
+  "reemplazo_en_curso",
+  "sin_cambios",
 ] as const;
 export type UploadRejectionCode = (typeof uploadRejectionCodes)[number];
 
@@ -79,6 +82,20 @@ export interface PdfTextExtractor {
   extract(bytes: Uint8Array): Promise<PdfExtractionResult>;
 }
 
+/** A newer version that is not current yet: a candidate in progress or failed. */
+export type PendingVersion = {
+  versionNumber: number;
+  format: SourceFormat;
+  status: SourceVersionStatus;
+  errorCode: string | null;
+  manualRetries: number;
+};
+
+/**
+ * The displayed version is the current one when it exists, otherwise the
+ * latest (first upload still in progress or failed). Readers never receive
+ * a pending version.
+ */
 export type SourceSummary = {
   id: string;
   title: string;
@@ -88,7 +105,9 @@ export type SourceSummary = {
   errorCode: string | null;
   sectionCount: number | null;
   pageCount: number | null;
+  manualRetries: number;
   updatedAt: Date;
+  pending: PendingVersion | null;
 };
 
 export type SourceListing = {
@@ -117,6 +136,25 @@ export type NewSourceVersion = {
 export type CreateSourceResult =
   { kind: "created" } | { kind: "unauthorized" | "limite_de_fuentes" };
 
+export type NewReplacementVersion = Omit<NewSourceVersion, "title">;
+
+export type CreateReplacementResult =
+  | { kind: "created"; versionNumber: number }
+  | {
+      kind: "unauthorized" | "not_found" | "reemplazo_en_curso" | "sin_cambios";
+    };
+
+export type RetryVersionResult =
+  | { kind: "queued"; versionNumber: number }
+  | {
+      kind:
+        | "unauthorized"
+        | "not_found"
+        | "already_queued"
+        | "not_retryable"
+        | "limite_de_reintentos";
+    };
+
 export type VersionForProcessing = {
   versionId: string;
   spaceId: string;
@@ -128,6 +166,14 @@ export interface SourceRepository {
   createSourceWithFirstVersion(
     input: NewSourceVersion,
   ): Promise<CreateSourceResult>;
+  createReplacementVersion(
+    input: NewReplacementVersion,
+  ): Promise<CreateReplacementResult>;
+  retryFailedVersion(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    sourceId: string;
+  }): Promise<RetryVersionResult>;
   listSources(spaceId: string, onlyReady: boolean): Promise<SourceSummary[]>;
   findSource(
     spaceId: string,

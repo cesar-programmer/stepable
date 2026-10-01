@@ -22,8 +22,11 @@ import {
 import {
   listSpaceSources,
   readSourceContent,
+  replaceSourceFile,
+  retrySourceProcessing,
   uploadSource,
 } from "../../src/modules/sources/service.ts";
+import type { SourceSummary } from "../../src/modules/sources/contract.ts";
 import {
   startSourceWorker,
   type SourceWorker,
@@ -80,6 +83,59 @@ async function queuedSourceId(fileName: string, text: string) {
   if (result.kind !== "queued")
     throw new Error(`Carga rechazada: ${result.kind}`);
   return result.sourceId;
+}
+
+async function waitForSource(
+  sourceId: string,
+  done: (source: SourceSummary) => boolean,
+) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const source = await sourceRepository.findSource(spaceId, sourceId, false);
+    if (source && done(source)) return source;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error("La fuente no alcanzó el estado esperado a tiempo.");
+}
+
+const replace = (
+  sourceId: string,
+  fileName: string,
+  bytes: Uint8Array,
+  identity = owner,
+) =>
+  replaceSourceFile(dependencies, {
+    identityId: identity.id,
+    spaceId,
+    sourceId,
+    fileName,
+    bytes,
+  });
+
+const retry = (sourceId: string, identity = owner) =>
+  retrySourceProcessing(dependencies, {
+    identityId: identity.id,
+    spaceId,
+    sourceId,
+  });
+
+async function memberText(sourceId: string) {
+  const content = await readSourceContent(dependencies, {
+    identityId: member.id,
+    spaceId,
+    sourceId,
+  });
+  return content?.sections.map((section) => section.content).join("\n");
+}
+
+async function jobCount(sourceId: string, versionNumber: number) {
+  const [row] = await connection.client`
+    select count(*)::int as count from pgboss.job
+    where name = 'procesar-fuente' and data->>'versionId' = (
+      select id::text from public.source_versions
+      where source_id = ${sourceId} and number = ${versionNumber}
+    )
+  `;
+  return row.count as number;
 }
 
 async function waitForTerminalStatus(sourceId: string) {
@@ -343,6 +399,132 @@ describe("E2 Markdown and PDF sources", () => {
     });
     expect(await storedObjects(spaceId)).toEqual(before);
   }, 60_000);
+
+  it("replaces a source atomically, keeps the current version on failure and limits retries", async () => {
+    const sourceId = await queuedSourceId(
+      "politica.md",
+      "# Política\nVersión uno",
+    );
+    await waitForTerminalStatus(sourceId);
+
+    // Without a worker the candidate stays pending and v1 remains readable.
+    await worker?.stop();
+    worker = null;
+    await expect(
+      replace(sourceId, "politica.pdf", syntheticPdf(["Versión dos en PDF"])),
+    ).resolves.toEqual({ kind: "queued", versionNumber: 2 });
+    expect(
+      await sourceRepository.findSource(spaceId, sourceId, false),
+    ).toMatchObject({
+      versionNumber: 1,
+      status: "lista",
+      pending: { versionNumber: 2, status: "en_cola", format: "pdf" },
+    });
+    expect(
+      await sourceRepository.findSource(spaceId, sourceId, true),
+    ).toMatchObject({ versionNumber: 1, pending: null });
+    expect(await memberText(sourceId)).toBe("# Política\nVersión uno");
+    await expect(
+      replace(sourceId, "otra.md", encode("# Otra")),
+    ).resolves.toEqual({ kind: "rejected", code: "reemplazo_en_curso" });
+    await expect(retry(sourceId)).resolves.toEqual({ kind: "already_queued" });
+    expect(await jobCount(sourceId, 2)).toBe(1);
+    await expect(
+      replace(sourceId, "intento.md", encode("# x"), member),
+    ).resolves.toEqual({ kind: "unauthorized" });
+    await expect(
+      replace(sourceId, "intento.md", encode("# x"), foreignOwner),
+    ).resolves.toEqual({ kind: "unauthorized" });
+    await expect(retry(sourceId, member)).resolves.toEqual({
+      kind: "unauthorized",
+    });
+
+    await startWorker();
+    await waitForSource(sourceId, (source) => source.pending === null);
+    expect(await memberText(sourceId)).toBe("Versión dos en PDF");
+    const versions = await connection.client`
+      select number, status from public.source_versions
+      where source_id = ${sourceId} order by number
+    `;
+    expect(versions).toEqual([
+      { number: 1, status: "reemplazada" },
+      { number: 2, status: "lista" },
+    ]);
+    await expect(
+      replace(sourceId, "igual.pdf", syntheticPdf(["Versión dos en PDF"])),
+    ).resolves.toEqual({ kind: "rejected", code: "sin_cambios" });
+
+    // A failed candidate never touches the current version.
+    await replace(sourceId, "roto.md", new Uint8Array([0xff, 0xfe, 0x00]));
+    await waitForSource(
+      sourceId,
+      (source) => source.pending?.status === "fallida",
+    );
+    expect(
+      await sourceRepository.findSource(spaceId, sourceId, false),
+    ).toMatchObject({
+      versionNumber: 2,
+      status: "lista",
+      pending: { versionNumber: 3, errorCode: "codificacion_invalida" },
+    });
+    expect(await memberText(sourceId)).toBe("Versión dos en PDF");
+
+    // A double click queues a single retry; at most three manual retries.
+    const doubleClick = await Promise.all([retry(sourceId), retry(sourceId)]);
+    expect(doubleClick.map((result) => result.kind).sort()).toEqual([
+      "already_queued",
+      "queued",
+    ]);
+    expect(await jobCount(sourceId, 3)).toBe(2);
+    for (let manualRetry = 1; manualRetry <= 3; manualRetry += 1) {
+      if (manualRetry > 1) {
+        await expect(retry(sourceId)).resolves.toMatchObject({
+          kind: "queued",
+        });
+      }
+      await waitForSource(
+        sourceId,
+        (source) =>
+          source.pending?.status === "fallida" &&
+          source.pending.manualRetries === manualRetry,
+      );
+    }
+    await expect(retry(sourceId)).resolves.toEqual({
+      kind: "limite_de_reintentos",
+    });
+
+    // A corrected file supersedes the failed candidate.
+    await expect(
+      replace(sourceId, "corregido.md", encode("# Política\nVersión cuatro")),
+    ).resolves.toEqual({ kind: "queued", versionNumber: 4 });
+    await waitForSource(
+      sourceId,
+      (source) => source.pending === null && source.versionNumber === 4,
+    );
+    expect(await memberText(sourceId)).toBe("# Política\nVersión cuatro");
+    const finalVersions = await connection.client`
+      select number, status from public.source_versions
+      where source_id = ${sourceId} order by number
+    `;
+    expect(finalVersions.map((version) => version.status)).toEqual([
+      "reemplazada",
+      "reemplazada",
+      "descartada",
+      "lista",
+    ]);
+
+    // A failed first version can also be corrected by uploading a new file.
+    const failedFirst = await upload("primero.md", encode("   "));
+    if (failedFirst.kind !== "queued") throw new Error("Carga rechazada");
+    await waitForTerminalStatus(failedFirst.sourceId);
+    await replace(failedFirst.sourceId, "primero.md", encode("Ahora sí"));
+    expect(
+      await waitForSource(
+        failedFirst.sourceId,
+        (source) => source.status === "lista",
+      ),
+    ).toMatchObject({ versionNumber: 2, pending: null });
+  }, 120_000);
 
   it("isolates sources by space and role, including crossed identifiers", async () => {
     const sourceId = await queuedSourceId("aislada.md", "# Privada\nSolo A.");

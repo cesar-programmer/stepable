@@ -1,6 +1,6 @@
 # ADR-004 · Fuentes locales para E2
 
-Fecha: 2026-10-01 · Estado: **aceptado parcialmente**: E2.1 y E2.2 cerradas; E2.3 autorizada; E2.4 propuesta.
+Fecha: 2026-10-01 · Estado: **aceptado parcialmente**: E2.1–E2.3 cerradas; E2.4 autorizada.
 
 ## Contexto
 
@@ -44,6 +44,17 @@ El usuario aceptó los límites de PDF (≤ 8 MiB, ≤ 200 páginas, sin cifrar,
 - ya no contiene generación de código (`eval`/`new Function`), por lo que la mitigación prevista con `isEvalSupported` dejó de existir y de ser necesaria.
 
 Se rechaza cualquier PDF con diccionario de cifrado, aunque solo tenga contraseña de propietario, para cumplir “sin cifrar”.
+
+## Resolución de E2.3 del 2026-10-01
+
+El usuario autorizó el reemplazo y el reintento manual:
+- solo para responsables activos;
+- una candidata por fuente y cambio atómico;
+- la vigente se conserva ante un fallo;
+- hasta 3 reintentos sin trabajos duplicados;
+- sustitución de una versión fallida por un archivo corregido.
+
+Decidió conservar por ahora todas las versiones anteriores, sin historial visible y sin purga, hasta resolver la retención en E2.4. Esto sustituye, por ahora, la propuesta inicial de purgar las versiones reemplazadas.
 
 ## Alternativas consideradas
 

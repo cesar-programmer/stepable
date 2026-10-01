@@ -171,7 +171,7 @@ Estado: las acciones, el modelo y la restricción a documentos sintéticos se ap
 | Acción explícita | Responsable activo | Integrante activo |
 | --- | --- | --- |
 | `consultar_fuentes`: listar y leer el contenido de las fuentes **vigentes** del espacio | Sí | Sí |
-| `gestionar_fuentes`: en E2.1, cargar y ver estados y motivos de error; reemplazar, reintentar, descartar y eliminar llegan en E2.3/E2.4 | Sí | No |
+| `gestionar_fuentes`: cargar, reemplazar, reintentar y ver estados, versiones pendientes y motivos de error; la eliminación llega en E2.4 | Sí | No |
 | Descargar el original | Sin definir | Sin definir |
 
 Se aplican RN-11 y el patrón de E1.7:
@@ -193,7 +193,7 @@ Se aplican RN-11 y el patrón de E1.7:
 
 ### Conservación y eliminación
 
-Comportamiento actual en E2.1: originales, texto y metadatos se conservan mientras exista el espacio, porque no hay reemplazo ni borrado de fuentes. pg-boss elimina los trabajos completados a los 2 días. Los logs contienen solo identificadores, duración y código de resultado.
+Comportamiento actual (E2.1–E2.3): originales, texto y metadatos de todas las versiones, incluidas las `reemplazada` y `descartada`, se conservan mientras exista el espacio. No se borran silenciosamente ni se exponen como historial. pg-boss elimina los trabajos completados a los 2 días. Los logs contienen solo identificadores, duración y código de resultado.
 
 La propuesta inicial, aún no aprobada y que se decidirá en E2.3/E2.4, era:
 

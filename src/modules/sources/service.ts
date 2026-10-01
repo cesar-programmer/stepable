@@ -7,6 +7,7 @@ import {
 import type { AccessRepository } from "../access/contract.ts";
 
 import type {
+  RetryVersionResult,
   SourceSection,
   SourceFileStorage,
   SourceListing,
@@ -107,6 +108,106 @@ export async function uploadSource(
     await removeQuietly(dependencies.storage, storageKey);
     throw error;
   }
+}
+
+export type ReplaceSourceResult =
+  | { kind: "queued"; versionNumber: number }
+  | { kind: "unauthorized" }
+  | { kind: "not_found" }
+  | { kind: "rejected"; code: UploadRejectionCode };
+
+/**
+ * Uploads a new candidate version for an existing source. The current version
+ * stays available until the candidate is ready; a failed candidate is
+ * superseded (kept as "descartada") by a newer upload.
+ */
+export async function replaceSourceFile(
+  dependencies: UploadDependencies,
+  input: {
+    identityId: string;
+    spaceId: string;
+    sourceId: string;
+    fileName: string;
+    bytes: Uint8Array;
+  },
+): Promise<ReplaceSourceResult> {
+  if (
+    !(await authorizeSpaceAction(
+      dependencies.accessRepository,
+      input.identityId,
+      input.spaceId,
+      "gestionar_fuentes",
+    ))
+  ) {
+    return { kind: "unauthorized" };
+  }
+
+  const validated = validateSourceUpload({
+    fileName: input.fileName,
+    byteSize: input.bytes.byteLength,
+    leadingBytes: input.bytes.subarray(0, 1024),
+  });
+  if (!validated.ok) {
+    return { kind: "rejected", code: validated.code };
+  }
+
+  const versionId = randomUUID();
+  const storageKey = `${input.spaceId}/${input.sourceId}/${versionId}`;
+  try {
+    await dependencies.storage.upload(
+      storageKey,
+      input.bytes,
+      validated.contentType,
+    );
+  } catch {
+    return { kind: "rejected", code: "almacenamiento_no_disponible" };
+  }
+
+  try {
+    const created =
+      await dependencies.sourceRepository.createReplacementVersion({
+        sourceId: input.sourceId,
+        versionId,
+        spaceId: input.spaceId,
+        format: validated.format,
+        byteSize: input.bytes.byteLength,
+        sha256: createHash("sha256").update(input.bytes).digest("hex"),
+        storageKey,
+        createdBy: input.identityId,
+      });
+    if (created.kind === "created") {
+      return { kind: "queued", versionNumber: created.versionNumber };
+    }
+    await removeQuietly(dependencies.storage, storageKey);
+    if (created.kind === "unauthorized") return { kind: "unauthorized" };
+    if (created.kind === "not_found") return { kind: "not_found" };
+    return { kind: "rejected", code: created.kind };
+  } catch (error) {
+    await removeQuietly(dependencies.storage, storageKey);
+    throw error;
+  }
+}
+
+/** Re-queues the latest failed version, up to the manual retry limit. */
+export async function retrySourceProcessing(
+  dependencies: ReadDependencies,
+  input: { identityId: string; spaceId: string; sourceId: string },
+): Promise<RetryVersionResult> {
+  if (
+    !(await authorizeSpaceAction(
+      dependencies.accessRepository,
+      input.identityId,
+      input.spaceId,
+      "gestionar_fuentes",
+    ))
+  ) {
+    return { kind: "unauthorized" };
+  }
+  return dependencies.sourceRepository.retryFailedVersion({
+    actorIdentityId: input.identityId,
+    spaceId: input.spaceId,
+    sourceId: input.sourceId,
+  });
 }
 
 export async function listSpaceSources(

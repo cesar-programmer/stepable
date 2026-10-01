@@ -206,6 +206,82 @@ test.describe.serial("E2 sources in the browser", () => {
     ).toBeVisible();
   });
 
+  test("a responsible replaces a source, keeps it on failure and can retry", async ({
+    page,
+    browser,
+  }) => {
+    await login(page, owner);
+    await page.goto(`/spaces/${spaceId}/sources`);
+    await uploadFile(
+      page,
+      "guia-reemplazo.md",
+      Buffer.from("# Guía\nTexto original"),
+    );
+    const row = page
+      .getByRole("listitem")
+      .filter({ hasText: "guia-reemplazo" });
+    await expect(row.getByText("Lista")).toBeVisible({ timeout: 20_000 });
+    await row.getByRole("link", { name: "guia-reemplazo" }).click();
+    await expect(page).toHaveURL(/\/sources\/[0-9a-f-]{36}$/);
+    const detailUrl = page.url();
+
+    const replaceWith = async (name: string, buffer: Buffer) => {
+      await page.getByLabel(/^Reemplazar con otro archivo/).setInputFiles({
+        name,
+        mimeType: name.endsWith(".pdf") ? "application/pdf" : "text/markdown",
+        buffer,
+      });
+      await page.getByRole("button", { name: "Reemplazar archivo" }).click();
+    };
+
+    await replaceWith("nueva.pdf", syntheticPdf(["Texto nuevo en PDF"]));
+    await expect(page.getByText("Texto nuevo en PDF")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Fuente · versión 2")).toBeVisible();
+
+    await replaceWith("rota.md", Buffer.from([0xff, 0xfe, 0x00]));
+    await expect(
+      page.getByText("La versión vigente sigue disponible."),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByText("El archivo no es texto UTF-8 válido."),
+    ).toBeVisible();
+    await expect(page.getByText("Texto nuevo en PDF")).toBeVisible();
+    await page
+      .getByRole("button", { name: /Reintentar procesamiento \(quedan 3\)/ })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: /Reintentar procesamiento \(quedan 2\)/,
+      }),
+    ).toBeVisible({ timeout: 20_000 });
+
+    const context = await browser.newContext();
+    const memberPage = await context.newPage();
+    await login(memberPage, member);
+    await memberPage.goto(detailUrl);
+    await expect(memberPage.getByText("Texto nuevo en PDF")).toBeVisible();
+    await expect(
+      memberPage.getByRole("button", { name: /Reemplazar archivo|Reintentar/ }),
+    ).toHaveCount(0);
+    const memberReplace = await memberPage.request.post(
+      `${detailUrl}/replace`,
+      {
+        multipart: {
+          file: {
+            name: "x.md",
+            mimeType: "text/markdown",
+            buffer: Buffer.from("x"),
+          },
+        },
+        maxRedirects: 0,
+      },
+    );
+    expect(memberReplace.status()).toBe(404);
+    await context.close();
+  });
+
   test("a member reads only ready sources and other spaces get 404", async ({
     page,
     browser,

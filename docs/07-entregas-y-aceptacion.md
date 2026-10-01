@@ -5,7 +5,7 @@ Actualizado: 2026-10-01.
 
 ## Etapa actual: E1 cerrada localmente
 
-Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2.1 (Markdown) está cerrada localmente tras la comprobación manual del usuario. E2.2 (PDF) está cerrada tras la comprobación manual del usuario. E2.3 está autorizada; E2.4 sigue propuesta. Piloto y proveedores permanecen fuera del alcance.
+Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2.1 (Markdown) está cerrada localmente tras la comprobación manual del usuario. E2.2 (PDF) está cerrada tras la comprobación manual del usuario. E2.3 está cerrada tras la confirmación manual del usuario. E2.4 está autorizada. Piloto y proveedores permanecen fuera del alcance.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -108,13 +108,13 @@ Pasaron 26 pruebas de integración, 12 de navegador y 26 unitarias, además de f
 
 ## Plan de E2
 
-Estado: E2.1 y E2.2 cerradas; E2.3 autorizada; E2.4 propuesta en [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Exclusivamente local.
+Estado: E2.1, E2.2 y E2.3 cerradas; E2.4 autorizada según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Exclusivamente local.
 
 | Paso | Trabajo | Estado |
 | --- | --- | --- |
 | E2.1 Recorrido mínimo Markdown | Fuentes, versiones, segmentos, bucket privado, carga por Route Handler, pg-boss y `pnpm worker`, extracción Markdown, vistas por rol | Cerrada: verificación automática y comprobación manual del usuario |
 | E2.2 PDF con texto | `pdfjs-dist` en `worker_threads`, segmentos por página, firma, ≤ 8 MiB, ≤ 200 páginas, sin cifrado y sin OCR | Cerrada: verificación automática y comprobación manual del usuario |
-| E2.3 Reemplazo y reintentos | Versión candidata, cambio atómico, reemplazo fallido sin pérdida, reintento manual, conservación de versiones | Propuesta; la conservación se decide entonces |
+| E2.3 Reemplazo y reintentos | Versión candidata, cambio atómico, reemplazo fallido sin pérdida, hasta 3 reintentos manuales, conservación de versiones anteriores | Cerrada: verificación automática y confirmación manual del usuario |
 | E2.4 Eliminación y cierre | Eliminación, purga, conciliación de huérfanos, auditoría de fuentes, README y evidencia de CA-02 | Propuesta; la eliminación se decide entonces |
 
 ### E2.1 · Criterios de aceptación
@@ -199,3 +199,39 @@ Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual 
 2. Como responsable, en **Fuentes**, cargar `manual-con-texto.pdf`. Debe llegar a “Lista” con “3 páginas · 2 con texto”; al abrirlo se ven las páginas 1 y 3. Cargar `corto.pdf`: también queda “Lista”.
 3. Cargar `escaneado-sin-texto.pdf`, `cifrado.pdf` y `danado.pdf`: cada uno debe mostrar “Falló” con su motivo. Cargar `demasiadas-paginas.pdf`: “Falló” por el límite de 200 páginas.
 4. Cargar un `.md` para confirmar que Markdown sigue funcionando.
+
+### Resultado de E2.3
+
+Implementado y verificado automáticamente el 2026-10-01 según las reglas indicadas por el usuario. Solo responsables activos reemplazan y reintentan. La identidad de la fuente se conserva. La vigente sigue disponible mientras se procesa la candidata y cambia de forma atómica. Una candidata fallida no afecta a la vigente y muestra su motivo. Hay una sola candidata en curso y hasta 3 reintentos manuales sin trabajos duplicados. Las versiones anteriores se conservan sin historial visible.
+
+Evidencia:
+
+- **Migración** `20261001030000_e2_3_source_replacement.sql` (`manual_retries`), aplicada con `pnpm db:migrate`, sin reset; datos locales conservados.
+- **`pnpm test:integration:sources`, 8/8.** La nueva prueba, con el worker detenido y reanudado para observar el estado intermedio, cubre:
+  - candidata pendiente con la vigente legible por el integrante;
+  - segunda carga rechazada;
+  - doble reintento sin segundo trabajo;
+  - rechazo de integrante y de usuario ajeno;
+  - cambio atómico Markdown → PDF con v1 `reemplazada` conservada;
+  - `sin_cambios`;
+  - candidata fallida sin pérdida;
+  - doble clic con un solo trabajo;
+  - tres reintentos y el límite;
+  - archivo corregido que deja `descartada` a la fallida;
+  - primera versión fallida corregida.
+- **`pnpm test:e2e:sources`, 5/5:**
+  - reemplazo por PDF con el contenido nuevo visible;
+  - reemplazo fallido con el motivo y el contenido anterior;
+  - reintento que descuenta un intento;
+  - integrante sin controles y con 404 al reemplazar por petición directa.
+- **Regresión:** `pnpm verify` (46 pruebas unitarias, higiene y build), `pnpm test:integration` 34/34, `pnpm test:e2e` 17/17 y `git diff --check`. Sin residuos de prueba.
+
+Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E2.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 3 versiones (Markdown `lista` 1, PDF `lista` 1, PDF `fallida` 1), 3 objetos y 0 trabajos pendientes; no aparecen versiones de reemplazo en la base local. Se registra solo como dato agregado, sin consultar contenido ni PII. E2.3 queda cerrada localmente.
+
+### E2.3 · Prueba manual
+
+1. Ejecutar `pnpm db:migrate`. Luego, en dos terminales, `pnpm dev` y `pnpm worker`. Si hace falta, `pnpm sources:sample-pdfs`.
+2. Como responsable, abrir una fuente lista y usar **Reemplazar archivo** con otro `.md` o con `manual-con-texto.pdf`. La versión sube a 2 y se ve el contenido nuevo.
+3. Reemplazar con `danado.pdf`. Debe aparecer “Reemplazo · versión 3 … Falló” con su motivo, y el contenido anterior sigue visible.
+4. Pulsar **Reintentar procesamiento** hasta agotar los 3 intentos; después aparece el aviso de carga corregida. Cargar un archivo válido: pasa a ser la vigente.
+5. Como integrante, abrir la misma fuente: se ve solo el contenido vigente, sin controles.
