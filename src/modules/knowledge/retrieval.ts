@@ -38,15 +38,19 @@ export function mergeCandidates(
 /** Numbers fragments and bounds each fragment and the whole context. */
 export function prepareFragments(
   candidates: FragmentCandidate[],
+  limits: {
+    fragmentMaxChars: number;
+    contextMaxChars: number;
+  } = assistantLimits,
 ): RetrievedFragment[] {
   const fragments: RetrievedFragment[] = [];
   let total = 0;
   for (const candidate of candidates) {
     const content =
-      candidate.content.length > assistantLimits.fragmentMaxChars
-        ? `${candidate.content.slice(0, assistantLimits.fragmentMaxChars)}…`
+      candidate.content.length > limits.fragmentMaxChars
+        ? `${candidate.content.slice(0, limits.fragmentMaxChars)}…`
         : candidate.content;
-    if (total + content.length > assistantLimits.contextMaxChars) break;
+    if (total + content.length > limits.contextMaxChars) break;
     total += content.length;
     fragments.push({ ...candidate, content, ref: fragments.length + 1 });
   }

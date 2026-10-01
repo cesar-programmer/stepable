@@ -3,6 +3,7 @@ import type {
   ChatModel,
   TextEmbedder,
 } from "../../modules/knowledge/contract.ts";
+import { routePromptMarker } from "../../modules/routes/generation.ts";
 
 /**
  * Deterministic stand-ins for technical tests only. They exercise the
@@ -12,7 +13,12 @@ import type {
 export class SimulatedChatModel implements ChatModel {
   readonly label = "simulado";
 
-  async complete(input: { user: string }): Promise<ChatCompletion> {
+  async complete(input: {
+    system: string;
+    user: string;
+  }): Promise<ChatCompletion> {
+    if (input.system.includes(routePromptMarker))
+      return simulatedRoute(input.user);
     const first = /<fragmento id="(\d+)"[^>]*>\n([\s\S]*?)\n<\/fragmento>/.exec(
       input.user,
     );
@@ -28,6 +34,36 @@ export class SimulatedChatModel implements ChatModel {
       }),
     };
   }
+}
+
+/** Three steps citing the received fragments in turn. */
+function simulatedRoute(user: string): ChatCompletion {
+  const fragments = [
+    ...user.matchAll(/<fragmento id="(\d+)"[^>]*>\n([\s\S]*?)\n<\/fragmento>/g),
+  ];
+  if (fragments.length === 0) {
+    return { text: JSON.stringify({ estado: "insuficiente", pasos: [] }) };
+  }
+  const pasos = [0, 1, 2].map((index) => {
+    const [, ref, content] = fragments[index % fragments.length];
+    const excerpt = content.replace(/\s+/g, " ").slice(0, 160);
+    return {
+      titulo: `Paso simulado ${index + 1}`,
+      leccion: `Según la documentación: ${excerpt} [${ref}]`,
+      citas: [Number(ref)],
+      pregunta: `¿Qué indica el fragmento ${ref}?`,
+      opciones: ["Lo que dice la documentación", "Otra cosa", "Nada"],
+      correcta: 0,
+      explicacion: `Lo indica el fragmento [${ref}].`,
+    };
+  });
+  return {
+    text: JSON.stringify({
+      estado: "generado",
+      titulo: "Ruta simulada",
+      pasos,
+    }),
+  };
 }
 
 const dimensions = 64;

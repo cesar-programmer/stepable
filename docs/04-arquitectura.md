@@ -406,3 +406,30 @@ Limitaciones conocidas:
 - El embedder simulado solo mide coincidencia de palabras y no prueba recuperación semántica.
 - No hay límite de consultas por usuario ni presupuesto acumulado; el gasto se acota por consulta y por la configuración del proveedor.
 - No hay historial; las respuestas no se guardan.
+
+## 21. Borradores de onboarding con IA (E4.1)
+
+Estado: prototipo local implementado y evaluado inicialmente el 2026-10-01 ([ADR-006](decisiones/ADR-006-rutas-e4-1.md)); comprobación manual pendiente.
+
+- **Datos:** `routes`, `route_sources`, `route_steps` (posición única diferida para reordenar), `route_citations` (instantánea con versión citada) y `route_generation_attempts`. Todas con RLS y sin privilegios para los roles del navegador.
+- **Generación:**
+  - acción de servidor → transacción con bloqueo por espacio, validación de fuentes vigentes y límite diario → cola `generar-ruta` en la misma transacción;
+  - en el worker, `generateRouteDraft` reclama la ruta con su token y recupera fragmentos de las fuentes elegidas (léxico + pgvector);
+  - registra el intento y hace una llamada de 120 s como máximo; después valida y guarda.
+- **Generación atascada:** el barrido la marca `fallida` a los 5 minutos.
+- **Interfaz:**
+  - `/spaces/[spaceId]/routes`: listado, solicitud y aviso “Revisar”;
+  - `/spaces/[spaceId]/routes/[routeId]`: editor del borrador, publicación, regeneración y lectura publicada.
+
+  Los enlaces de las citas solo se ofrecen si la fuente sigue activa, y la página de la fuente vuelve a autorizar.
+- **Evaluación real:** `pnpm routes:evaluate`, con exactamente 2 generaciones sobre documentos sintéticos; `--simulado` permite un ensayo gratuito.
+
+## 22. Aislamiento entre trabajos de prueba y trabajos reales
+
+Desde el 2026-10-01, ninguna prueba automática puede provocar llamadas de pago, aunque haya un worker real en marcha:
+
+1. **Namespace de trabajos** (`STEPABLE_JOB_NAMESPACE`): `local` por defecto y `pruebas` en todos los comandos de prueba (`with-local-supabase-env`). Los nombres de cola dependen de él (`procesar-fuente`, `procesar-fuente.pruebas`…), así que un worker solo recibe trabajos de su namespace.
+2. **Guardia en los datos:** `spaces.job_namespace` registra el namespace con el que se creó cada espacio. El worker solo inicia procesamiento, reclama generaciones de rutas e indexa embeddings de espacios de su namespace. Un trabajo mal dirigido termina sin efecto y sin llamar al proveedor.
+3. **Playwright no reutiliza servidores:** con `reuseExistingServer: false`, si el puerto 3000 está ocupado, las pruebas de navegador fallan antes de enviar nada.
+
+Un worker iniciado antes de este cambio no tiene la guardia; hay que reiniciarlo para que la cargue.

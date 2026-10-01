@@ -12,7 +12,7 @@ Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003.
 | E1 Base y acceso | RF-01, RF-02 | CA-01: dos roles acceden a su espacio; accesos no autorizados rechazados, incluida manipulación de identificadores |
 | E2 Fuentes | RF-03 | CA-02: archivo permitido llega a listo, error se ve y se puede reintentar sin duplicar resultados |
 | E3 Asistente | RF-08 | CA-03: preguntas de referencia producen evidencia resoluble; preguntas sin respaldo reconocen insuficiencia; aislamiento por espacio. Prototipo local cerrado el 2026-10-01; historial de conversaciones (“chats aislados” persistentes) pospuesto |
-| E4 Autoría | RF-04, RF-05 | CA-04: borrador editable, publicación solo por responsable y versión publicada estable |
+| E4 Autoría | RF-04, RF-05 | CA-04: borrador editable, publicación solo por responsable y versión publicada estable. E4.1 cerrada en el prototipo local el 2026-10-01 |
 | E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado |
 | E6 Piloto | Recorrido completo | CA-06: prueba documentada con usuarios invitados, incidencias y consumo registrado |
 
@@ -297,3 +297,50 @@ Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-005](decisiones/
   - no hay límite acumulado de gasto ni de consultas por usuario;
   - no hay umbral de similitud;
   - el modelo cita en la lista y no como marcas en el texto.
+
+## E4.1 · Borrador de onboarding con IA
+
+Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-006](decisiones/ADR-006-rutas-e4-1.md)).
+
+**Entregado:**
+- objetivo y de 1 a 5 fuentes vigentes;
+- generación con el modelo configurado (de 3 a 7 pasos con lección citada y pregunta de opción múltiple);
+- insuficiencia reconocida;
+- edición, reordenamiento y eliminación de pasos;
+- publicación revalidada y estable;
+- lectura para ambos roles, sin clave de respuesta para integrantes;
+- avisos de citas obsoletas;
+- 5 intentos por espacio y día.
+
+**Fuera de E4.1:** ejercicios de código, adaptación, historial y versiones nuevas de rutas, respuestas, calificación y progreso (E5).
+
+- **Pruebas técnicas:**
+  - 64 unitarias;
+  - `pnpm test:integration:routes` 6/6 y `pnpm test:e2e:routes` 2/2;
+  - regresión: integración 48/48 y navegador 22/22;
+  - `pnpm verify` y `git diff --check`.
+- **Evaluación con modelo real:** 2 generaciones; objetivo cubierto → borrador correcto con citas, objetivo no cubierto → insuficiente. Detalle y consumo en el [documento 06](06-ia-y-evaluacion.md#evaluación-de-e41-generación-de-rutas).
+- **Protección añadida antes del cierre:** separación de trabajos de prueba por namespace. `pnpm test:integration:isolation` 3/3 (un worker de otro namespace hizo 0 llamadas a su modelo y a su embedder falsos); integración 51/51; `pnpm verify` (64 unitarias); navegador afectado en modo simulado: fuentes 6/6, rutas 2/2 y asistente 2/2, sin trabajos en colas normales.
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E4.1 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior de su espacio: 3 rutas (1 lista y 2 con evidencia insuficiente) y 4 intentos de generación registrados.
+
+**Incidente del 2026-10-01 (cerrado con la protección de §22 del documento 04):**
+
+- **Hechos comprobados:**
+  - durante una regresión ejecutada por el asistente de desarrollo, seguían en marcha el `pnpm dev` y el `pnpm worker` del usuario, en modo real;
+  - el worker había arrancado a las 15:48, hora local, antes de la protección;
+  - las pruebas de navegador reutilizaron ese servidor, que encoló en las colas normales 1 trabajo de generación, 9 de procesamiento y 1 de purga de datos de prueba;
+  - el worker del usuario los completó; el de generación duró 1,28 s.
+- **Estimado, no comprobado:**
+  - probablemente 1 llamada corta a `gpt-4.1-mini`, por una duración similar a las generaciones manuales con llamada real que acabaron en insuficiente;
+  - y hasta unas 5 solicitudes de embeddings de textos sintéticos breves.
+
+  No se calculó un importe; los datos de prueba se eliminaron y la base no conserva sus intentos. El registro del worker del usuario puede confirmarlo (`route_generation`, `segment_embeddings_saved` hacia las 15:58).
+- **Causa:** pruebas y worker real compartían colas, sin separación por entorno, y Playwright reutilizaba un servidor ya arrancado. Además, se lanzó la regresión sin detenerse al detectar esos procesos.
+
+### E4.1 · Prueba manual
+
+1. Reiniciar `pnpm dev` y `pnpm worker`.
+2. Como responsable: **Rutas** → escribir un objetivo cubierto por tus fuentes sintéticas, marcar 1 o 2 fuentes y pulsar **Generar borrador**. Esperar “Borrador listo”. Cada generación cuenta en el límite diario de 5.
+3. Editar un paso (texto o respuesta correcta), moverlo o eliminarlo, y pulsar **Publicar ruta**.
+4. Como integrante: abrir la ruta publicada y comprobar que no ve borradores ni respuestas correctas, y que puede abrir las citas.
+5. Opcional: reemplazar una fuente citada y comprobar el aviso “Revisar”.

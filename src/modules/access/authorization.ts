@@ -16,8 +16,15 @@ const permissions: Record<SpaceRole, readonly SpaceAction[]> = {
     "abandonar_espacio",
     "consultar_fuentes",
     "gestionar_fuentes",
+    "consultar_rutas",
+    "gestionar_rutas",
   ],
-  integrante: ["consultar_espacio", "abandonar_espacio", "consultar_fuentes"],
+  integrante: [
+    "consultar_espacio",
+    "abandonar_espacio",
+    "consultar_fuentes",
+    "consultar_rutas",
+  ],
 };
 
 function isMembershipStatus(value: unknown): value is MembershipStatus {

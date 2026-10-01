@@ -64,15 +64,18 @@ export type AssistantResult =
 export type EmbeddingVector = { model: string; values: number[] };
 
 export interface KnowledgeRepository {
+  /** `sourceIds` restricts the search to those sources of the space. */
   searchLexical(
     spaceId: string,
     question: string,
     limit: number,
+    sourceIds?: string[],
   ): Promise<FragmentCandidate[]>;
   searchSemantic(
     spaceId: string,
     embedding: EmbeddingVector,
     limit: number,
+    sourceIds?: string[],
   ): Promise<FragmentCandidate[]>;
   listSegmentsMissingEmbeddings(
     model: string,

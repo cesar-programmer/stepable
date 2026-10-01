@@ -37,6 +37,7 @@ import {
   sourceSegments,
   sourceVersions,
   sources,
+  spaces,
 } from "./schema.ts";
 
 type Transaction = Parameters<
@@ -178,10 +179,20 @@ async function lockAndAuthorize(
 export class PostgresSourceRepository implements SourceRepository {
   private readonly database: StepableDatabase;
   private readonly queue: SourceJobEnqueuer | null;
+  /**
+   * When set (worker side), only content of spaces in this job namespace is
+   * processed, so a worker never touches data created by another environment.
+   */
+  private readonly jobNamespace: string | null;
 
-  constructor(database: StepableDatabase, queue: SourceJobEnqueuer | null) {
+  constructor(
+    database: StepableDatabase,
+    queue: SourceJobEnqueuer | null,
+    options: { jobNamespace?: string } = {},
+  ) {
     this.database = database;
     this.queue = queue;
+    this.jobNamespace = options.jobNamespace ?? null;
   }
 
   private requireQueue(): SourceJobEnqueuer {
@@ -616,7 +627,15 @@ export class PostgresSourceRepository implements SourceRepository {
         })
         .from(sourceVersions)
         .innerJoin(sources, eq(sources.id, sourceVersions.sourceId))
-        .where(eq(sourceVersions.id, versionId))
+        .innerJoin(spaces, eq(spaces.id, sources.spaceId))
+        .where(
+          and(
+            eq(sourceVersions.id, versionId),
+            this.jobNamespace
+              ? eq(spaces.jobNamespace, this.jobNamespace)
+              : undefined,
+          ),
+        )
         .limit(1)
         .for("update", { of: sourceVersions });
 

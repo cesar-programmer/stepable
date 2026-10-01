@@ -12,7 +12,9 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev",
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    // Never reuse a server started outside the test command: it would not
+    // carry the "pruebas" job namespace or the simulated AI mode.
+    reuseExistingServer: false,
   },
   projects: [
     {

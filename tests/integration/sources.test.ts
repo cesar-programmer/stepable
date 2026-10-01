@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createSourceBoss,
   PgBossSourceQueue,
+  queueNamesFor,
   startSourceBoss,
 } from "../../src/adapters/pg-boss/source-queue.ts";
 import { PostgresAccessRepository } from "../../src/adapters/postgres/access-repository.ts";
@@ -131,7 +132,7 @@ async function memberText(sourceId: string) {
 async function jobCount(sourceId: string, versionNumber: number) {
   const [row] = await connection.client`
     select count(*)::int as count from pgboss.job
-    where name = 'procesar-fuente' and data->>'versionId' = (
+    where name = ${queueNamesFor("pruebas").processing} and data->>'versionId' = (
       select id::text from public.source_versions
       where source_id = ${sourceId} and number = ${versionNumber}
     )
@@ -240,7 +241,7 @@ describe("E2 Markdown and PDF sources", () => {
     expect(queued).toMatchObject({ status: "en_cola", versionNumber: 1 });
     const [job] = await connection.client`
       select count(*)::int as count from pgboss.job
-      where name = 'procesar-fuente'
+      where name = ${queueNamesFor("pruebas").processing}
         and data->>'versionId' = (
           select id::text from public.source_versions where source_id = ${sourceId}
         )

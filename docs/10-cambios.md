@@ -1,5 +1,25 @@
 # Historial de cambios
 
+## 2026-10-01 · 2.8 · Cierre de E4.1 y aislamiento de pruebas
+
+- El usuario confirmó la comprobación manual de E4.1 y aceptó la entrega; no se le atribuyen escenarios adicionales.
+- Añadido el aislamiento entre trabajos de prueba y reales:
+  - namespace de colas (`pruebas`);
+  - guardia por `spaces.job_namespace` en el worker;
+  - Playwright sin reutilizar servidores.
+
+  Verificado sin llamadas reales.
+- Registrado un incidente previo: pruebas ejecutadas con el servidor y el worker reales del usuario en marcha. Hechos comprobados: 11 trabajos de prueba completados por su worker. Estimado: 1 llamada corta de generación y unos 5 embeddings; sin importe calculado.
+- E4.1 cerrada para el prototipo local en un commit local, sin push. E5.1 autorizada.
+
+## 2026-10-01 · 2.7 · Implementación de E4.1
+
+- Añadidos borradores de onboarding generados con IA a partir de un objetivo y hasta 5 fuentes vigentes. La generación se hace en el worker, con una llamada por intento, sin reintentos de pago, validación de estructura y citas, e insuficiencia sin pasos inventados.
+- Edición, reordenamiento y eliminación de pasos con detección de conflictos; publicación revalidada y estable, solo con citas vigentes; lectura para ambos roles sin clave de respuesta para integrantes.
+- Citas con estado calculado (vigente, versión anterior o fuente eliminada) y marca “Revisar”; el contenido derivado sobrevive a la eliminación de fuentes.
+- Límite de 5 intentos por espacio y día (no es un tope monetario).
+- Pruebas técnicas: 64 unitarias, 48 de integración y 22 de navegador. Evaluación real con 2 generaciones (1017/590 tokens). Sin comprobación manual atribuida, commit ni push.
+
 ## 2026-10-01 · 2.6 · Cierre de E3
 
 - El usuario confirmó la comprobación manual del asistente con IA real y aceptó la entrega; no se le atribuyen escenarios adicionales.

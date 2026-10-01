@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E2 y E3 cerradas para el prototipo local; siguiente núcleo propuesto, no iniciado · Versión documental: 2.6.
+Actualizado: 2026-10-01 · Fase: E2, E3 y E4.1 cerradas para el prototipo local; E5.1 autorizada · Versión documental: 2.8.
 
 ## Hechos acordados
 
@@ -28,9 +28,11 @@ Actualizado: 2026-10-01 · Fase: E2 y E3 cerradas para el prototipo local; sigui
 
 - E3 repriorizada el 2026-10-01: validar el asistente con IA real. El usuario elegirá proveedor (DeepSeek u OpenAI) y modelo y configurará su clave localmente. Los embeddings son una decisión aparte. Solo se envían preguntas y fragmentos sintéticos; no hay historial.
 
+- E4.1 aprobada el 2026-10-01 con las decisiones de ADR-006: objetivo y hasta 5 fuentes, de 3 a 7 pasos con lección y opción múltiple, borradores solo para responsables, publicación explícita y estable, 5 intentos por espacio y día, y avisos de citas obsoletas.
+
 ## Actualización más reciente
 
-2026-10-01: el usuario confirmó la comprobación manual del asistente con IA real y aceptó E3. E3 se cierra para el prototipo local en un commit local, con el historial de conversaciones pospuesto y las limitaciones del [documento 07](07-entregas-y-aceptacion.md#e3--asistente-con-evidencia-prototipo). Se reutilizó la verificación técnica aprobada, porque solo cambiaron documentación y `.env.example`, y no se repitieron llamadas de pago.
+2026-10-01: el usuario confirmó la comprobación manual de E4.1 y la aceptó. Antes del commit se añadió el aislamiento entre trabajos de prueba y reales ([documento 04 §22](04-arquitectura.md#22-aislamiento-entre-trabajos-de-prueba-y-trabajos-reales)) tras un incidente con probables llamadas de pago pequeñas, que está registrado en el [documento 07](07-entregas-y-aceptacion.md#e41--borrador-de-onboarding-con-ia). E4.1 se cierra en un commit local. E5.1 queda autorizada con las cinco reglas de aprobación y reintento.
 
 ## Realizado
 
@@ -142,19 +144,25 @@ Actualizado: 2026-10-01 · Fase: E2 y E3 cerradas para el prototipo local; sigui
 
 - Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual del asistente con IA real funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 5 segmentos y 5 embeddings `openai:text-embedding-3-small`.
 
+- E4.1, 2026-10-01:
+  - pruebas técnicas: 64 unitarias, integración 48/48 (6 de rutas), navegador 22/22 (2 de rutas), `pnpm verify` y `git diff --check`; datos intactos (2/1/2, 3 fuentes, 5 segmentos, 5 embeddings) y sin rutas ni trabajos residuales;
+  - evaluación con modelo real: 2 generaciones (objetivo cubierto → borrador correcto con citas; no cubierto → insuficiente), 1017/590 tokens;
+  - Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E4.1 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior de su espacio: 3 rutas (1 lista y 2 con evidencia insuficiente) y 4 intentos de generación registrados.
+- Aislamiento de pruebas (2026-10-01): `pnpm test:integration:isolation` 3/3, integración 51/51, `pnpm verify` y navegador afectado en modo simulado (fuentes 6/6, rutas 2/2, asistente 2/2). Esta ejecución no dejó trabajos en las colas normales. Incidente previo con llamadas probables registrado en el documento 07.
+
 ## No realizado
 
-No se implementaron historial de conversaciones (pospuesto), límites acumulados de gasto o de consultas, umbral de similitud, prueba directa de instrucciones maliciosas, generación de rutas o lecciones, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
+No se implementaron respuestas, calificación ni progreso de rutas (E5), versiones nuevas o historial de rutas, ejercicios de código, adaptación, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Presentar al usuario la propuesta breve de E4 (borrador de onboarding generado con IA y revisado por el responsable) con sus decisiones de producto. No implementarla sin autorización ni preparar el piloto por inferencia.
+Implementar E5.1 (recorrer una ruta publicada, responder, recibir retroalimentación y retomar el progreso) con las reglas aprobadas el 2026-10-01. Sin progreso del equipo, reinicio, ejercicios de código ni gamificación.
 
 ## Decisiones que requieren aprobación
 
-- **E3:** límite de gasto acumulado y política de consultas por usuario antes de ampliar el uso del modelo real (PEN-08).
-- **Antes de E3/E4 persistentes:** destino de citas y lecciones ante fuentes reemplazadas o eliminadas (PEN-04).
-- **Antes de datos reales o despliegue:** objetos huérfanos (PEN-12) y retención (PEN-06).
+- **Antes de ampliar el uso de IA:** límite de gasto acumulado y consultas por usuario (PEN-08).
+- **Antes de E5:** criterios de aprobación, reintentos y desbloqueo de pasos (PEN-03); cómo actualizar una ruta publicada con una versión nueva (PEN-04).
+- **Antes de datos reales o despliegue:** objetos huérfanos (PEN-12) y retención, incluido el contenido derivado de rutas (PEN-06).
 
 ## Pendientes menores de E1
 
@@ -165,7 +173,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E2 está cerrada en `fb5c3d7` y E3 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local` (configuración y clave de IA), secretos, dependencias, build y resultados de prueba permanecen ignorados.
+E3 está cerrada en `ebe9719` y E4.1, con el aislamiento de pruebas, en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha: si está arrancado, las de navegador fallan hasta detenerlo. Un `pnpm worker` iniciado antes del 2026-10-01 a las 15:55 (hora local) debe reiniciarse para cargar la guardia.
 
 ## Formato para futuras sesiones
 

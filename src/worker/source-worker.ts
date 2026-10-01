@@ -1,22 +1,25 @@
 import {
   createSourceBoss,
-  sourceProcessingQueue,
-  sourcePurgeQueue,
+  queueNamesFor,
   startSourceBoss,
+  type RouteGenerationJobData,
   type SourceJobData,
   type SourcePurgeJobData,
 } from "../adapters/pg-boss/source-queue.ts";
 import { configuredModels } from "../adapters/ai/models.ts";
+import { parseJobNamespace } from "../lib/job-namespace.ts";
 import { WorkerThreadPdfExtractor } from "../adapters/pdfjs/pdf-text-extractor.ts";
 import { PostgresKnowledgeRepository } from "../adapters/postgres/knowledge-repository.ts";
 import { createPostgresDatabase } from "../adapters/postgres/database.ts";
+import { PostgresRouteRepository } from "../adapters/postgres/route-repository.ts";
 import { PostgresSourceRepository } from "../adapters/postgres/source-repository.ts";
 import { SupabaseSourceStorage } from "../adapters/supabase/source-storage.ts";
 import {
   type PdfTextExtractor,
   TransientProcessingError,
 } from "../modules/sources/contract.ts";
-import type { TextEmbedder } from "../modules/knowledge/contract.ts";
+import type { ChatModel, TextEmbedder } from "../modules/knowledge/contract.ts";
+import { generateRouteDraft } from "../modules/routes/service.ts";
 import { indexPendingEmbeddings } from "../modules/knowledge/service.ts";
 import { processSourceVersion } from "../modules/sources/processing.ts";
 import { purgeDeletedSource } from "../modules/sources/purge.ts";
@@ -28,6 +31,8 @@ const staleProcessingMilliseconds = 15 * 60 * 1000;
 // worker waits before trying again instead of retrying every minute.
 const embeddingSegmentsPerPass = 64;
 const embeddingBackoffMilliseconds = 10 * 60 * 1000;
+// Longer than the 120 s generation call and the 180 s job expiration.
+const staleGenerationMilliseconds = 5 * 60 * 1000;
 
 export type SourceWorker = { stop(): Promise<void> };
 
@@ -42,9 +47,18 @@ export async function startSourceWorker(options: {
   pollingIntervalSeconds?: number;
   pdfExtractor?: PdfTextExtractor;
   embedder?: TextEmbedder | null;
+  routeModel?: ChatModel | null;
+  jobNamespace?: string;
 }): Promise<SourceWorker> {
+  const jobNamespace = options.jobNamespace ?? parseJobNamespace(process.env);
+  const queues = queueNamesFor(jobNamespace);
+  const guard = { jobNamespace };
   const connection = createPostgresDatabase(options.databaseUrl);
-  const repository = new PostgresSourceRepository(connection.database, null);
+  const repository = new PostgresSourceRepository(
+    connection.database,
+    null,
+    guard,
+  );
   const storage = new SupabaseSourceStorage(
     options.supabaseUrl,
     options.serviceRoleKey,
@@ -56,7 +70,17 @@ export async function startSourceWorker(options: {
       : options.embedder;
   const knowledgeRepository = new PostgresKnowledgeRepository(
     connection.database,
+    guard,
   );
+  const routeRepository = new PostgresRouteRepository(
+    connection.database,
+    null,
+    guard,
+  );
+  const routeModel =
+    options.routeModel === undefined
+      ? configuredModels(process.env, { chatTimeoutMs: 120_000 }).chatModel
+      : options.routeModel;
   let embeddingsBlockedUntil = 0;
   let indexing: Promise<void> | null = null;
   const indexEmbeddings = (versionIds?: string[]) => {
@@ -90,14 +114,14 @@ export async function startSourceWorker(options: {
   const boss = createSourceBoss(options.databaseUrl, "worker");
 
   try {
-    await startSourceBoss(boss);
+    await startSourceBoss(boss, jobNamespace);
     const workOptions = {
       includeMetadata: true,
       batchSize: 1,
       pollingIntervalSeconds: options.pollingIntervalSeconds ?? 1,
     } as const;
     await boss.work<SourceJobData, void, typeof workOptions>(
-      sourceProcessingQueue,
+      queues.processing,
       workOptions,
       async ([job]) => {
         const startedAt = Date.now();
@@ -138,7 +162,7 @@ export async function startSourceWorker(options: {
       },
     );
     await boss.work<SourcePurgeJobData, void, typeof workOptions>(
-      sourcePurgeQueue,
+      queues.purge,
       workOptions,
       async ([job]) => {
         const startedAt = Date.now();
@@ -170,6 +194,30 @@ export async function startSourceWorker(options: {
         }
       },
     );
+    await boss.work<RouteGenerationJobData, void, typeof workOptions>(
+      queues.routeGeneration,
+      workOptions,
+      async ([job]) => {
+        const startedAt = Date.now();
+        const outcome = await generateRouteDraft(
+          {
+            routeRepository,
+            knowledgeRepository,
+            chatModel: routeModel,
+            embedder,
+            log,
+          },
+          job.data,
+        );
+        log({
+          event: "route_draft_generated",
+          jobId: job.id,
+          routeId: job.data.routeId,
+          outcome,
+          durationMs: Date.now() - startedAt,
+        });
+      },
+    );
   } catch (error) {
     await boss.stop({ graceful: false }).catch(() => undefined);
     await connection.close();
@@ -184,13 +232,19 @@ export async function startSourceWorker(options: {
       })
       .catch(() => log({ event: "source_stale_sweep_failed" }));
     void indexEmbeddings();
+    routeRepository
+      .failStaleGenerations(new Date(Date.now() - staleGenerationMilliseconds))
+      .then((count) => {
+        if (count > 0) log({ event: "route_generations_timed_out", count });
+      })
+      .catch(() => log({ event: "route_stale_sweep_failed" }));
     // Purges still pending after the queue's retries are enqueued again.
     repository
       .claimStalePurges(new Date(Date.now() - staleProcessingMilliseconds))
       .then(async (sourceIds) => {
         for (const sourceId of sourceIds) {
           const data: SourcePurgeJobData = { sourceId };
-          await boss.send(sourcePurgeQueue, data);
+          await boss.send(queues.purge, data);
         }
         if (sourceIds.length > 0) {
           log({ event: "source_purges_requeued", count: sourceIds.length });
@@ -202,7 +256,7 @@ export async function startSourceWorker(options: {
 
   log({
     event: "source_worker_started",
-    queue: sourceProcessingQueue,
+    jobNamespace,
     embeddings: embedder?.model ?? "desactivado",
   });
   void indexEmbeddings();

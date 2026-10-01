@@ -53,6 +53,15 @@ function toCandidate(row: FragmentRow): FragmentCandidate {
   };
 }
 
+function sourceFilter(sourceIds?: string[]): SQL {
+  if (!sourceIds) return sql``;
+  if (sourceIds.length === 0) return sql`and false`;
+  return sql`and source.id in (${sql.join(
+    sourceIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  )})`;
+}
+
 function vectorLiteral(values: number[]): string {
   if (values.length === 0 || values.some((value) => !Number.isFinite(value))) {
     throw new Error("Vector de embedding no válido.");
@@ -62,9 +71,18 @@ function vectorLiteral(values: number[]): string {
 
 export class PostgresKnowledgeRepository implements KnowledgeRepository {
   private readonly database: StepableDatabase;
+  /**
+   * When set (worker side), only content of spaces in this job namespace is
+   * processed, so a worker never touches data created by another environment.
+   */
+  private readonly jobNamespace: string | null;
 
-  constructor(database: StepableDatabase) {
+  constructor(
+    database: StepableDatabase,
+    options: { jobNamespace?: string } = {},
+  ) {
     this.database = database;
+    this.jobNamespace = options.jobNamespace ?? null;
   }
 
   private async fragments(query: SQL): Promise<FragmentCandidate[]> {
@@ -80,6 +98,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
     spaceId: string,
     question: string,
     limit: number,
+    sourceIds?: string[],
   ): Promise<FragmentCandidate[]> {
     return this.fragments(sql`
       select ${fragmentColumns}
@@ -93,6 +112,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
       where source.space_id = ${spaceId}
         and source.status = 'activa'
         and search.query is not null
+        ${sourceFilter(sourceIds)}
         and segment.search_vector @@ search.query
       order by ts_rank_cd(segment.search_vector, search.query) desc,
         source.id, segment.ordinal
@@ -104,6 +124,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
     spaceId: string,
     embedding: EmbeddingVector,
     limit: number,
+    sourceIds?: string[],
   ): Promise<FragmentCandidate[]> {
     return this.fragments(sql`
       select ${fragmentColumns}
@@ -115,6 +136,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
         and vector_row.dimensions = ${embedding.values.length}
       where source.space_id = ${spaceId}
         and source.status = 'activa'
+        ${sourceFilter(sourceIds)}
       order by vector_row.embedding operator(extensions.<=>)
         ${vectorLiteral(embedding.values)}::extensions.vector
       limit ${limit}
@@ -143,6 +165,14 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
       where source.status = 'activa'
         and vector_row.version_id is null
         ${versionFilter}
+        ${
+          this.jobNamespace
+            ? sql`and exists (
+                select 1 from public.spaces space
+                where space.id = source.space_id
+                  and space.job_namespace = ${this.jobNamespace})`
+            : sql``
+        }
       order by version.updated_at, segment.version_id, segment.ordinal
       limit ${limit}
     `)) as unknown as {

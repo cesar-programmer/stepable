@@ -23,6 +23,9 @@ const child = spawn(command, args, {
     // Test commands never reach a paid AI provider, whatever .env files say.
     STEPABLE_AI_CHAT_MODE: "simulado",
     STEPABLE_AI_EMBEDDINGS_MODE: "simulado",
+    // Separate queues and spaces: a running real worker ("local") never
+    // receives or processes test work.
+    STEPABLE_JOB_NAMESPACE: "pruebas",
   },
   stdio: "inherit",
 });

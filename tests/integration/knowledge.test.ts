@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -21,6 +21,7 @@ import {
   getLocalAuthTestConfig,
   type LocalTestIdentity,
 } from "../support/local-auth.ts";
+import { seedReadySource } from "../support/seed-sources.ts";
 
 const config = getLocalAuthTestConfig();
 const admin = createAdminClient(config);
@@ -90,53 +91,16 @@ async function seedSource(
   sections: string[],
   options: { status?: "activa" | "eliminada"; replacedContent?: string } = {},
 ) {
-  const sourceId = randomUUID();
-  const versionId = randomUUID();
-  await connection.client`
-    insert into public.sources (id, space_id, title, created_by)
-    values (${sourceId}, ${targetSpaceId}, ${title}, ${creator.id})
-  `;
-  const insertVersion = async (id: string, number: number, status: string) =>
-    connection.client`
-      insert into public.source_versions
-        (id, source_id, space_id, number, format, byte_size, sha256,
-         storage_key, status, section_count, processed_at, created_by)
-      values (${id}, ${sourceId}, ${targetSpaceId}, ${number}, 'markdown', 100,
-        ${createHash("sha256").update(id).digest("hex")},
-        ${`${targetSpaceId}/${sourceId}/${id}`}, ${status}, 1, now(),
-        ${creator.id})
-    `;
-  if (options.replacedContent) {
-    const oldId = randomUUID();
-    await insertVersion(oldId, 1, "reemplazada");
-    await connection.client`
-      insert into public.source_segments
-        (version_id, ordinal, heading_path, start_line, end_line, content)
-      values (${oldId}, 0, ${[title]}, 1, 2, ${options.replacedContent})
-    `;
-    versionIds.push(oldId);
-  }
-  await insertVersion(versionId, options.replacedContent ? 2 : 1, "lista");
-  for (const [ordinal, content] of sections.entries()) {
-    await connection.client`
-      insert into public.source_segments
-        (version_id, ordinal, heading_path, start_line, end_line, content)
-      values (${versionId}, ${ordinal}, ${[title]}, ${ordinal * 3 + 1},
-        ${ordinal * 3 + 2}, ${content})
-    `;
-  }
-  await connection.client`
-    update public.sources set current_version_id = ${versionId} where id = ${sourceId}
-  `;
-  if (options.status === "eliminada") {
-    await connection.client`
-      update public.sources
-      set status = 'eliminada', deleted_at = now(), deleted_by = ${creator.id}
-      where id = ${sourceId}
-    `;
-  }
-  versionIds.push(versionId);
-  return { sourceId, versionId };
+  const seeded = await seedReadySource(connection.client, {
+    spaceId: targetSpaceId,
+    creatorId: creator.id,
+    title,
+    sections,
+    ...options,
+  });
+  if (seeded.previousVersionId) versionIds.push(seeded.previousVersionId);
+  versionIds.push(seeded.versionId);
+  return seeded;
 }
 
 const ask = (

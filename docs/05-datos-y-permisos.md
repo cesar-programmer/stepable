@@ -213,3 +213,10 @@ Restricción aceptada: durante esta etapa solo se cargan documentos sintéticos,
 ## Asistente (E3)
 
 `consultar_fuentes` también autoriza el asistente para ambos roles activos; la autorización se comprueba antes de recuperar o enviar contenido. Al proveedor aprobado solo se envían la pregunta y hasta 6 fragmentos de la versión vigente de fuentes del espacio. El usuario autorizó enviar únicamente datos de documentos sintéticos (PEN-06). Los embeddings viven en `source_segment_embeddings`, con RLS habilitada, sin acceso de `anon`/`authenticated` y con borrado en cascada con la purga. No se guardan preguntas, respuestas ni historial ([ADR-005](decisiones/ADR-005-asistente-e3.md)).
+
+## Rutas (E4.1)
+
+- **`consultar_rutas`** (ambos roles activos): los integrantes ven solo las rutas publicadas, sin respuesta correcta ni explicación hasta E5.
+- **`gestionar_rutas`** (responsables activos): solicitar, editar, regenerar y publicar borradores.
+- Toda mutación revalida al actor en su transacción. Una ruta de otro espacio responde 404.
+- **Contenido derivado:** las rutas conservan su propio texto y una instantánea de cada cita (título de la fuente, versión y ubicación) aunque la fuente se reemplace o se elimine y purgue. Su retención para datos reales sigue en PEN-06 ([ADR-006](decisiones/ADR-006-rutas-e4-1.md)).

@@ -24,6 +24,7 @@ export type ConfiguredModels = {
 /** Builds both adapters from the server environment; nothing is shared. */
 export function configuredModels(
   values: Record<string, string | undefined>,
+  options: { chatTimeoutMs?: number } = {},
 ): ConfiguredModels {
   try {
     const chat = parseChatModelConfig(values);
@@ -31,7 +32,9 @@ export function configuredModels(
     return {
       chatModel:
         chat.mode === "real"
-          ? new OpenAiCompatibleChatModel(chat)
+          ? new OpenAiCompatibleChatModel(chat, {
+              timeoutMs: options.chatTimeoutMs,
+            })
           : chat.mode === "simulado"
             ? new SimulatedChatModel()
             : null,

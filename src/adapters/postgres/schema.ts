@@ -79,6 +79,7 @@ export const spaces = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
+    jobNamespace: text("job_namespace").notNull().default("local"),
     initialResponsibleId: uuid("initial_responsible_id")
       .notNull()
       .references(() => profiles.identityId, { onDelete: "restrict" }),

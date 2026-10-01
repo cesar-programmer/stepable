@@ -52,3 +52,13 @@ Estados de versión: `en_cola`, `procesando`, `lista`, `fallida`, `reemplazada`,
 | RN-23 | Reintentar procesa la misma versión: no crea otra versión ni duplica el texto. Hay hasta 3 reintentos manuales por versión fallida, solo para responsables activos; una pulsación repetida no encola un segundo trabajo. Los reintentos automáticos siguen en el [documento 04 §19](04-arquitectura.md#19-fuentes-locales-en-e2). | Aplicada en E2.1–E2.3 |
 | RN-24 | Solo un responsable activo puede eliminar una fuente, tras una confirmación explícita de que se borrarán todas sus versiones y archivos, sin papelera. La fuente desaparece para ambos roles en la misma transacción. El worker purga originales y texto de todas las versiones, y ningún trabajo pendiente o en curso puede volver a publicarla. Solo quedan metadatos mínimos ([documento 05](05-datos-y-permisos.md#fuentes-e2)). | Aplicada en E2.4 |
 | RN-25 | Fuente, versiones, texto, archivos y trabajos pertenecen a un único espacio. Toda lectura y escritura filtra por espacio y pasa por la autorización central. La clave de almacenamiento nunca es autorización. | Aplicada en E2.1–E2.2 |
+
+## Rutas generadas (E4.1)
+
+Estado: aplicadas el 2026-10-01 en el prototipo local ([ADR-006](decisiones/ADR-006-rutas-e4-1.md)). RN-01 y la estabilidad de RN-05 se aplican a la primera versión publicada; la edición posterior con versión nueva queda pendiente.
+
+| ID | Regla | Estado |
+| --- | --- | --- |
+| RN-26 | Un borrador se genera solo con fragmentos de las fuentes vigentes seleccionadas. Sin evidencia suficiente se registra como insuficiente, sin pasos inventados. | Aplicada en E4.1 |
+| RN-27 | Solo un responsable activo edita, regenera y publica. La publicación revalida el borrador y exige que todas sus citas apunten a versiones vigentes; después la ruta no se edita. | Aplicada en E4.1 |
+| RN-28 | Si una fuente citada se reemplaza o elimina, la ruta conserva su contenido, la cita se señala y la ruta queda marcada para revisión. Eliminar una fuente no elimina el contenido derivado ya escrito en rutas. | Aplicada en E4.1 |

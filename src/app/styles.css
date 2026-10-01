@@ -415,3 +415,29 @@ textarea {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.route-steps {
+  display: grid;
+  gap: 1.25rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.route-steps > li {
+  border: 1px solid #d9deea;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.route-steps h2 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+
+.route-request fieldset {
+  border: 1px solid #d9deea;
+  border-radius: 0.5rem;
+  display: grid;
+  gap: 0.4rem;
+}

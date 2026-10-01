@@ -11,6 +11,8 @@ import {
   SpaceBootstrapConflictError,
 } from "../../modules/access/contract.ts";
 
+import { parseJobNamespace } from "../../lib/job-namespace.ts";
+
 import { recordAccessAuditEvent } from "./access-audit.ts";
 import type { StepableDatabase } from "./database.ts";
 import { authUsers, memberships, profiles, spaces } from "./schema.ts";
@@ -95,6 +97,8 @@ export class PostgresAccessRepository implements AccessRepository {
           slug: input.slug,
           name: input.name,
           initialResponsibleId: identityId,
+          // Workers only touch spaces of their own namespace.
+          jobNamespace: parseJobNamespace(process.env),
         })
         .returning({ id: spaces.id, slug: spaces.slug, name: spaces.name });
 
