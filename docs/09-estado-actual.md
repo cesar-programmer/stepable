@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E2, E3 y E4.1 cerradas para el prototipo local; E5.1 autorizada · Versión documental: 2.8.
+Actualizado: 2026-10-01 · Fase: E5.1 cerrada para el prototipo local; E5.2 (progreso del equipo) por proponer · Versión documental: 3.0.
 
 ## Hechos acordados
 
@@ -30,9 +30,11 @@ Actualizado: 2026-10-01 · Fase: E2, E3 y E4.1 cerradas para el prototipo local;
 
 - E4.1 aprobada el 2026-10-01 con las decisiones de ADR-006: objetivo y hasta 5 fuentes, de 3 a 7 pasos con lección y opción múltiple, borradores solo para responsables, publicación explícita y estable, 5 intentos por espacio y día, y avisos de citas obsoletas.
 
+- E5.1 aprobada el 2026-10-01 con cinco reglas: 3 intentos, respuesta correcta y explicación al resolver, avance secuencial, ruta completada sin nota mínima y progreso ligado a la versión publicada (ADR-007).
+
 ## Actualización más reciente
 
-2026-10-01: el usuario confirmó la comprobación manual de E4.1 y la aceptó. Antes del commit se añadió el aislamiento entre trabajos de prueba y reales ([documento 04 §22](04-arquitectura.md#22-aislamiento-entre-trabajos-de-prueba-y-trabajos-reales)) tras un incidente con probables llamadas de pago pequeñas, que está registrado en el [documento 07](07-entregas-y-aceptacion.md#e41--borrador-de-onboarding-con-ia). E4.1 se cierra en un commit local. E5.1 queda autorizada con las cinco reglas de aprobación y reintento.
+2026-10-01: el usuario confirmó las pruebas manuales de E5.1 y aceptó la entrega. E5.1 se cierra en un commit local, reutilizando la verificación técnica (solo cambió documentación). No hubo llamadas de IA. Siguiente: proponer E5.2 sin implementarla.
 
 ## Realizado
 
@@ -150,19 +152,23 @@ Actualizado: 2026-10-01 · Fase: E2, E3 y E4.1 cerradas para el prototipo local;
   - Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E4.1 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior de su espacio: 3 rutas (1 lista y 2 con evidencia insuficiente) y 4 intentos de generación registrados.
 - Aislamiento de pruebas (2026-10-01): `pnpm test:integration:isolation` 3/3, integración 51/51, `pnpm verify` y navegador afectado en modo simulado (fuentes 6/6, rutas 2/2, asistente 2/2). Esta ejecución no dejó trabajos en las colas normales. Incidente previo con llamadas probables registrado en el documento 07.
 
+- E5.1, 2026-10-01 (pruebas técnicas): 67 unitarias, integración 55/55 (4 de aprendizaje), navegador 24/24 (2 de aprendizaje), `pnpm verify` y `git diff --check`. Sin procesos de desarrollo en marcha, sin trabajos fuera del namespace `pruebas` y sin progreso residual.
+- Comprobación manual del usuario del 2026-10-01: confirmó que realizó las pruebas manuales de E5.1 y funcionaron correctamente, y aceptó la entrega. No se le atribuyen comprobaciones adicionales. Estado agregado posterior: 1 ruta publicada, 1 progreso completado y 4 intentos.
+
 ## No realizado
 
-No se implementaron respuestas, calificación ni progreso de rutas (E5), versiones nuevas o historial de rutas, ejercicios de código, adaptación, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
+No se implementaron progreso del equipo (RF-09), reinicio de rutas, ejercicios de código, gamificación, versiones nuevas o historial de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Implementar E5.1 (recorrer una ruta publicada, responder, recibir retroalimentación y retomar el progreso) con las reglas aprobadas el 2026-10-01. Sin progreso del equipo, reinicio, ejercicios de código ni gamificación.
+Presentar al usuario el alcance mínimo de E5.2 (progreso del equipo por ruta para responsables: avance, finalización y pasos acertados) y sus decisiones. No implementarla sin autorización.
 
 ## Decisiones que requieren aprobación
 
+- **Siguiente de E5:** alcance del seguimiento del progreso del equipo para responsables (RF-09) y reinicio de rutas.
 - **Antes de ampliar el uso de IA:** límite de gasto acumulado y consultas por usuario (PEN-08).
-- **Antes de E5:** criterios de aprobación, reintentos y desbloqueo de pasos (PEN-03); cómo actualizar una ruta publicada con una versión nueva (PEN-04).
-- **Antes de datos reales o despliegue:** objetos huérfanos (PEN-12) y retención, incluido el contenido derivado de rutas (PEN-06).
+- **Rutas:** cómo actualizar una ruta publicada con una versión nueva (PEN-04).
+- **Antes de datos reales o despliegue:** objetos huérfanos (PEN-12) y retención, incluidos progreso y contenido derivado (PEN-06).
 
 ## Pendientes menores de E1
 
@@ -173,7 +179,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E3 está cerrada en `ebe9719` y E4.1, con el aislamiento de pruebas, en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha: si está arrancado, las de navegador fallan hasta detenerlo. Un `pnpm worker` iniciado antes del 2026-10-01 a las 15:55 (hora local) debe reiniciarse para cargar la guardia.
+E4.1 está cerrada en `d81de07` y E5.1 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
 
 ## Formato para futuras sesiones
 

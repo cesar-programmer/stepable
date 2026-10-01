@@ -433,3 +433,15 @@ Desde el 2026-10-01, ninguna prueba automática puede provocar llamadas de pago,
 3. **Playwright no reutiliza servidores:** con `reuseExistingServer: false`, si el puerto 3000 está ocupado, las pruebas de navegador fallan antes de enviar nada.
 
 Un worker iniciado antes de este cambio no tiene la guardia; hay que reiniciarlo para que la cargue.
+
+## 23. Recorrido de rutas publicadas (E5.1)
+
+Estado: prototipo local implementado el 2026-10-01 ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md)); comprobación manual pendiente. No usa IA.
+
+- **Módulo `learning`:** reglas puras (`deriveProgress`), servicio y `PostgresLearningRepository`. Lee la versión publicada a través del repositorio de rutas.
+- **Datos:** `route_progress` y `route_step_attempts`, con número de intento de 1 a 3 único por paso y usuario e identificador de envío único. RLS habilitada y sin privilegios para los roles del navegador.
+- **Responder:** una transacción que revalida la membresía, comprueba que la ruta está publicada, bloquea el progreso, devuelve el resultado guardado si el envío se repite, exige el paso actual, califica, registra el intento y marca la finalización.
+- **Interfaz:** `/spaces/[spaceId]/routes/[routeId]/learn`.
+  - Los pasos bloqueados solo muestran su título.
+  - Cada formulario lleva un identificador de envío generado en el servidor.
+  - Se resumen los pasos resueltos y los acertados.

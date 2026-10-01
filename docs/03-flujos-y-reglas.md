@@ -62,3 +62,14 @@ Estado: aplicadas el 2026-10-01 en el prototipo local ([ADR-006](decisiones/ADR-
 | RN-26 | Un borrador se genera solo con fragmentos de las fuentes vigentes seleccionadas. Sin evidencia suficiente se registra como insuficiente, sin pasos inventados. | Aplicada en E4.1 |
 | RN-27 | Solo un responsable activo edita, regenera y publica. La publicación revalida el borrador y exige que todas sus citas apunten a versiones vigentes; después la ruta no se edita. | Aplicada en E4.1 |
 | RN-28 | Si una fuente citada se reemplaza o elimina, la ruta conserva su contenido, la cita se señala y la ruta queda marcada para revisión. Eliminar una fuente no elimina el contenido derivado ya escrito en rutas. | Aplicada en E4.1 |
+
+## Recorrido de rutas (E5.1)
+
+Estado: aplicadas el 2026-10-01 en el prototipo local ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md)); resuelven PEN-03 para preguntas de opción múltiple.
+
+| ID | Regla | Estado |
+| --- | --- | --- |
+| RN-29 | Cada pregunta admite hasta 3 intentos. La respuesta correcta y la explicación solo se entregan al acertar o al agotar los intentos. | Aplicada en E5.1 |
+| RN-30 | Un paso está **resuelto** si se acertó o se agotaron sus intentos; está **acertado** solo si se acertó dentro de los intentos. El siguiente paso se desbloquea al resolver el actual. | Aplicada en E5.1 |
+| RN-31 | La ruta está **completada** cuando todos sus pasos están resueltos, sin nota mínima. El resultado cuenta los pasos acertados, no los envíos, y completar no implica dominio del contenido. | Aplicada en E5.1 |
+| RN-32 | El progreso es privado de cada usuario, pertenece a la versión publicada recorrida y se califica en el servidor. Un envío repetido no cuenta como un intento nuevo. Una ruta marcada “Revisar” puede continuarse con el aviso visible. | Aplicada en E5.1 |

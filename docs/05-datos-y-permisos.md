@@ -220,3 +220,7 @@ Restricción aceptada: durante esta etapa solo se cargan documentos sintéticos,
 - **`gestionar_rutas`** (responsables activos): solicitar, editar, regenerar y publicar borradores.
 - Toda mutación revalida al actor en su transacción. Una ruta de otro espacio responde 404.
 - **Contenido derivado:** las rutas conservan su propio texto y una instantánea de cada cita (título de la fuente, versión y ubicación) aunque la fuente se reemplace o se elimine y purgue. Su retención para datos reales sigue en PEN-06 ([ADR-006](decisiones/ADR-006-rutas-e4-1.md)).
+
+## Progreso de aprendizaje (E5.1)
+
+Ambos roles activos (`consultar_rutas`) pueden recorrer rutas publicadas. Cada usuario solo lee y escribe su propio progreso; todavía no existe una vista de progreso del equipo (RF-09). La membresía se revalida al consultar y al guardar, y un miembro retirado pierde el acceso en la siguiente solicitud. La retención del progreso y de los intentos para datos reales sigue en PEN-06 ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md)).

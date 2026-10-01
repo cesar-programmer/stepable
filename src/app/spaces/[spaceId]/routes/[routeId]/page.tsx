@@ -328,6 +328,14 @@ export default async function RoutePage({
       ) : null}
 
       <div className="actions">
+        {route.status === "publicada" ? (
+          <Link
+            className="button"
+            href={`/spaces/${spaceId}/routes/${route.id}/learn`}
+          >
+            Recorrer ruta
+          </Link>
+        ) : null}
         <Link className="button secondary" href={`/spaces/${spaceId}/routes`}>
           Volver a rutas
         </Link>

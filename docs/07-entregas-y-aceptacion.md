@@ -13,7 +13,7 @@ Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003.
 | E2 Fuentes | RF-03 | CA-02: archivo permitido llega a listo, error se ve y se puede reintentar sin duplicar resultados |
 | E3 Asistente | RF-08 | CA-03: preguntas de referencia producen evidencia resoluble; preguntas sin respaldo reconocen insuficiencia; aislamiento por espacio. Prototipo local cerrado el 2026-10-01; historial de conversaciones (“chats aislados” persistentes) pospuesto |
 | E4 Autoría | RF-04, RF-05 | CA-04: borrador editable, publicación solo por responsable y versión publicada estable. E4.1 cerrada en el prototipo local el 2026-10-01 |
-| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado |
+| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 (recorrido individual) cerrada el 2026-10-01; seguimiento del equipo (E5.2) pendiente |
 | E6 Piloto | Recorrido completo | CA-06: prueba documentada con usuarios invitados, incidencias y consumo registrado |
 
 RF-10 es transversal: errores y límites deben incorporarse en las entregas que consumen recursos. El chat contextual de lecciones se integra en E5; E3 entrega el chat general.
@@ -344,3 +344,29 @@ Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-006](decisiones/
 3. Editar un paso (texto o respuesta correcta), moverlo o eliminarlo, y pulsar **Publicar ruta**.
 4. Como integrante: abrir la ruta publicada y comprobar que no ve borradores ni respuestas correctas, y que puede abrir las citas.
 5. Opcional: reemplazar una fuente citada y comprobar el aviso “Revisar”.
+
+## E5.1 · Recorrido de una ruta publicada
+
+Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md)).
+
+**Entregado:** empezar una ruta publicada, responder con corrección en el servidor, retroalimentación, hasta 3 intentos, respuesta correcta y explicación al resolver, avance secuencial, progreso retomable y privado, protección contra doble envío y resultado con pasos resueltos y acertados.
+
+**Fuera de E5.1:** progreso del equipo, reinicio de rutas, ejercicios de código y gamificación.
+
+- **Pruebas técnicas:**
+  - 67 unitarias, 3 de ellas de reglas;
+  - `pnpm test:integration:learning` 4/4: inicio, clave oculta, orden, doble envío simultáneo con un solo intento, agotamiento, resultado por pasos acertados, persistencia, “Revisar” continuable y aislamiento con membresía revocada;
+  - `pnpm test:e2e:learning` 2/2;
+  - regresión: integración 55/55 y navegador 24/24;
+  - `pnpm verify` y `git diff --check`.
+- **Evaluación con modelo real:** no aplica, porque E5.1 no hace llamadas de IA.
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-01: confirmó que realizó las pruebas manuales de E5.1 y funcionaron correctamente, y aceptó la entrega. No se le atribuyen comprobaciones adicionales. Estado agregado posterior: 1 ruta publicada, 1 progreso completado y 4 intentos. Se reutilizó la verificación técnica: después solo cambió documentación.
+
+### E5.1 · Prueba manual
+
+1. `pnpm dev` (no hace falta `pnpm worker`).
+2. Como integrante: abrir una ruta publicada → **Recorrer ruta** → **Empezar ruta**.
+3. Responder mal una vez: debe decir cuántos intentos quedan, sin mostrar la respuesta. Luego acertar: aparecen la respuesta correcta y la explicación.
+4. Salir y volver: el progreso se conserva.
+5. Agotar los 3 intentos en un paso: se revela la respuesta y se desbloquea el siguiente.
+6. Al terminar: “Ruta completada”, con pasos resueltos y acertados por separado. Con el responsable, comprobar que su progreso es independiente.

@@ -6,6 +6,7 @@ Un ADR conserva contexto, decisión, alternativas y consecuencias. No sustituye 
 | --- | --- | --- |
 | [ADR-001](ADR-001-enfoque-y-v0.md) | Aceptado como base de planificación | Software primero, dos usos y V0 delimitada |
 | [ADR-002](ADR-002-organizacion-modular.md) | Aceptado | Backend modular, web/API juntas y worker desde E2 |
+| [ADR-007](ADR-007-recorrido-e5-1.md) | Aceptado | Recorrido de rutas (E5.1): intentos, resolución, progreso privado y doble envío |
 | [ADR-006](ADR-006-rutas-e4-1.md) | Aceptado | Borradores de onboarding con IA (E4.1): generación, revisión, publicación estable y vigencia de citas |
 | [ADR-005](ADR-005-asistente-e3.md) | Aceptado | Asistente E3: recuperación híbrida en PostgreSQL, modelo configurable y citas verificadas; historial pospuesto |
 | [ADR-004](ADR-004-fuentes-locales-e2.md) | Aceptado | Fuentes locales E2: formatos, ciclo de vida, Storage, pg-boss, extracción, permisos, eliminación y purga; E2 cerrada para el prototipo local |

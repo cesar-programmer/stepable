@@ -1,5 +1,20 @@
 # Historial de cambios
 
+## 2026-10-01 · 3.0 · Cierre de E5.1
+
+- El usuario confirmó las pruebas manuales de E5.1 y aceptó la entrega; no se le atribuyen comprobaciones adicionales.
+- Se reutilizó la verificación técnica aprobada, porque solo cambió documentación; sin llamadas de IA.
+- E5.1 cerrada para el prototipo local en un commit local, sin push.
+
+## 2026-10-01 · 2.9 · Implementación de E5.1
+
+- Añadido el recorrido de rutas publicadas:
+  - empezar, responder con corrección en el servidor y recibir retroalimentación;
+  - hasta 3 intentos, y respuesta correcta con explicación al resolver;
+  - avance secuencial y progreso privado y retomable.
+- El resultado distingue los pasos resueltos de los acertados, y la ruta completada del dominio del contenido; un doble envío no cuenta como intento.
+- Pruebas técnicas: 67 unitarias, 55 de integración y 24 de navegador. Sin llamadas de IA, comprobación manual atribuida, commit ni push.
+
 ## 2026-10-01 · 2.8 · Cierre de E4.1 y aislamiento de pruebas
 
 - El usuario confirmó la comprobación manual de E4.1 y aceptó la entrega; no se le atribuyen escenarios adicionales.
