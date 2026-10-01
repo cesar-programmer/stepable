@@ -209,3 +209,7 @@ La eliminación es irreversible y sin papelera, y no hay limpieza por antigüeda
 **Dependencias futuras:** antes de implementar citas (E3) o lecciones y rutas (E4) que referencien versiones o segmentos, hay que resolver qué ocurre con esas referencias al reemplazar o eliminar una fuente: conservar, bloquear o marcar como obsoletas. Hoy la eliminación purga todo el texto y una cita futura quedaría sin destino (PEN-04).
 
 Restricción aceptada: durante esta etapa solo se cargan documentos sintéticos, nunca documentación real de una empresa.
+
+## Asistente (E3)
+
+`consultar_fuentes` también autoriza el asistente para ambos roles activos; la autorización se comprueba antes de recuperar o enviar contenido. Al proveedor aprobado solo se envían la pregunta y hasta 6 fragmentos de la versión vigente de fuentes del espacio. El usuario autorizó enviar únicamente datos de documentos sintéticos (PEN-06). Los embeddings viven en `source_segment_embeddings`, con RLS habilitada, sin acceso de `anon`/`authenticated` y con borrado en cascada con la purga. No se guardan preguntas, respuestas ni historial ([ADR-005](decisiones/ADR-005-asistente-e3.md)).

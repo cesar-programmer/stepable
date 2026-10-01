@@ -89,6 +89,9 @@ export default async function SpacePage({
         <Link className="button" href={`/spaces/${space.id}/sources`}>
           Fuentes
         </Link>
+        <Link className="button" href={`/spaces/${space.id}/assistant`}>
+          Asistente
+        </Link>
         <Link className="button secondary" href="/spaces">
           Volver a tus espacios
         </Link>

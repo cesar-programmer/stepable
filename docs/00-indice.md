@@ -21,7 +21,7 @@ Estado: vigente · Actualizado: 2026-10-01.
 
 Producto y alcance → flujos y reglas → datos y permisos → arquitectura e IA → entregas ejecutables → implementación.
 
-El orden numérico sirve para encontrar documentos; las dependencias de trabajo están en el documento 07. La arquitectura vigente registra organización, stack, identidad, espacios, autorización, invitaciones, administración y auditoría local. E1 queda cerrada localmente tras la revisión de E1.7 del 2026-10-01; E2.1 (fuentes Markdown) está cerrada localmente según ADR-004 y E2.2 (PDF con texto) está cerrada y E2 (fuentes Markdown y PDF, reemplazo, reintento y eliminación) está cerrada para el prototipo local y E3 no está iniciada; el piloto sigue pendiente y fuera del alcance actual.
+El orden numérico sirve para encontrar documentos; las dependencias de trabajo están en el documento 07. La arquitectura vigente registra organización, stack, identidad, espacios, autorización, invitaciones, administración y auditoría local. E1 queda cerrada localmente tras la revisión de E1.7 del 2026-10-01; E2.1 (fuentes Markdown) está cerrada localmente según ADR-004 y E2.2 (PDF con texto) está cerrada y E2 (fuentes Markdown y PDF, reemplazo, reintento y eliminación) está cerrada para el prototipo local y E3 (asistente con evidencia) está cerrada para el prototipo local, con el historial de conversaciones pospuesto; el piloto sigue pendiente y fuera del alcance actual.
 
 ## Mantenimiento
 

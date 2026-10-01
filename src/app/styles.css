@@ -376,3 +376,42 @@ label.checkbox {
   gap: 0.5rem;
   font-weight: 400;
 }
+
+textarea {
+  font: inherit;
+  padding: 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+}
+
+.assistant-answer {
+  margin-top: 1.5rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.assistant-answer h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.answer-text {
+  max-width: none;
+  white-space: pre-wrap;
+  color: #172033;
+}
+
+.citation-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.assistant-fragments {
+  margin-top: 1.25rem;
+}
+
+.assistant-fragments pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

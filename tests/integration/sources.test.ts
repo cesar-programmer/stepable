@@ -156,6 +156,8 @@ async function startWorker() {
     supabaseUrl: config.apiUrl,
     serviceRoleKey: config.serviceRoleKey,
     pollingIntervalSeconds: 0.5,
+    // Source tests never index embeddings over the shared local database.
+    embedder: null,
   });
 }
 

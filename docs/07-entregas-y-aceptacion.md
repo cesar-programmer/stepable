@@ -11,7 +11,7 @@ Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003.
 | --- | --- | --- |
 | E1 Base y acceso | RF-01, RF-02 | CA-01: dos roles acceden a su espacio; accesos no autorizados rechazados, incluida manipulación de identificadores |
 | E2 Fuentes | RF-03 | CA-02: archivo permitido llega a listo, error se ve y se puede reintentar sin duplicar resultados |
-| E3 Asistente | RF-08 | CA-03: preguntas de referencia producen evidencia resoluble; preguntas sin respaldo reconocen insuficiencia; chats aislados |
+| E3 Asistente | RF-08 | CA-03: preguntas de referencia producen evidencia resoluble; preguntas sin respaldo reconocen insuficiencia; aislamiento por espacio. Prototipo local cerrado el 2026-10-01; historial de conversaciones (“chats aislados” persistentes) pospuesto |
 | E4 Autoría | RF-04, RF-05 | CA-04: borrador editable, publicación solo por responsable y versión publicada estable |
 | E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado |
 | E6 Piloto | Recorrido completo | CA-06: prueba documentada con usuarios invitados, incidencias y consumo registrado |
@@ -274,3 +274,26 @@ E2 queda cerrada el 2026-10-01 para el prototipo local con documentos sintético
   - la retención para datos reales sigue en PEN-06;
   - el destino de futuras citas, lecciones y rutas ante reemplazo o eliminación sigue en PEN-04.
 - **Archivos huérfanos (PEN-12):** si la web cae entre subir un original y confirmar su transacción, puede quedar un objeto privado sin fila. No es accesible desde el navegador. El usuario lo aceptó el 2026-10-01 como limitación conocida del prototipo local con documentos sintéticos; su limpieza debe resolverse antes de usar documentación real o desplegar. Es distinto de la purga de fuentes eliminadas, que sí está implementada.
+
+## E3 · Asistente con evidencia (prototipo)
+
+Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-005](decisiones/ADR-005-asistente-e3.md)).
+
+**Entregado:**
+- consulta en el espacio autenticado para ambos roles;
+- recuperación híbrida léxica y semántica (pgvector) solo de versiones vigentes;
+- respuesta por un modelo configurable con citas verificadas a fuente, versión y ubicación;
+- reconocimiento de falta de evidencia;
+- límites por consulta.
+
+**Pospuesto:** historial de conversaciones privadas (RN-04) y su retención; no hay persistencia de preguntas ni respuestas. **No implementado:** límites acumulados de gasto o de consultas por usuario y umbral de similitud.
+
+- **Pruebas técnicas (simuladas):** 56 unitarias, integración 42/42 (6 del asistente), navegador 20/20 (2 del asistente), `pnpm verify` y `git diff --check`.
+- **Evaluación con modelo real:** OpenAI `gpt-4.1-mini` y `text-embedding-3-small`, una ejecución de `pnpm assistant:evaluate` (detalle en el [documento 06](06-ia-y-evaluacion.md#evaluación-de-e3)). Para cerrar no se repitieron llamadas de pago.
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual del asistente con IA real funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 5 segmentos y 5 embeddings `openai:text-embedding-3-small`.
+- **Limitaciones conservadas:**
+  - la evaluación con modelo real fue pequeña: una ejecución, 3 documentos sintéticos y 4 casos;
+  - falta una prueba directa de resistencia a instrucciones maliciosas en documentos;
+  - no hay límite acumulado de gasto ni de consultas por usuario;
+  - no hay umbral de similitud;
+  - el modelo cita en la lista y no como marcas en el texto.

@@ -50,7 +50,11 @@ function startWorker(): Promise<ChildProcess> {
     const child = spawn(
       process.execPath,
       ["--experimental-strip-types", "src/worker/main.ts"],
-      { env: process.env, stdio: ["ignore", "pipe", "pipe"] },
+      {
+        // Source tests never index embeddings over the shared local database.
+        env: { ...process.env, STEPABLE_AI_EMBEDDINGS_MODE: "desactivado" },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
     );
     const timer = setTimeout(
       () => reject(new Error("El worker no arrancó a tiempo.")),

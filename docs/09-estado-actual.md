@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: **E2 cerrada para el prototipo local**; E3 no iniciada · Versión documental: 2.3.
+Actualizado: 2026-10-01 · Fase: E2 y E3 cerradas para el prototipo local; siguiente núcleo propuesto, no iniciado · Versión documental: 2.6.
 
 ## Hechos acordados
 
@@ -26,9 +26,11 @@ Actualizado: 2026-10-01 · Fase: **E2 cerrada para el prototipo local**; E3 no i
 
 - E2 cerrada el 2026-10-01 para el prototipo local con documentos sintéticos. Archivos huérfanos aceptados como limitación hasta usar documentación real o desplegar (PEN-12).
 
+- E3 repriorizada el 2026-10-01: validar el asistente con IA real. El usuario elegirá proveedor (DeepSeek u OpenAI) y modelo y configurará su clave localmente. Los embeddings son una decisión aparte. Solo se envían preguntas y fragmentos sintéticos; no hay historial.
+
 ## Actualización más reciente
 
-2026-10-01: el usuario confirmó la prueba manual de E2.4 y aceptó la entrega. Aclaró además que la comprobación de E2.3 se hizo en otro entorno. E2.4 se consolidó en un commit local y E2 queda cerrada para el prototipo local, con las limitaciones del [documento 07](07-entregas-y-aceptacion.md#cierre-de-e2). Se reutilizó la verificación automática aprobada, porque solo cambió documentación. E3 no está iniciada.
+2026-10-01: el usuario confirmó la comprobación manual del asistente con IA real y aceptó E3. E3 se cierra para el prototipo local en un commit local, con el historial de conversaciones pospuesto y las limitaciones del [documento 07](07-entregas-y-aceptacion.md#e3--asistente-con-evidencia-prototipo). Se reutilizó la verificación técnica aprobada, porque solo cambiaron documentación y `.env.example`, y no se repitieron llamadas de pago.
 
 ## Realizado
 
@@ -69,6 +71,7 @@ Actualizado: 2026-10-01 · Fase: **E2 cerrada para el prototipo local**; E3 no i
 - E2.2: generador de PDF sintéticos para pruebas y comando `pnpm sources:sample-pdfs` para la prueba manual. Dependencia añadida: `pdfjs-dist` 6.3.289 exacta, publicada el 2026-08-29, sin excepciones de antigüedad.
 - E2.3: migración `manual_retries`, operaciones de reemplazo y reintento en repositorio y servicio, Route Handler de reemplazo con frontera HTTP compartida, Server Action de reintento, gestión en el detalle de la fuente y estado del reemplazo en el listado.
 - E2.4: migración de eliminación y purga, cola `purgar-fuente`, purga en el worker con re-encolado de purgas atascadas, eliminación con confirmación en el detalle, bloqueo fuente→versión al completar el procesamiento y 4 acciones de auditoría de fuentes.
+- E3: migración de búsqueda léxica, pgvector y embeddings; módulo `knowledge` (recuperación, prompt, validación y caso de uso); adaptadores compatibles con OpenAI y simulados; indexación en el worker; página **Asistente**; script `pnpm assistant:evaluate`; `.env.example` con nombres de variables.
 
 ## Evidencia y verificaciones reales
 
@@ -130,21 +133,28 @@ Actualizado: 2026-10-01 · Fase: **E2 cerrada para el prototipo local**; E3 no i
 - Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.4 funcionó correctamente y aceptó la entrega. No se le atribuyen pasos adicionales. Estado agregado de esta base local tras la confirmación: 3 fuentes activas, 0 eliminadas, 3 objetos y 0 trabajos pendientes.
 - Aclaración del usuario del 2026-10-01: la comprobación manual de E2.3 se realizó en otro entorno; el conteo de esta base no la contradice. No se le atribuyen pasos adicionales.
 - Cierre de E2 sin cambios de código después de la verificación; se reutiliza esa evidencia.
+- E3, 2026-10-01 (pruebas técnicas, simuladas):
+  - migración aplicada sin reset; datos conservados (2/1/2, 3 fuentes, 5 segmentos);
+  - 56 pruebas unitarias, integración 42/42 (6 del asistente), navegador 20/20 (2 del asistente), `pnpm verify` y `git diff --check` aprobados;
+  - una primera regresión mostró que el worker de las pruebas de fuentes generaba embeddings simulados de todos los segmentos de la base local. Se corrigió y se retiraron esas 5 filas simuladas.
+- **Evaluación con modelo real de E3 (2026-10-01):** OpenAI `gpt-4.1-mini` y `text-embedding-3-small`, elegidos y configurados por el usuario. Directa y parafraseada respondidas con cita correcta, sin respuesta → insuficiente, otro espacio rechazado. 3 llamadas de conversación (1319/126 tokens). Ver el [documento 06](06-ia-y-evaluacion.md#evaluación-de-e3).
+- La configuración de IA estaba en `.env.local`, que `env:sync` sobrescribe. Sus líneas se copiaron, sin mostrar valores, a `.env.development.local` (ignorado, permisos 600).
+
+- Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual del asistente con IA real funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 3 fuentes, 5 segmentos y 5 embeddings `openai:text-embedding-3-small`.
 
 ## No realizado
 
-No se implementaron OCR, papelera, historial visible de versiones, limpieza por antigüedad, conciliación de objetos huérfanos, panel de auditoría, descarga de originales, reactivación administrativa directa, rutas, IA, despliegue ni proveedor externo. RN-18 externo, retención para datos reales, alojamiento y proveedores siguen pendientes de sus entregas o del piloto.
+No se implementaron historial de conversaciones (pospuesto), límites acumulados de gasto o de consultas, umbral de similitud, prueba directa de instrucciones maliciosas, generación de rutas o lecciones, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Presentar al usuario el siguiente recorrido útil y el alcance mínimo de E3.1 (consulta con evidencia, RF-08/CA-03), con las decisiones de producto que requieren aprobación. No implementar E3 ni preparar el piloto sin autorización.
+Presentar al usuario la propuesta breve de E4 (borrador de onboarding generado con IA y revisado por el responsable) con sus decisiones de producto. No implementarla sin autorización ni preparar el piloto por inferencia.
 
 ## Decisiones que requieren aprobación
 
-- **Antes de E3:** las decisiones de producto de la consulta con evidencia (se presentan al usuario al proponer E3.1).
-- **Antes de E3/E4:** el destino de citas, lecciones o rutas que referencien versiones reemplazadas o eliminadas (PEN-04).
-- **Antes de datos reales o despliegue:** limpieza de objetos huérfanos (PEN-12) y retención (PEN-06).
-- **Sin definir:** descarga de originales y por quién.
+- **E3:** límite de gasto acumulado y política de consultas por usuario antes de ampliar el uso del modelo real (PEN-08).
+- **Antes de E3/E4 persistentes:** destino de citas y lecciones ante fuentes reemplazadas o eliminadas (PEN-04).
+- **Antes de datos reales o despliegue:** objetos huérfanos (PEN-12) y retención (PEN-06).
 
 ## Pendientes menores de E1
 
@@ -155,7 +165,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E1 está cerrada en `7627580`; E2.1 en `7f53a26`, E2.2 en `1ca2433`, E2.3 en `5561489` y E2.4 en el commit local siguiente, todos sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados. Para usar las fuentes en local hace falta `pnpm worker` en una terminal aparte.
+E2 está cerrada en `fb5c3d7` y E3 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local` (configuración y clave de IA), secretos, dependencias, build y resultados de prueba permanecen ignorados.
 
 ## Formato para futuras sesiones
 

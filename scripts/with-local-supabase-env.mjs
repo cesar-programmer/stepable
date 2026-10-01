@@ -20,6 +20,9 @@ const child = spawn(command, args, {
     STEPABLE_MAILPIT_URL: status.MAILPIT_URL,
     STEPABLE_TEST_SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY,
     STEPABLE_TEST_MAILPIT_URL: status.MAILPIT_URL,
+    // Test commands never reach a paid AI provider, whatever .env files say.
+    STEPABLE_AI_CHAT_MODE: "simulado",
+    STEPABLE_AI_EMBEDDINGS_MODE: "simulado",
   },
   stdio: "inherit",
 });

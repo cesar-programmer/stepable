@@ -1,5 +1,25 @@
 # Historial de cambios
 
+## 2026-10-01 · 2.6 · Cierre de E3
+
+- El usuario confirmó la comprobación manual del asistente con IA real y aceptó la entrega; no se le atribuyen escenarios adicionales.
+- La evidencia queda separada en pruebas técnicas, evaluación con modelo real y comprobación manual. Se reutilizó la verificación técnica, sin nuevas llamadas de pago.
+- E3 cerrada para el prototipo local. Historial de conversaciones pospuesto. Limitaciones conservadas: evaluación pequeña, prueba de instrucciones maliciosas pendiente y sin límites acumulados de gasto.
+- Commit local, sin push.
+
+## 2026-10-01 · 2.5 · Evaluación inicial de E3 con modelo real
+
+- El usuario eligió y configuró OpenAI `gpt-4.1-mini` y `text-embedding-3-small`. La configuración se copió de `.env.local` a `.env.development.local` para que `env:sync` no la borre.
+- `pnpm assistant:evaluate`: directa y parafraseada respondidas con cita correcta, sin respuesta → insuficiente, otro espacio rechazado; 3 llamadas de conversación. Resultados separados de las pruebas técnicas.
+- Sin commit ni push; comprobación manual pendiente.
+
+## 2026-10-01 · 2.4 · Prototipo de E3 (asistente con evidencia)
+
+- El experimento léxico con documentos sintéticos falló en las 3 paráfrasis; se añadió recuperación semántica con pgvector, fusionada por rango recíproco.
+- Añadidos el asistente por espacio con una llamada acotada a un modelo configurable (cliente compatible con la API de OpenAI), citas construidas desde los fragmentos, rechazo de citas inventadas y reconocimiento de falta de evidencia; sin historial.
+- La conversación y los embeddings se configuran por separado y están desactivados por defecto; las pruebas fuerzan el modo simulado. Script `pnpm assistant:evaluate` para la evaluación real.
+- Pruebas técnicas aprobadas: 56 unitarias, 42 de integración y 20 de navegador. Evaluación con modelo real no realizada; sin llamadas de pago, commit ni push.
+
 ## 2026-10-01 · 2.3 · Cierre de E2.4 y de E2
 
 - El usuario confirmó la prueba manual de E2.4 y aceptó la entrega. Aclaró que la comprobación de E2.3 se hizo en otro entorno. No se le atribuyen pasos adicionales.

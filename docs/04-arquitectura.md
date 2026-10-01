@@ -377,3 +377,32 @@ Los estados visibles son “En cola”, “Procesando”, “Lista” y “Fall�
 - Un cuerpo de más de 10 MB lo guarda en memoria el proxy de Next antes de rechazarlo por `Content-Length`; el original nunca se acepta por encima de 1 MiB.
 - Actualizar pg-boss requiere generar una migración nueva con su CLI.
 - Solo se usan documentos sintéticos; la conservación para datos reales sigue en PEN-06.
+
+## 20. Asistente con evidencia en E3
+
+Estado: prototipo local implementado y verificado técnicamente el 2026-10-01 según [ADR-005](decisiones/ADR-005-asistente-e3.md). La evaluación con un modelo real está pendiente de que el usuario elija proveedor y modelo.
+
+Flujo en `/spaces/[spaceId]/assistant`, disponible para ambos roles con `consultar_fuentes`:
+
+1. Valida la pregunta (3–500 caracteres) y la membresía antes de recuperar nada.
+2. Recupera los segmentos de la versión vigente y lista de las fuentes activas del espacio:
+   - por búsqueda léxica en español, con cualquier término significativo;
+   - y, si hay embeddings configurados, por cercanía coseno con pgvector para el mismo modelo.
+
+   Fusiona ambas listas por rango recíproco y se queda con 6 fragmentos como máximo.
+3. Sin fragmentos responde “no encontré información suficiente”, sin llamar al modelo. Sin modelo configurado, muestra solo los fragmentos.
+4. Hace una sola llamada de conversación con salida JSON y valida las citas; las citas que se muestran se construyen desde los fragmentos.
+5. Registra solo identificadores, conteos, uso de tokens y duración; nunca la pregunta ni el contenido.
+
+Indexación: el worker genera embeddings de los segmentos vigentes pendientes al quedar lista una versión, al arrancar y en su barrido periódico. Procesa como mucho 64 segmentos por pasada, en lotes de 32, y espera 10 minutos tras un fallo del proveedor. La purga de fuentes elimina los embeddings en cascada.
+
+Configuración local (sin claves en el código ni en Git):
+- en `.env.development.local`, que lo leen `pnpm dev`, `pnpm worker` y `pnpm assistant:evaluate`;
+- variables: `STEPABLE_AI_CHAT_MODE`, `STEPABLE_AI_CHAT_PROVIDER`, `STEPABLE_AI_CHAT_MODEL`, sus equivalentes `STEPABLE_AI_EMBEDDINGS_*`, y la clave `DEEPSEEK_API_KEY` u `OPENAI_API_KEY`;
+- `.env.example` lista los nombres.
+
+Limitaciones conocidas:
+- Sin umbral de similitud: la búsqueda semántica aporta los fragmentos más cercanos aunque no sean pertinentes, y la falta de evidencia la decide el modelo.
+- El embedder simulado solo mide coincidencia de palabras y no prueba recuperación semántica.
+- No hay límite de consultas por usuario ni presupuesto acumulado; el gasto se acota por consulta y por la configuración del proveedor.
+- No hay historial; las respuestas no se guardan.
