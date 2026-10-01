@@ -47,17 +47,17 @@ export type CreateInvitationInput = {
 
 export type CreateInvitationResult =
   | { kind: "created"; invitation: SpaceInvitation; spaceName: string }
-  | { kind: "pending_exists" }
+  | { kind: "pending_exists" | "unauthorized" }
   | { kind: "already_member"; role: SpaceRole }
   | { kind: "member_role_conflict"; role: SpaceRole };
 
 export type PrepareResendResult =
   | { kind: "prepared"; invitation: SpaceInvitation; spaceName: string }
-  | { kind: "not_found" | "not_resendable" };
+  | { kind: "not_found" | "not_resendable" | "unauthorized" };
 
 export type CancelInvitationResult =
   | { kind: "cancelled" | "already_cancelled" }
-  | { kind: "not_found" | "not_cancellable" };
+  | { kind: "not_found" | "not_cancellable" | "unauthorized" };
 
 export type AcceptInvitationResult =
   | { kind: "joined" | "reactivated" | "already_member"; spaceId: string }
@@ -81,6 +81,7 @@ export interface InvitationRepository {
   ): Promise<CreateInvitationResult>;
   listInvitations(spaceId: string, now: Date): Promise<SpaceInvitation[]>;
   prepareResend(input: {
+    actorIdentityId: string;
     invitationId: string;
     spaceId: string;
     tokenHash: string;
@@ -88,6 +89,7 @@ export interface InvitationRepository {
     now: Date;
   }): Promise<PrepareResendResult>;
   cancelInvitation(input: {
+    actorIdentityId: string;
     invitationId: string;
     spaceId: string;
     now: Date;

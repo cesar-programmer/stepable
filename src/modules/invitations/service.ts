@@ -180,6 +180,7 @@ export async function resendSpaceInvitation(
   const now = input.now ?? new Date();
   const rawToken = input.token ?? createInvitationToken();
   const prepared = await dependencies.invitationRepository.prepareResend({
+    actorIdentityId: input.identityId,
     invitationId: input.invitationId,
     spaceId: input.spaceId,
     tokenHash: hashInvitationToken(rawToken),
@@ -217,6 +218,7 @@ export async function cancelSpaceInvitation(
   }
 
   return dependencies.invitationRepository.cancelInvitation({
+    actorIdentityId: input.identityId,
     invitationId: input.invitationId,
     spaceId: input.spaceId,
     now: input.now ?? new Date(),

@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-09-21 · Fase: E1.6 cerrada y aceptada; E1.7 no iniciada · Versión documental: 1.2.
+Actualizado: 2026-10-01 · Fase: E1 cerrada localmente; E2 pendiente de autorización · Versión documental: 1.4.
 
 ## Hechos acordados
 
@@ -15,7 +15,7 @@ Actualizado: 2026-09-21 · Fase: E1.6 cerrada y aceptada; E1.7 no iniciada · Ve
 
 ## Actualización más reciente
 
-Implementada E1.6 sobre el commit base `3150b348151a4828f28502a299b868303c01b5ba`. Una interfaz reservada a responsables lista membresías activas/revocadas y permite cambios de rol o retiro con confirmación; cualquier miembro activo puede abandonar su propia membresía. Las mutaciones se serializan por espacio y revalidan actor, objetivo y último responsable dentro de la transacción. No hubo migración ni reset; los datos manuales permanecen intactos. Las suites automatizadas pasan y el usuario confirmó que la comprobación manual de E1.6 funcionó correctamente. La entrega queda aceptada y cerrada.
+Implementada E1.7 sobre el commit base `8387cefc20495a7dba10a2a0ef9753cbb1a9376d`. La auditoría local conserva solo acción, actor, espacio, objetivo y fecha mediante identificadores, dentro de la misma transacción que cada mutación exitosa. La revisión corrigió la revalidación concurrente al crear, reenviar o cancelar invitaciones, cerró a `anon`/`authenticated` la Data API sobre las tablas E1, amplió la búsqueda de credenciales en recursos del navegador y añadió una comprobación reproducible de higiene del repositorio. Las migraciones fueron incrementales, sin reset; los datos manuales permanecen intactos. El 2026-10-01 se repitió la evidencia automática completa y el usuario realizó la comprobación manual y aceptó la entrega. E1 queda cerrada localmente.
 
 ## Realizado
 
@@ -42,6 +42,11 @@ Implementada E1.6 sobre el commit base `3150b348151a4828f28502a299b868303c01b5ba
 - Añadido adaptador PostgreSQL de membresías con listado administrativo aislado y mutaciones transaccionales serializadas por espacio.
 - Añadida interfaz `/spaces/[spaceId]/members` para activas/revocadas, cambio de rol y retiro, y autosalida desde el detalle del espacio.
 - Tras autodegradarse, el usuario sale de administración; tras retirarse o abandonar, vuelve al listado. La sesión global y otras membresías no cambian.
+- Añadida `access_audit_events` con acciones/tipos cerrados y sin correo o metadatos libres. Audita bootstrap, ciclo de invitación, cambio de rol, retiro y autosalida; rechazos, idempotencia y rollbacks no generan eventos de éxito.
+- Revalidada dentro de la transacción la capacidad del actor para crear, reenviar o cancelar invitaciones después de tomar el bloqueo por espacio.
+- Añadido `pnpm security:check` para revisar archivos versionados o versionables y ampliada la prueba E2E que busca credenciales de servidor en HTML/bundles.
+- Habilitada RLS y revocados todos los privilegios a `anon`/`authenticated` en las cinco tablas de negocio E1; el servidor conserva el único acceso de aplicación a esos datos.
+- Consolidada en README la instalación, arranque, migración conservadora, verificación, detención y advertencia sobre `db:reset`.
 
 ## Evidencia y verificaciones reales
 
@@ -82,18 +87,27 @@ Implementada E1.6 sobre el commit base `3150b348151a4828f28502a299b868303c01b5ba
 - `pnpm verify`: formato, ESLint, TypeScript, 7 archivos/26 pruebas unitarias y build de producción aprobados; la ruta dinámica `/spaces/[spaceId]/members` quedó incluida en el build.
 - Consulta agregada posterior: 0 espacios y 0 membresías de fixtures E1.6; permanecen 1 identidad, 1 espacio, 1 membresía y 0 invitaciones persistentes. No se consultó ni registró PII.
 - Comprobación manual del usuario del 2026-09-21: confirmó que la comprobación manual de E1.6 funcionó correctamente y aceptó la entrega. No se atribuyen mediante esta confirmación otros recorridos o resultados manuales.
+- Migraciones `20260921000000_e1_7_access_audit.sql` y `20260921010000_e1_7_harden_data_api.sql` aplicadas con `migration up`, sin `db reset` ni eliminación de volúmenes.
+- `pnpm test:integration`: 5 archivos y 26 pruebas aprobadas contra Auth, PostgreSQL y Mailpit locales; las nuevas pruebas comprueban los ocho tipos de acción, actor/espacio/objetivo/fecha, ausencia de campos personales, ausencia de eventos para rechazos o repeticiones idempotentes y cierre de las cinco tablas a los roles Data API.
+- `pnpm test:e2e`: 12 pruebas aprobadas; regresión completa de E1 y ausencia de clave administrativa, URL de base y credenciales efímeras de prueba en HTML/bundles accesibles al navegador.
+- `pnpm verify`: formato, ESLint, TypeScript, 7 archivos/26 pruebas unitarias, higiene de 118 archivos versionados o versionables y build de producción aprobados.
+- `git diff --check` aprobado. `.env.local`, secretos temporales, dependencias, build y resultados de pruebas permanecen ignorados; la revisión de higiene no encontró correos fuera de dominios reservados en archivos versionables.
+- Consulta agregada posterior: los fixtures E1.7 se eliminaron; permanecen 1 identidad, 1 espacio, 1 membresía y 0 invitaciones persistentes. No se consultó ni registró PII.
+- Reverificación del 2026-10-01 sin cambios de código: 6 migraciones aplicadas, `pnpm verify` (26 unitarias, higiene de 118 archivos y build), `pnpm test:integration` 26/26, `pnpm test:e2e` 12/12 y `git diff --check` aprobados.
+- Comprobación manual del usuario del 2026-10-01: revisó el diff, confirmó que la Data API rechaza con `42501` las cinco tablas E1 y recorrió desde la interfaz invitaciones, aceptación de una identidad nueva, cambios de rol, autosalida y el rechazo del último responsable; informó que todo funcionó correctamente. La consulta agregada posterior registró 7 eventos (2 `invitacion_creada`, 1 `invitacion_cancelada`, 1 `invitacion_aceptada`, 2 `rol_membresia_cambiado`, 1 `membresia_abandonada`) y 0 eventos con correos. No hubo eventos `invitacion_reenviada` ni `membresia_retirada` en ese recorrido: ambos tipos conservan solo evidencia automatizada y no se atribuyen a la comprobación manual.
+- Estado agregado posterior: 2 identidades, 1 espacio, 2 membresías y 2 invitaciones; los datos del recorrido manual se conservan en la base local. No se consultó ni registró PII.
 
 ## No realizado
 
-No se implementaron reactivación administrativa directa, auditoría de eventos, documentos, rutas, IA, E2, despliegue ni proveedor externo. La reactivación permanece exclusivamente en invitaciones; auditoría/endurecimiento local corresponde a E1.7 y RN-18 externo al piloto.
+No se implementaron reactivación administrativa directa, panel de auditoría, documentos, rutas, IA, E2, despliegue ni proveedor externo. La reactivación permanece exclusivamente en invitaciones. RN-18 externo, retención, alojamiento y proveedores continúan pendientes del piloto o de sus entregas correspondientes.
 
 ## Próxima tarea concreta
 
-E1.7 es el siguiente paso del plan, pero no está iniciado: añadir la auditoría mínima de eventos de acceso, revisar errores/secretos y consolidar evidencia operativa repetible de CA-01. Debe mantener el alcance exclusivamente local y no adelantar E2 ni el piloto.
+Planificar E2 (RF-03, fuentes) solo cuando el usuario lo autorice: resolver antes PEN-04, PEN-06 y PEN-08 en lo que afecte a la carga, y proponer almacenamiento de archivos y biblioteca de trabajos con justificación. Ajustes menores conocidos, sin impacto funcional: los textos "E1.6" de la portada y `/spaces`, y `minimum_password_length = 6` de Supabase frente al mínimo de 8 de la aplicación. No preparar el piloto por inferencia.
 
 ## Estado de Git y operación
 
-E1.5 está cerrado en `3150b348151a4828f28502a299b868303c01b5ba`, sin push. E1.6 queda consolidada en el commit local de cierre solicitado, también sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
+E1.6 está cerrado en `8387cefc20495a7dba10a2a0ef9753cbb1a9376d`. E1.7 se consolida en el commit local siguiente, sin push. `.env.local`, secretos temporales, dependencias, build y resultados de prueba permanecen ignorados.
 
 ## Formato para futuras sesiones
 

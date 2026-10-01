@@ -18,6 +18,12 @@ import {
 } from "../../modules/invitations/contract.ts";
 
 import {
+  accessAuditActions,
+  accessAuditActorTypes,
+  accessAuditTargetTypes,
+} from "../../modules/access/audit.ts";
+
+import {
   membershipStatuses,
   spaceRoles,
 } from "../../modules/access/contract.ts";
@@ -35,6 +41,18 @@ export const invitationStatus = pgEnum("invitation_status", invitationStatuses);
 export const invitationDeliveryStatus = pgEnum(
   "invitation_delivery_status",
   invitationDeliveryStatuses,
+);
+export const accessAuditAction = pgEnum(
+  "access_audit_action",
+  accessAuditActions,
+);
+export const accessAuditActorType = pgEnum(
+  "access_audit_actor_type",
+  accessAuditActorTypes,
+);
+export const accessAuditTargetType = pgEnum(
+  "access_audit_target_type",
+  accessAuditTargetTypes,
 );
 
 export const profiles = pgTable("profiles", {
@@ -140,6 +158,40 @@ export const invitations = pgTable(
     check(
       "invitations_token_hash_format",
       sql`char_length(${table.tokenHash}) = 64 and ${table.tokenHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+  ],
+);
+
+export const accessAuditEvents = pgTable(
+  "access_audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    action: accessAuditAction("action").notNull(),
+    actorType: accessAuditActorType("actor_type").notNull(),
+    actorProfileId: uuid("actor_profile_id").references(
+      () => profiles.identityId,
+      { onDelete: "restrict" },
+    ),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    targetType: accessAuditTargetType("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("access_audit_events_space_occurred_at_idx").on(
+      table.spaceId,
+      table.occurredAt,
+    ),
+    index("access_audit_events_actor_occurred_at_idx")
+      .on(table.actorProfileId, table.occurredAt)
+      .where(sql`${table.actorProfileId} is not null`),
+    check(
+      "access_audit_actor_fields",
+      sql`(${table.actorType} = 'identidad' and ${table.actorProfileId} is not null) or (${table.actorType} = 'operador' and ${table.actorProfileId} is null)`,
     ),
   ],
 );

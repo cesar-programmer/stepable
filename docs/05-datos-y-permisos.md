@@ -1,7 +1,7 @@
 # Datos y permisos
 
-Estado: ciclo local de identidad, espacios, invitaciones y membresías aceptado e implementado hasta E1.6; cierre local y piloto pendientes.
-Actualizado: 2026-09-19.
+Estado: ciclo local de acceso implementado y cerrado en E1.7; piloto pendiente.
+Actualizado: 2026-10-01.
 
 ## Conceptos y relaciones
 
@@ -32,7 +32,7 @@ Responsable que prueba una ruta y acceso al documento completo son concreciones 
 
 ## Cuestiones del modelo conceptual
 
-- Revocación, cambio de rol, autosalida y reincorporación por invitación tienen semántica implementada en RN-11–RN-17. E1.7 conserva la auditoría y revisión de seguridad local.
+- Revocación, cambio de rol, autosalida y reincorporación por invitación tienen semántica implementada en RN-11–RN-17. E1.7 añade su auditoría mínima y la revisión de seguridad local.
 - Qué ocurre con referencias históricas al borrar una fuente.
 - Qué versión puede consultar un asistente cuando una ruta usa contenido anterior.
 - Retención de conversaciones, intentos y archivos; acceso operativo y tratamiento por proveedores.
@@ -90,7 +90,7 @@ Una membresía ausente o revocada, un rol desconocido o una acción desconocida 
 | RN-17 | Cuando se confirma el retiro de una membresía o el cambio de rol, las solicitudes protegidas que comiencen después usan el nuevo estado aunque la sesión global siga abierta. Retirar un espacio no cierra otras membresías ni la sesión de identidad. No borra automáticamente autoría, progreso o conversaciones; su retención se resuelve en PEN-06. |
 | RN-18 | Inicio de sesión, recuperación y aceptación no revelan si un correo ajeno tiene cuenta o invitación. Se aplican límites de frecuencia y respuestas externas no enumerables. |
 
-El bootstrap es una capacidad operativa, no un rol global visible en el producto. No se propone acceso del desarrollador a conversaciones o documentos. Los eventos mínimos auditables de E1 son: creación de espacio, invitación, reenvío/revocación/aceptación, cambio de rol y retiro, con actor, espacio, objetivo y fecha; no se guardan tokens ni contraseñas.
+El bootstrap es una capacidad operativa, no un rol global visible en el producto. No se propone acceso del desarrollador a conversaciones o documentos. Los eventos mínimos auditables de E1 son: creación de espacio, invitación, reenvío/revocación/aceptación, cambio de rol, retiro y autosalida, con actor, espacio, objetivo y fecha. Se registran identificadores, no correos, tokens, contraseñas, enlaces, cookies, claves ni metadatos libres. Cada evento se inserta en la misma transacción que su mutación; un rechazo, reintento idempotente o rollback no produce un evento de éxito. La migración no inventa eventos históricos para operaciones anteriores a E1.7 porque no existe actor o fecha confiable que reconstruir. Los eventos internos de sesión de Supabase Auth no se duplican en esta tabla de negocio.
 
 ### Consecuencias por rol
 
@@ -145,17 +145,19 @@ Durante la V0, **solo el operador de Stepable** aprovisiona espacios nuevos y no
 
 ## Modelo mínimo para E1
 
-E1.6 usa las entidades de acceso e invitaciones existentes; la auditoría general se revisará en E1.7:
+E1.7 completa las entidades locales de acceso e invitaciones:
 
 - `profiles`, con el UUID de `auth.users` como clave primaria y referencia restringida;
 - `spaces`, con UUID, `slug` único, nombre y responsable inicial;
 - `memberships`, con clave primaria `(space_id, profile_id)`, rol cerrado `responsable`/`integrante` y estado `activa`/`revocada`;
 - `invitations`, con espacio, correo normalizado, rol, emisor, hash de token único, vencimiento, entrega y estados `pendiente`/`aceptada`/`revocada`/`vencida`;
-- evento de auditoría de acceso sin secretos.
+- `access_audit_events`, con acción cerrada, tipo/identificador de actor, espacio, tipo/identificador de objetivo y fecha. El bootstrap usa actor de tipo `operador`; las mutaciones autenticadas usan el UUID de perfil.
 
-Las operaciones que aceptan invitaciones, cambian roles o retiran miembros usan transacciones y restricciones de base. En E1.6, cambio, retiro y autosalida se serializan con un bloqueo asesor por espacio; después del bloqueo se vuelven a comprobar la membresía/rol del actor, el objetivo activo y el número de responsables activos. La restricción diferida de base sigue siendo respaldo y la interfaz nunca es la autoridad.
+Las operaciones que aceptan invitaciones, cambian roles o retiran miembros usan transacciones y restricciones de base. Cambio, retiro, autosalida y administración de invitaciones se serializan con un bloqueo asesor por espacio; después del bloqueo se vuelven a comprobar la membresía/rol del actor y, cuando aplica, el objetivo activo y el número de responsables activos. La restricción diferida de base sigue siendo respaldo y la interfaz nunca es la autoridad. E1.7 corrige así la ventana entre la autorización inicial y una creación, reenvío o cancelación de invitación concurrente con la pérdida de permisos.
 
-## Decisiones aún abiertas después de E1.6
+Las tablas `profiles`, `spaces`, `memberships`, `invitations` y `access_audit_events` no conceden operaciones a los roles `anon` o `authenticated` de la Data API y mantienen RLS habilitada sin políticas de acceso directo. La aplicación usa la conexión PostgreSQL del servidor y su política central; Auth en el navegador no abre acceso directo a datos de negocio.
+
+## Decisiones aún abiertas después de E1.7
 
 - Completar RN-18 con límites y respuestas externas del entorno que se autorice para piloto; localmente el token es de alta entropía y el flujo de cuenta responde sin distinguir públicamente si ya existía.
 - PEN-06 sigue definiendo cuánto conservar membresías retiradas y auditoría. No bloquea implementar el rechazo inmediato, pero sí recibir datos reales del piloto.

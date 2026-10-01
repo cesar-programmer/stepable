@@ -1,11 +1,11 @@
 # Decisiones pendientes
 
-Estado: abierto · Actualizado: 2026-09-19.
+Estado: abierto · Actualizado: 2026-09-21.
 
 | ID | Pregunta | Resolver antes de |
 | --- | --- | --- |
 | PEN-01 | Presupuesto orientativo confirmado: 10 USD/mes para primeras pruebas. Correo externo, dominios, alojamiento y costos se reevalúan sin proveedor elegido | Preparar/autorizar piloto |
-| PEN-02 | Identidad e invitaciones locales resueltas hasta E1.5. Falta completar RN-18 para operación externa: límites, correo y respuestas del entorno de piloto sin enumeración | E1.7 y antes del piloto |
+| PEN-02 | Identidad, invitaciones y revisión de seguridad local resueltas hasta E1.7. Falta completar RN-18 para operación externa: límites, correo y respuestas del entorno de piloto sin enumeración | Antes del piloto |
 | PEN-03 | Cómo aprobar, reintentar, desbloquear pasos y aceptar variantes de código | E5 |
 | PEN-04 | Fuente vigente, contradicciones, sustitución, eliminación y rutas obsoletas | E2/E3, completar antes de E4 |
 | PEN-06 | Retención, eliminación, acceso operativo y datos enviados a proveedores | E2/E3 |
@@ -29,3 +29,4 @@ El usuario indicó unos 10 USD como presupuesto total mensual de primeras prueba
 - Parte de autorización de PEN-05 · 2026-09-18: aceptadas e implementadas en E1.4 la matriz mínima, la denegación por defecto, la consulta de membresía/rol por solicitud, la conservación como revocada y la vigencia posterior al commit. Los cambios/retiros administrativos concurrentes siguen en E1.6.
 - Parte local de invitaciones de PEN-02/PEN-05 · 2026-09-18: aceptados e implementados en E1.5 siete días de vigencia, rol integrante predeterminado, responsable explícito, cuenta Auth separada de aceptación Stepable, reactivación de revocadas y preservación del rol activo. También se implementaron creación/lista/reenvío/cancelación solo por responsable, token hasheado de un uso y aceptación atómica. RN-18 no queda aceptada en bloque; su endurecimiento externo permanece abierto.
 - PEN-05 · 2026-09-19: aceptada e implementada en E1.6 la administración local. Un responsable activo puede promover, degradar o retirar miembros —incluido otro responsable o a sí mismo— si permanece un responsable activo; un integrante solo puede abandonar su propia membresía. Revocadas se listan pero no se mutan ni reactivan directamente. Las operaciones se serializan por espacio y revalidan al actor y el invariante dentro de la transacción. La visibilidad de fuentes se definirá con E2, sin reabrir estas reglas de membresía.
+- Cierre local de E1 · 2026-09-21: E1.7 implementa auditoría transaccional mínima, higiene del repositorio, revisión de credenciales en navegador y operación reproducible. No abre una decisión nueva: PEN-06 conserva la retención antes de datos reales y PEN-02 conserva solo el endurecimiento externo de RN-18.

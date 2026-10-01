@@ -1,8 +1,8 @@
 # Stepable · Base documental V0
 
-Versión documental: 1.2 · Fecha: 2026-09-21 · Estado: E1.6 cerrada con verificación automática y comprobación manual local.
+Versión documental: 1.4 · Fecha: 2026-10-01 · Estado: E1 cerrada localmente; E2 y piloto pendientes de autorización.
 
-Este repositorio contiene la base documental y la aplicación local de Stepable. E1.6 añade administración de membresías activas/revocadas, cambios de rol, retiro y autosalida con autorización vigente y protección transaccional del último responsable. El piloto y los proveedores siguen pendientes.
+Este repositorio contiene la base documental y la aplicación local de Stepable. E1 implementa identidad, espacios, invitaciones, membresías, autorización vigente y auditoría mínima de mutaciones de acceso. El piloto y los proveedores siguen pendientes.
 
 ## Cómo comenzar
 
@@ -11,40 +11,53 @@ Este repositorio contiene la base documental y la aplicación local de Stepable.
 3. Retomar desde [el estado actual](docs/09-estado-actual.md).
 4. El repositorio Git es local y no tiene remoto. No hacer `push` ni configurar uno por inferencia.
 
-## Desarrollo local
+## Operación local reproducible
 
 Requisitos: Node.js 24, Corepack/`pnpm` 11, un runtime compatible con Docker y espacio para las imágenes locales de Supabase. Las versiones de dependencias quedan fijadas en `pnpm-lock.yaml`.
+
+Instalación y primer arranque:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm env:start
 pnpm env:status
 pnpm db:migrate
-pnpm auth:create-local-user
-pnpm access:bootstrap-space
 pnpm dev
 ```
 
-`env:start` sincroniza `.env.local` con la pila iniciada; el archivo está ignorado por Git. Supabase CLI puede mostrar claves locales en esa terminal: no copiarlas a reportes ni compartirlas. `db:migrate` aplica solo migraciones pendientes y no reinicia la base. La aplicación abre en `http://127.0.0.1:3000`, Supabase Studio en `http://127.0.0.1:54323` y Mailpit en `http://127.0.0.1:54324`.
+`env:start` crea o reutiliza una sola pila local de PostgreSQL/Auth/Mailpit y sincroniza `.env.local`; el archivo está ignorado por Git. Supabase CLI puede mostrar claves locales en esa terminal: no copiarlas a reportes ni compartirlas. `db:migrate` aplica solo migraciones pendientes y no reinicia la base. La aplicación abre en `http://127.0.0.1:3000`, Supabase Studio en `http://127.0.0.1:54323` y Mailpit en `http://127.0.0.1:54324`.
 
-Comandos de operación:
+Preparación opcional de datos locales:
 
 ```bash
-pnpm db:reset      # reconstruye PostgreSQL desde migraciones y seed locales
-pnpm db:migrate    # aplica migraciones pendientes sin borrar datos
-pnpm env:sync      # actualiza .env.local desde la pila local iniciada
-pnpm env:status    # muestra estado y URLs locales
-pnpm env:stop      # detiene la pila Supabase
-pnpm verify        # formato, lint, tipos, unidades y build
-pnpm test:integration:auth # integración real con Auth y Mailpit
-pnpm test:integration:access # integridad, bootstrap e aislamiento reales
-pnpm test:integration:invitations # estados, atomicidad y concurrencia de invitaciones
-pnpm test:integration:memberships # roles, retiros, autosalida y concurrencia
-pnpm test:e2e:access # listado, detalle, aislamiento y revocación con sesión viva
-pnpm test:e2e:invitations # invitaciones con Auth y Mailpit reales
-pnpm test:e2e:memberships # administración con dos sesiones y permisos vigentes
-pnpm test:e2e      # recorridos web; requiere pnpm exec playwright install chromium
+pnpm auth:create-local-user
+pnpm access:bootstrap-space
 ```
+
+Comprobación completa:
+
+```bash
+pnpm verify             # formato, lint, tipos, unidades, higiene y build
+pnpm test:integration   # Auth, PostgreSQL y Mailpit locales reales
+pnpm test:e2e           # recorridos web; requiere Chromium de Playwright
+pnpm security:check     # archivos versionables, secretos y correos no reservados
+```
+
+Comandos focalizados disponibles: `test:integration:auth`, `test:integration:access`, `test:integration:invitations`, `test:integration:memberships`, `test:integration:audit`, `test:e2e:auth`, `test:e2e:access`, `test:e2e:invitations` y `test:e2e:memberships`.
+
+Detención y reanudación:
+
+```bash
+# detener pnpm dev con Ctrl+C
+pnpm env:stop
+
+# reanudar sin borrar datos
+pnpm env:start
+pnpm db:migrate
+pnpm dev
+```
+
+`pnpm db:reset` es destructivo y no forma parte de la operación diaria: reconstruye una base descartable desde las migraciones y solo debe usarse con autorización expresa. Para actualizar la base existente se usa `pnpm db:migrate`.
 
 `pnpm auth:create-local-user` solicita correo y contraseña de forma interactiva, no muestra la contraseña y no guarda credenciales. Crea solo una identidad confirmada en Supabase Auth local; no crea administrador de Stepable, espacio, membresía ni rol.
 
@@ -111,6 +124,6 @@ Los documentos son memoria explícita: solo sirven a Codex si están disponibles
 - Acordado: dirección expresada por el usuario o alcance aceptado para planificar.
 - Propuesto: detalle añadido para concretar el diseño; puede cambiar durante la planificación.
 - Pendiente: decisión aún sin respuesta. No equivale a autorización para inventar una especificación.
-- Implementado/verificado: requiere evidencia real. E1.1–E1.6 están cerradas con evidencia automatizada y comprobaciones manuales. E1.7 no está iniciada.
+- Implementado/verificado: requiere evidencia real. E1.1–E1.7 están cerradas con evidencia automatizada y comprobaciones manuales delimitadas en el estado actual.
 
 La aceptación de la V0 como base de planificación no significa que todos los detalles técnicos estén cerrados. Las instrucciones posteriores del usuario prevalecen; actualizar los documentos afectados para mantener coherencia.

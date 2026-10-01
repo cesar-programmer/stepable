@@ -1,11 +1,11 @@
 # Entregas y aceptación
 
 Estado: secuencia inicial de planificación; sin fechas comprometidas.
-Actualizado: 2026-09-21.
+Actualizado: 2026-10-01.
 
-## Etapa actual: E1.6 cerrada; E1.7 no iniciada
+## Etapa actual: E1 cerrada localmente
 
-Arquitectura modular, stack y ciclo local de acceso hasta administración de miembros están aceptados en ADR-003. E1.6 cuenta con evidencia automatizada y confirmación manual del usuario. E1.7, piloto y proveedores no están autorizados por este cierre.
+Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2 requiere autorización separada. Piloto y proveedores permanecen fuera del alcance.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ RF-10 es transversal: errores y límites deben incorporarse en las entregas que 
 
 ## Regla de cierre
 
-Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1–E1.6 tienen evidencia automatizada y comprobación manual; las etapas posteriores todavía no tienen resultados.
+Una entrega no está completada por tener archivos. Requiere comportamiento observado, verificaciones pertinentes y límites documentados. E1.1–E1.6 tienen evidencia automatizada y comprobación manual. E1.7 tiene evidencia automatizada y comprobación manual; las etapas posteriores todavía no tienen resultados.
 
 Las pruebas deben cubrir aislamiento, permisos, referencias/versiones, recuperación de fallos y progreso. No fijar un número de pruebas como objetivo de calidad.
 
@@ -28,7 +28,7 @@ La V0 funcional termina cuando onboarding y consulta permanente operan juntos. U
 
 ## Plan ejecutable de E1
 
-E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) acepta stack, entorno y ciclo local de acceso hasta E1.6.
+E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produce una porción demostrable y conserva el sistema ejecutable. [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md) acepta stack y ciclo local de acceso; E1.7 documenta su cierre técnico.
 
 | Paso | Trabajo | Criterio de aceptación | Pruebas pertinentes | Resultado esperado |
 | --- | --- | --- | --- | --- |
@@ -44,7 +44,13 @@ E1 no incluye fuentes, procesamiento, archivos, búsqueda ni IA. Cada paso produ
 
 ### Evidencia de cierre de CA-01
 
-La evidencia mínima será: salida de suite con fecha y versión, matriz de autorización ejercitada, reporte de migración limpia, recorrido E2E de invitación y recuperación, y registro de limitaciones conocidas. Un despliegue o una captura de pantalla por sí solos no cierran E1. E1.8 requiere autorización posterior porque crea servicios y puede generar cargos.
+La evidencia de E1 queda relacionada así:
+
+- **RF-01 / identidad e invitación:** integración real de Auth/Mailpit y E2E cubren credenciales válidas e inválidas, sesión, recuperación, enlace consumido, registro público cerrado, usuario existente/nuevo y aceptación explícita. Las comprobaciones manuales confirmadas de E1.2 y E1.5 complementan, pero no sustituyen, esa evidencia.
+- **RF-02 / espacios, membresías y roles:** integración PostgreSQL y E2E cubren bootstrap, ambos roles, aislamiento por identificador, estado vacío, revocación con sesión viva, invitaciones, cambio/retiro/autosalida y último responsable. Las comprobaciones manuales confirmadas de E1.3, E1.4 y E1.6 se conservan separadas.
+- **CA-01:** la matriz de autorización se ejerce en integración y los recorridos web prueban acceso de responsable/integrante y rechazo de accesos horizontales o revocados. E1.7 añade auditoría transaccional de las mutaciones, revisión automatizada de archivos versionables y búsqueda de credenciales en recursos del navegador.
+
+La regresión final de E1.7 aprobó 26 pruebas de integración y 12 de navegador; `pnpm verify` cubre formato, lint, tipos, 26 pruebas unitarias, higiene y build. Las migraciones incrementales se aplicaron sin reset y la prueba de auditoría usa fixtures efímeros. Un despliegue o una captura de pantalla por sí solos no cierran E1. E1.8 requiere autorización posterior porque crea servicios y puede generar cargos.
 
 ### Resultado de E1.1
 
@@ -91,3 +97,11 @@ Implementado y verificado automáticamente el 2026-09-19: listado administrativo
 Las operaciones administrativas se serializan por espacio y vuelven a comprobar dentro de la transacción la membresía y rol del actor, la membresía objetivo y el número de responsables activos. Las pruebas reales cubren promoción, degradación, retiro, autosalida, último responsable, identificadores cruzados, actor que pierde permiso en una carrera, sesión abierta tras el cambio, conservación de otro espacio y ausencia de reactivación directa. No se requirió migración de datos porque E1.4 ya introdujo estado e invariante.
 
 La regresión completa aprobó 24 pruebas de integración y 12 de navegador; las unidades, tipos, lint, formato y build se registran en el estado actual. El 2026-09-21 el usuario confirmó que la comprobación manual de E1.6 funcionó correctamente y aceptó la entrega. No se le atribuyen comprobaciones manuales adicionales. E1.6 queda cerrada; E1.7 requiere autorización y trabajo separados.
+
+### Resultado de E1.7
+
+Implementado y verificado automáticamente el 2026-09-21 sobre el commit base `8387cefc20495a7dba10a2a0ef9753cbb1a9376d`: tabla de auditoría con acciones y tipos cerrados, solo identificadores y fecha; registro de creación de espacio, ciclo de invitación, cambio de rol, retiro y autosalida dentro de la misma transacción que confirma cada mutación. Repeticiones idempotentes, rechazos y rollbacks no generan eventos de éxito.
+
+La revisión de cierre corrigió la revalidación transaccional de permisos al crear, reenviar o cancelar invitaciones si el actor pierde acceso mientras espera. También cerró a `anon`/`authenticated` la vía Data API sobre todas las tablas E1 con RLS y revocación de privilegios, amplió la prueba de navegador para buscar credenciales de servidor en HTML/bundles y añadió una comprobación de higiene de archivos versionados o versionables. La operación diaria, migraciones conservadoras, suites y detención están consolidadas en README.
+
+Pasaron 26 pruebas de integración, 12 de navegador y 26 unitarias, además de formato, lint, tipos, higiene, build y `git diff --check`. Las migraciones se aplicaron sin `db reset`; los fixtures se eliminaron y los datos locales existentes se conservaron. Reverificación del 2026-10-01 sin cambios de código: 6 migraciones aplicadas, `pnpm verify` (26 unitarias, higiene de 118 archivos y build), `pnpm test:integration` 26/26, `pnpm test:e2e` 12/12 y `git diff --check` aprobados. Comprobación manual del usuario del 2026-10-01: revisó el diff, confirmó que la Data API rechaza con `42501` las cinco tablas E1 y recorrió desde la interfaz invitaciones, aceptación de una identidad nueva, cambios de rol, autosalida y el rechazo del último responsable; informó que todo funcionó correctamente. La consulta agregada posterior registró 7 eventos (2 `invitacion_creada`, 1 `invitacion_cancelada`, 1 `invitacion_aceptada`, 2 `rol_membresia_cambiado`, 1 `membresia_abandonada`) y 0 eventos con correos. No hubo eventos `invitacion_reenviada` ni `membresia_retirada` en ese recorrido: ambos tipos conservan solo evidencia automatizada y no se atribuyen a la comprobación manual. E1.7 y E1 quedan cerradas localmente.

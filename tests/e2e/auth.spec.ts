@@ -94,7 +94,7 @@ test.describe.serial("identity and session", () => {
     await expect(page).toHaveURL(/\/protected$/);
   });
 
-  test("does not expose the administrative key in browser assets", async ({
+  test("does not expose server credentials in browser assets", async ({
     page,
   }) => {
     const response = await page.request.get("/");
@@ -109,9 +109,19 @@ test.describe.serial("identity and session", () => {
       contents.push(await assetResponse.text());
     }
 
-    if (contents.some((content) => content.includes(config.serviceRoleKey))) {
+    const serverOnlyValues = [
+      config.serviceRoleKey,
+      config.databaseUrl,
+      identity.password,
+      identity.updatedPassword,
+    ];
+    if (
+      contents.some((content) =>
+        serverOnlyValues.some((value) => content.includes(value)),
+      )
+    ) {
       throw new Error(
-        "La clave administrativa apareció en un recurso accesible al navegador.",
+        "Una credencial de servidor apareció en un recurso accesible al navegador.",
       );
     }
 

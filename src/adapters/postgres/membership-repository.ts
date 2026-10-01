@@ -10,6 +10,7 @@ import type {
 } from "../../modules/memberships/contract.ts";
 
 import type { StepableDatabase } from "./database.ts";
+import { recordAccessAuditEvent } from "./access-audit.ts";
 import { authUsers, memberships } from "./schema.ts";
 
 type Transaction = Parameters<
@@ -143,6 +144,13 @@ export class PostgresMembershipRepository implements MembershipRepository {
             eq(memberships.status, "activa"),
           ),
         );
+      await recordAccessAuditEvent(transaction, {
+        action: "rol_membresia_cambiado",
+        actor: { type: "identidad", profileId: input.actorIdentityId },
+        spaceId: input.spaceId,
+        targetType: "membresia",
+        targetId: input.targetProfileId,
+      });
       return { kind: "updated" as const };
     });
   }
@@ -188,6 +196,13 @@ export class PostgresMembershipRepository implements MembershipRepository {
             eq(memberships.status, "activa"),
           ),
         );
+      await recordAccessAuditEvent(transaction, {
+        action: "membresia_retirada",
+        actor: { type: "identidad", profileId: input.actorIdentityId },
+        spaceId: input.spaceId,
+        targetType: "membresia",
+        targetId: input.targetProfileId,
+      });
       return { kind: "revoked" as const };
     });
   }
@@ -226,6 +241,13 @@ export class PostgresMembershipRepository implements MembershipRepository {
             eq(memberships.status, "activa"),
           ),
         );
+      await recordAccessAuditEvent(transaction, {
+        action: "membresia_abandonada",
+        actor: { type: "identidad", profileId: input.actorIdentityId },
+        spaceId: input.spaceId,
+        targetType: "membresia",
+        targetId: input.actorIdentityId,
+      });
       return { kind: "left" as const };
     });
   }

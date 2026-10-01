@@ -11,6 +11,7 @@ import {
   SpaceBootstrapConflictError,
 } from "../../modules/access/contract.ts";
 
+import { recordAccessAuditEvent } from "./access-audit.ts";
 import type { StepableDatabase } from "./database.ts";
 import { authUsers, memberships, profiles, spaces } from "./schema.ts";
 
@@ -101,6 +102,14 @@ export class PostgresAccessRepository implements AccessRepository {
         spaceId: createdSpace.id,
         profileId: identityId,
         role: "responsable",
+      });
+
+      await recordAccessAuditEvent(transaction, {
+        action: "espacio_creado",
+        actor: { type: "operador" },
+        spaceId: createdSpace.id,
+        targetType: "espacio",
+        targetId: createdSpace.id,
       });
 
       return {

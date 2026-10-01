@@ -23,6 +23,7 @@
     "test:integration:access": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/access.test.ts",
     "test:integration:invitations": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/invitations.test.ts",
     "test:integration:memberships": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/memberships.test.ts",
+    "test:integration:audit": "node scripts/with-local-supabase-env.mjs vitest run --config vitest.integration.config.ts tests/integration/audit.test.ts",
     "test:e2e:auth": "node scripts/with-local-supabase-env.mjs playwright test tests/e2e/auth.spec.ts",
     "test:e2e:access": "node scripts/with-local-supabase-env.mjs playwright test tests/e2e/access.spec.ts",
     "test:e2e:invitations": "node scripts/with-local-supabase-env.mjs playwright test tests/e2e/invitations.spec.ts",
@@ -36,7 +37,8 @@
     "env:stop": "supabase stop",
     "db:migrate": "supabase migration up --local --network-id stepable-local",
     "db:reset": "supabase db reset --network-id stepable-local",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "security:check": "node scripts/check-repository-hygiene.mjs",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm security:check && pnpm build"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 
+import { allowsSpaceAction } from "../../modules/access/authorization.ts";
 import type {
   AcceptInvitationResult,
   AccountSetupTarget,
@@ -13,6 +14,7 @@ import type {
   SpaceInvitation,
 } from "../../modules/invitations/contract.ts";
 
+import { recordAccessAuditEvent } from "./access-audit.ts";
 import type { StepableDatabase } from "./database.ts";
 import {
   authUsers,
@@ -27,6 +29,36 @@ type Transaction = Parameters<
 >[0];
 
 type InvitationRow = typeof invitations.$inferSelect;
+
+async function lockSpaceAdministration(
+  transaction: Transaction,
+  spaceId: string,
+) {
+  await transaction.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`memberships:${spaceId}`}, 0))`,
+  );
+}
+
+async function canManageInvitations(
+  transaction: Transaction,
+  actorIdentityId: string,
+  spaceId: string,
+) {
+  const [actor] = await transaction
+    .select({ role: memberships.role, status: memberships.status })
+    .from(memberships)
+    .where(
+      and(
+        eq(memberships.spaceId, spaceId),
+        eq(memberships.profileId, actorIdentityId),
+      ),
+    )
+    .limit(1);
+  return Boolean(
+    actor &&
+    allowsSpaceAction(actor.status, actor.role, "gestionar_invitaciones"),
+  );
+}
 
 function toSpaceInvitation(row: InvitationRow): SpaceInvitation {
   return {
@@ -67,6 +99,17 @@ export class PostgresInvitationRepository implements InvitationRepository {
     input: CreateInvitationInput,
   ): Promise<CreateInvitationResult> {
     return this.database.transaction(async (transaction) => {
+      await lockSpaceAdministration(transaction, input.spaceId);
+      if (
+        !(await canManageInvitations(
+          transaction,
+          input.invitedBy,
+          input.spaceId,
+        ))
+      ) {
+        return { kind: "unauthorized" as const };
+      }
+
       await transaction.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${`${input.spaceId}:${input.email}`}, 0))`,
       );
@@ -141,6 +184,15 @@ export class PostgresInvitationRepository implements InvitationRepository {
         })
         .returning();
 
+      await recordAccessAuditEvent(transaction, {
+        action: "invitacion_creada",
+        actor: { type: "identidad", profileId: input.invitedBy },
+        spaceId: input.spaceId,
+        targetType: "invitacion",
+        targetId: created.id,
+        occurredAt: input.now,
+      });
+
       return {
         kind: "created" as const,
         invitation: toSpaceInvitation(created),
@@ -175,6 +227,7 @@ export class PostgresInvitationRepository implements InvitationRepository {
   }
 
   async prepareResend(input: {
+    actorIdentityId: string;
     invitationId: string;
     spaceId: string;
     tokenHash: string;
@@ -182,6 +235,17 @@ export class PostgresInvitationRepository implements InvitationRepository {
     now: Date;
   }): Promise<PrepareResendResult> {
     return this.database.transaction(async (transaction) => {
+      await lockSpaceAdministration(transaction, input.spaceId);
+      if (
+        !(await canManageInvitations(
+          transaction,
+          input.actorIdentityId,
+          input.spaceId,
+        ))
+      ) {
+        return { kind: "unauthorized" as const };
+      }
+
       const [selected] = await transaction
         .select()
         .from(invitations)
@@ -235,6 +299,15 @@ export class PostgresInvitationRepository implements InvitationRepository {
         .where(eq(invitations.id, invitation.id))
         .returning();
 
+      await recordAccessAuditEvent(transaction, {
+        action: "invitacion_reenviada",
+        actor: { type: "identidad", profileId: input.actorIdentityId },
+        spaceId: input.spaceId,
+        targetType: "invitacion",
+        targetId: invitation.id,
+        occurredAt: input.now,
+      });
+
       return {
         kind: "prepared" as const,
         invitation: toSpaceInvitation(updated),
@@ -244,11 +317,23 @@ export class PostgresInvitationRepository implements InvitationRepository {
   }
 
   async cancelInvitation(input: {
+    actorIdentityId: string;
     invitationId: string;
     spaceId: string;
     now: Date;
   }): Promise<CancelInvitationResult> {
     return this.database.transaction(async (transaction) => {
+      await lockSpaceAdministration(transaction, input.spaceId);
+      if (
+        !(await canManageInvitations(
+          transaction,
+          input.actorIdentityId,
+          input.spaceId,
+        ))
+      ) {
+        return { kind: "unauthorized" as const };
+      }
+
       const [selected] = await transaction
         .select()
         .from(invitations)
@@ -278,6 +363,14 @@ export class PostgresInvitationRepository implements InvitationRepository {
           updatedAt: input.now,
         })
         .where(eq(invitations.id, selected.id));
+      await recordAccessAuditEvent(transaction, {
+        action: "invitacion_cancelada",
+        actor: { type: "identidad", profileId: input.actorIdentityId },
+        spaceId: input.spaceId,
+        targetType: "invitacion",
+        targetId: selected.id,
+        occurredAt: input.now,
+      });
       return { kind: "cancelled" as const };
     });
   }
@@ -467,6 +560,15 @@ export class PostgresInvitationRepository implements InvitationRepository {
           updatedAt: input.now,
         })
         .where(eq(invitations.id, invitation.id));
+
+      await recordAccessAuditEvent(transaction, {
+        action: "invitacion_aceptada",
+        actor: { type: "identidad", profileId: input.identityId },
+        spaceId: invitation.spaceId,
+        targetType: "invitacion",
+        targetId: invitation.id,
+        occurredAt: input.now,
+      });
 
       return { kind: resultKind, spaceId: invitation.spaceId };
     });

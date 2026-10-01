@@ -1,5 +1,23 @@
 # Historial de cambios
 
+## 2026-10-01 · 1.4 · Cierre de E1.7 y de E1
+
+- Repetida la evidencia automática sin cambios de código: verify, 26 de integración, 12 de navegador y `git diff --check` aprobados.
+- El usuario revisó E1.7, comprobó manualmente la Data API cerrada y la auditoría desde la interfaz, y aceptó la entrega. Reenvío y retiro por responsable conservan solo evidencia automatizada.
+- Actualizado el estado de ADR-003 y de su índice; E1 queda cerrada localmente y consolidada en un commit local, sin push.
+- No se inició E2, piloto ni proveedores.
+
+## 2026-09-21 · 1.3 · Implementación y verificación de E1.7
+
+- Añadida auditoría mínima de acceso con acciones/tipos cerrados e identificadores de actor, espacio y objetivo; no persiste correos, tokens, contraseñas, enlaces, cookies, claves o metadatos libres.
+- Bootstrap, ciclo de invitaciones, cambio de rol, retiro y autosalida escriben su evento en la misma transacción exitosa; rechazos, repeticiones idempotentes y rollbacks no registran éxitos falsos.
+- Corregida la revalidación de permisos dentro de las transacciones de crear, reenviar y cancelar invitaciones ante cambios concurrentes de membresía.
+- Habilitada RLS y revocados los privilegios de `anon`/`authenticated` en todas las tablas E1 para impedir que la Data API eluda la política central del servidor.
+- Añadidas prueba de integración de auditoría, revisión de higiene de archivos versionables y búsqueda ampliada de credenciales de servidor en recursos del navegador.
+- Migraciones incrementales aplicadas sin reset ni eliminación de volúmenes; los datos locales existentes se conservaron y los fixtures efímeros se limpiaron.
+- Aprobadas 26 pruebas de integración, 12 de navegador y 26 unitarias, además de formato, lint, tipos, higiene, build y `git diff --check`.
+- Consolidada la operación local en README y relacionada la evidencia de RF-01/RF-02/CA-01. No se realizó ni se atribuye una comprobación manual nueva; E1.7 espera revisión final y permanece sin commit ni push.
+
 ## 2026-09-21 · 1.2 · Cierre de E1.6
 
 - El usuario confirmó que la comprobación manual de E1.6 funcionó correctamente y aceptó la entrega; no se le atribuyen comprobaciones manuales adicionales.

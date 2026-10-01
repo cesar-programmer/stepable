@@ -1,7 +1,7 @@
 # Arquitectura inicial de Stepable V0
 
-Estado: arquitectura y ciclo local de acceso aprobados e implementados hasta E1.6; servicios externos y piloto pendientes. Versión v1.1.
-Actualizado: 2026-09-19 · Decisiones relacionadas: [ADR-002](decisiones/ADR-002-organizacion-modular.md) y [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md).
+Estado: arquitectura y ciclo local de acceso aprobados e implementados y cerrados localmente en E1.7; servicios externos y piloto pendientes. Versión v1.2.
+Actualizado: 2026-09-21 · Decisiones relacionadas: [ADR-002](decisiones/ADR-002-organizacion-modular.md) y [ADR-003](decisiones/ADR-003-stack-y-acceso-e1.md).
 
 ## 1. Objetivo y fundamento
 
@@ -163,7 +163,7 @@ La separación propuesta permite agregar tipos de actividad y adaptadores de fue
 
 ## 13. Qué queda para resolver
 
-ADR-002 y el ciclo local de acceso de ADR-003 están aceptados hasta E1.6. PEN-02/RN-18 conserva el endurecimiento externo antes del piloto; PEN-07 conserva jobs, búsqueda, IA y servicios alojados; PEN-01 requiere precisar la operación/costo del piloto. PEN-04/PEN-06/PEN-08 cubren versiones, privacidad y límites antes de las entregas afectadas.
+ADR-002 y el ciclo local de acceso de ADR-003 están aceptados hasta E1.7. PEN-02/RN-18 conserva el endurecimiento externo antes del piloto; PEN-07 conserva jobs, búsqueda, IA y servicios alojados; PEN-01 requiere precisar la operación/costo del piloto. PEN-04/PEN-06/PEN-08 cubren versiones, privacidad y límites antes de las entregas afectadas.
 
 E1.1 fue autorizada, implementada y verificada localmente. Su aprobación no autorizaba por sí sola E1.2; la identidad local recibió autorización separada después. Ninguna de ambas autoriza despliegue o gastos.
 
@@ -244,6 +244,8 @@ E1.4 añade una política central cerrada para consultar espacios, gestionar inv
 E1.5 añade `invitations` al módulo de acceso y adaptadores separados para PostgreSQL, Mailpit y el alta administrativa de Auth. El enlace Stepable lleva un token aleatorio en el fragmento del navegador; el GET solo presenta la invitación, el cliente retira el fragmento y el servidor persiste únicamente SHA-256. Reenvío rota el token y aceptación/cancelación se serializan mediante bloqueo de fila. La aceptación comprueba identidad y correo verificado y consume la invitación en la misma transacción que crea o reactiva la membresía. El correo de Auth para una identidad nueva solo establece la cuenta; no acepta el espacio.
 
 E1.6 conecta `gestionar_miembros` y la acción explícita `abandonar_espacio` con casos de uso e interfaz. Las mutaciones toman un bloqueo asesor transaccional por espacio, vuelven a leer la membresía vigente del actor y comprueban el último responsable dentro de la misma transacción. Esto serializa cambios administrativos concurrentes y evita que un actor que perdió permiso mientras esperaba complete la operación. La restricción diferida de E1.4 permanece como defensa de integridad; no fue necesaria otra migración.
+
+E1.7 añade una auditoría local append-only desde la perspectiva de la aplicación. Cada mutación exitosa de acceso inserta, dentro de su misma transacción, una acción cerrada y los identificadores de actor, espacio y objetivo con fecha. No existe carga libre ni se duplican correos o secretos. Crear, reenviar y cancelar invitaciones comparte además el bloqueo por espacio de membresías y revalida al actor dentro de la transacción, igual que la administración de miembros. Todas las tablas de negocio E1 tienen RLS habilitada y sus privilegios se revocan a `anon`/`authenticated`: el navegador usa Auth, pero no dispone de una vía Data API paralela a los casos de uso del servidor.
 
 La documentación oficial indica que Supabase CLI ofrece PostgreSQL, Auth y otros servicios locales, requiere CLI más runtime de contenedores y captura los correos locales automáticamente con Mailpit. [Desarrollo local](https://supabase.com/docs/guides/local-development) y [contraseñas/Auth local](https://supabase.com/docs/guides/auth/passwords).
 
