@@ -7,7 +7,7 @@ import {
 import type { AccessRepository } from "../access/contract.ts";
 
 import type {
-  MarkdownSection,
+  SourceSection,
   SourceFileStorage,
   SourceListing,
   SourceRepository,
@@ -62,6 +62,7 @@ export async function uploadSource(
   const validated = validateSourceUpload({
     fileName: input.fileName,
     byteSize: input.bytes.byteLength,
+    leadingBytes: input.bytes.subarray(0, 1024),
     title: input.title,
   });
   if (!validated.ok) {
@@ -141,7 +142,7 @@ export async function readSourceContent(
 ): Promise<{
   canManage: boolean;
   source: SourceSummary;
-  sections: MarkdownSection[];
+  sections: SourceSection[];
 } | null> {
   const space = await authorizeSpaceAction(
     dependencies.accessRepository,

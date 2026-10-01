@@ -5,7 +5,7 @@ Actualizado: 2026-10-01.
 
 ## Etapa actual: E1 cerrada localmente
 
-Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2.1 (Markdown) está cerrada localmente tras la comprobación manual del usuario. E2.2 (PDF) está autorizada; E2.3–E2.4 siguen propuestas. Piloto y proveedores permanecen fuera del alcance.
+Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003. E1.1–E1.6 cuentan con evidencia automatizada y confirmaciones manuales del usuario. E1.7 fue revisada y aceptada por el usuario el 2026-10-01, con evidencia automatizada y una comprobación manual delimitada; E1 queda cerrada localmente. E2.1 (Markdown) está cerrada localmente tras la comprobación manual del usuario. E2.2 (PDF) está cerrada tras la comprobación manual del usuario. E2.3 está autorizada; E2.4 sigue propuesta. Piloto y proveedores permanecen fuera del alcance.
 
 | Entrega | Requisitos | Evidencia propuesta de cierre |
 | --- | --- | --- |
@@ -108,12 +108,12 @@ Pasaron 26 pruebas de integración, 12 de navegador y 26 unitarias, además de f
 
 ## Plan de E2
 
-Estado: E2.1 cerrada; E2.2 autorizada; el resto sigue propuesto en [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Exclusivamente local.
+Estado: E2.1 y E2.2 cerradas; E2.3 autorizada; E2.4 propuesta en [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Exclusivamente local.
 
 | Paso | Trabajo | Estado |
 | --- | --- | --- |
 | E2.1 Recorrido mínimo Markdown | Fuentes, versiones, segmentos, bucket privado, carga por Route Handler, pg-boss y `pnpm worker`, extracción Markdown, vistas por rol | Cerrada: verificación automática y comprobación manual del usuario |
-| E2.2 PDF con texto | `pdfjs-dist`, segmentos por página, límites, aislamiento por `worker_threads` | Propuesta |
+| E2.2 PDF con texto | `pdfjs-dist` en `worker_threads`, segmentos por página, firma, ≤ 8 MiB, ≤ 200 páginas, sin cifrado y sin OCR | Cerrada: verificación automática y comprobación manual del usuario |
 | E2.3 Reemplazo y reintentos | Versión candidata, cambio atómico, reemplazo fallido sin pérdida, reintento manual, conservación de versiones | Propuesta; la conservación se decide entonces |
 | E2.4 Eliminación y cierre | Eliminación, purga, conciliación de huérfanos, auditoría de fuentes, README y evidencia de CA-02 | Propuesta; la eliminación se decide entonces |
 
@@ -163,3 +163,39 @@ Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual 
 3. Cargar un `.md` que contenga solo espacios y comprobar “Falló” con el motivo “El archivo no contiene texto.”. Cargar un `.txt` y comprobar el rechazo.
 4. Detener el worker (Ctrl+C), cargar otro `.md`, ver “En cola”, arrancar `pnpm worker` y comprobar que pasa a “Lista”.
 5. Con un integrante del espacio, que puede requerir una nueva invitación, comprobar que solo ve y lee las fuentes listas y no ve el formulario.
+
+### Resultado de E2.2
+
+Implementado y verificado automáticamente el 2026-10-01, con los límites aceptados por el usuario: ≤ 8 MiB, ≤ 200 páginas, sin cifrar y sin OCR. Se reutilizan el almacenamiento, la cola, el worker, los permisos, los estados y la interfaz de E2.1.
+
+Evidencia:
+
+- **Migración** `20261001020000_e2_2_pdf_sources.sql`: número de páginas y ubicación por página, aplicada con `pnpm db:migrate`, sin reset. Los datos locales quedaron igual (2/1/2/2/7, 1 fuente y 3 segmentos).
+- **Pruebas unitarias del extractor con pdf.js real:**
+  - texto por página;
+  - cifrado con contraseña de usuario o de propietario;
+  - dañado;
+  - 201 páginas;
+  - tiempo agotado.
+- **Pruebas unitarias de validación y procesamiento:** firma y límite de 8 MiB, páginas sin texto omitidas, sin texto, cifrado y tiempo agotado transitorio.
+- **`pnpm test:integration:sources`, 7/7 con la cola y el worker reales:**
+  - PDF de 3 páginas con 2 con texto, leído por un integrante;
+  - PDF corto aceptado;
+  - escaneado: `sin_texto_extraible`;
+  - cifrado: `pdf_protegido`;
+  - `.pdf` sin firma y PDF de más de 8 MiB rechazados sin objeto.
+- **`pnpm test:e2e:sources`, 4/4:**
+  - PDF con texto hasta “Lista” y lectura por página;
+  - PDF escaneado con su motivo;
+  - Markdown y permisos sin cambios.
+- **Regresión:** `pnpm verify` (46 pruebas unitarias, higiene y build), `pnpm test:integration` 33/33, `pnpm test:e2e` 16/16 y `git diff --check`.
+- **Residuos:** las pruebas no dejaron fuentes, objetos ni trabajos pendientes.
+
+Comprobación manual del usuario del 2026-10-01: confirmó que la prueba manual de E2.2 funcionó correctamente y aceptó la entrega. No se le atribuyen comprobaciones adicionales. Estado agregado posterior: versiones Markdown `lista` 1, PDF `lista` 1 y PDF `fallida` 1; 3 objetos en el bucket; 0 trabajos pendientes. No se consultó contenido ni PII. E2.2 queda cerrada localmente.
+
+### E2.2 · Prueba manual
+
+1. Ejecutar `pnpm db:migrate` y `pnpm sources:sample-pdfs`, que escribe PDF sintéticos en la carpeta temporal del sistema. Luego, en dos terminales, `pnpm dev` y `pnpm worker`.
+2. Como responsable, en **Fuentes**, cargar `manual-con-texto.pdf`. Debe llegar a “Lista” con “3 páginas · 2 con texto”; al abrirlo se ven las páginas 1 y 3. Cargar `corto.pdf`: también queda “Lista”.
+3. Cargar `escaneado-sin-texto.pdf`, `cifrado.pdf` y `danado.pdf`: cada uno debe mostrar “Falló” con su motivo. Cargar `demasiadas-paginas.pdf`: “Falló” por el límite de 200 páginas.
+4. Cargar un `.md` para confirmar que Markdown sigue funcionando.

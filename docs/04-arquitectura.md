@@ -272,7 +272,7 @@ Supabase ofrece `pgvector` en PostgreSQL y documenta índices HNSW/IVFFlat; no s
 
 ## 19. Fuentes locales en E2
 
-Estado: E2.1 (Markdown) implementada y verificada automáticamente el 2026-10-01 según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). PDF, reemplazo, reintento manual y eliminación siguen propuestos. Sin IA, embeddings, búsqueda, lecciones, conectores ni servicios contratados.
+Estado: E2.1 (Markdown) y E2.2 (PDF con texto) implementadas y cerradas el 2026-10-01 según [ADR-004](decisiones/ADR-004-fuentes-locales-e2.md). Reemplazo, reintento manual y eliminación siguen pendientes de E2.3/E2.4. Sin IA, embeddings, búsqueda, lecciones, conectores ni servicios contratados.
 
 ### Formatos y límites
 
@@ -284,10 +284,10 @@ Estado: E2.1 (Markdown) implementada y verificada automáticamente el 2026-10-01
 | Fuentes por espacio | ≤ 50 activas | Implementado |
 | Versiones en curso | 1 por fuente (índice único parcial) | Implementado como restricción; el reemplazo llega en E2.3 |
 | Título | 1–120 caracteres; por defecto el nombre del archivo | Implementado |
-| Intento | 60 s mediante `expireInSeconds` de pg-boss | Implementado; aislamiento en `worker_threads` en E2.2 |
+| Intento | Extracción PDF en `worker_threads` con 256 MiB y 45 s; expiración del trabajo pg-boss en 60 s | Implementado |
 | Reintentos automáticos | 3 intentos en total para errores transitorios; espera exponencial desde 30 s, máximo 120 s | Implementado |
 | Versión atascada | `procesando` sin cambios durante 15 min pasa a `fallida` con `tiempo_agotado` | Implementado mediante el barrido del worker |
-| PDF | `.pdf` con firma `%PDF-`, ≤ 8 MiB, ≤ 200 páginas, sin cifrado | Propuesto para E2.2 |
+| PDF | `.pdf` con firma `%PDF-` en los primeros 1024 bytes, ≤ 8 MiB, ≤ 200 páginas, sin cifrado (ni contraseña de usuario ni de propietario), sin OCR; al menos una página con texto | Implementado en E2.2 |
 | Reintentos manuales | Hasta 3 por versión | Propuesto para E2.3 |
 
 ### Carga
@@ -296,7 +296,7 @@ Estado: E2.1 (Markdown) implementada y verificada automáticamente el 2026-10-01
    - Rechaza con 403 un `Origin` distinto de `Host`.
    - Antes de leer el cuerpo exige identidad y `gestionar_fuentes`; si no los hay, responde 404.
    - Rechaza un `Content-Length` excesivo y vuelve a medir el archivo después de leerlo.
-2. Valida extensión, tamaño y título y calcula el SHA-256.
+2. Valida extensión, tamaño según el formato, firma PDF y título, y calcula el SHA-256.
 3. Sube el original al bucket privado `fuentes` con clave `{space_id}/{source_id}/{version_id}` mediante `SupabaseSourceStorage`. La clave de servicio solo existe en el servidor y el worker.
 4. Ejecuta una transacción que:
    - toma el bloqueo por espacio y revalida al actor;
@@ -323,7 +323,7 @@ Estado: E2.1 (Markdown) implementada y verificada automáticamente el 2026-10-01
 ### Extracción
 
 - **Markdown (implementado):** decodificación UTF-8 estricta y saltos de línea normalizados. Se segmenta por encabezados ATX (`#`–`######`) fuera de bloques de código cercados. Cada segmento se ubica por su ruta de encabezados y su rango de líneas. Los encabezados de tipo Setext quedan como texto. No hay renderizado ni dependencia nueva.
-- **PDF (propuesto para E2.2):** `pdfjs-dist` en versión exacta, con `isEvalSupported: false` y la corrección de CVE-2024-4367. Se extrae un segmento por página y `PasswordException` se trata como `pdf_protegido`. La compatibilidad con Node 24 se verifica al iniciar E2.2.
+- **PDF (implementado en E2.2):** `pdfjs-dist` 6.3.289, compilación `legacy` recomendada para Node, en un hilo aislado. Esa versión ya no genera código desde el PDF (no hay `eval` ni `new Function` en el paquete instalado): desaparecen la vía de CVE-2024-4367 y la antigua opción `isEvalSupported`. Se usa `disableFontFace` y no se usa canvas. Cada página con texto es un segmento con su número de página y las páginas sin texto se omiten. `PasswordException` o un diccionario de cifrado (`getPermissions()` no nulo) dan `pdf_protegido`; una estructura inválida da `pdf_danado`; agotar la memoria del hilo da `pdf_demasiado_complejo`; el tiempo agotado o un fallo del hilo son transitorios.
 
 ### Errores visibles
 
@@ -332,17 +332,17 @@ Estado: E2.1 (Markdown) implementada y verificada automáticamente el 2026-10-01
 | `formato_no_admitido`, `archivo_vacio`, `archivo_demasiado_grande`, `titulo_invalido`, `limite_de_fuentes` | Rechazo | En la carga; no se guarda nada |
 | `codificacion_invalida`, `contenido_vacio`, `texto_demasiado_extenso` | Permanente | En el procesamiento; sin reintento |
 | `almacenamiento_no_disponible`, `error_interno`, `tiempo_agotado` | Transitorio | Se reintenta; al agotar los intentos queda `fallida` |
-| `pdf_danado`, `pdf_protegido`, `demasiadas_paginas`, `sin_texto_extraible` | Permanente | Propuestos para E2.2 |
+| `pdf_danado`, `pdf_protegido`, `demasiadas_paginas`, `sin_texto_extraible`, `pdf_demasiado_complejo` | Permanente | En el procesamiento de PDF; sin reintento |
 
 Los estados visibles son “En cola”, “Procesando”, “Lista” y “Falló” con su motivo; el motivo solo lo ve el responsable. El listado se refresca cada 2 s mientras haya trabajo pendiente.
 
 ### Limitaciones conocidas de E2.1
 
-- Solo Markdown. PDF, reemplazo, reintento manual, descarte, eliminación, purga, auditoría de fuentes y descarga de originales no están implementados.
+- Markdown y PDF con texto. Reemplazo, reintento manual, descarte, eliminación, purga, auditoría de fuentes y descarga de originales no están implementados. No hay OCR ni rechazo de PDF parcialmente escaneados mientras alguna página tenga texto.
 - Una fuente fallida queda visible para el responsable sin acción posible hasta E2.3/E2.4.
 - El worker es un proceso aparte (`pnpm worker`). Sin él, las cargas quedan “En cola” y se procesan al arrancarlo.
 - Si se pierde el último intento por una caída, el barrido del worker marca la versión `tiempo_agotado` a los 15 min.
-- El límite de 60 s lo aplica la expiración de pg-boss; el aislamiento en `worker_threads` con memoria limitada llega con PDF en E2.2.
+- La extracción PDF está aislada en un hilo con 256 MiB y 45 s; el Markdown se procesa en el hilo principal del worker, acotado por su tamaño máximo de 1 MiB.
 - Si la web cae entre subir el original y confirmar la transacción, puede quedar un objeto privado sin fila; su conciliación llega en E2.4.
 - El contenido se muestra como texto plano por secciones; no se renderiza Markdown.
 - Un cuerpo de más de 10 MB lo guarda en memoria el proxy de Next antes de rechazarlo por `Content-Length`; el original nunca se acepta por encima de 1 MiB.

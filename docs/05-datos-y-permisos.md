@@ -185,8 +185,8 @@ Se aplican RN-11 y el patrón de E1.7:
 ### Modelo implementado
 
 - `sources`: espacio, título, estado, versión vigente opcional, autor y fechas.
-- `source_versions`: fuente y espacio con clave compuesta, número, formato, tamaño, SHA-256, clave de almacenamiento, estado, código de error, número de secciones, intentos y fechas. Hay como máximo una versión en curso por fuente.
-- `source_segments`: versión, orden, ruta de encabezados, rango de líneas y texto. Es contenido derivado que se puede reconstruir desde el original.
+- `source_versions`: fuente y espacio con clave compuesta, número, formato (`markdown`/`pdf`), tamaño, SHA-256, clave de almacenamiento, estado, código de error, número de secciones, número de páginas (PDF), intentos y fechas. Hay como máximo una versión en curso por fuente.
+- `source_segments`: versión, orden, ubicación y texto. La ubicación es una ruta de encabezados más un rango de líneas (Markdown) o un número de página (PDF), y una restricción impide mezclar ambas. Es contenido derivado que se puede reconstruir desde el original.
 - Trabajos: cola pg-boss `procesar-fuente` en el esquema `pgboss`, con el `versionId` como único dato. No hay una tabla propia de trabajos.
 - Las tablas nuevas tienen RLS habilitada y los privilegios revocados a `anon`/`authenticated`; esos roles no tienen `USAGE` sobre `pgboss`.
 - Bucket privado `fuentes` sin políticas para los roles del navegador.

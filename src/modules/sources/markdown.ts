@@ -1,12 +1,8 @@
 import {
   maxExtractedCharacters,
-  type MarkdownSection,
-  type ProcessingErrorCode,
+  type ExtractionResult,
+  type SourceSection,
 } from "./contract.ts";
-
-export type MarkdownExtraction =
-  | { ok: true; sections: MarkdownSection[] }
-  | { ok: false; code: ProcessingErrorCode };
 
 const fencePattern = /^ {0,3}(`{3,}|~{3,})/;
 const headingPattern = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$/;
@@ -30,7 +26,7 @@ type OpenSection = {
   lines: string[];
 };
 
-function closeSection(section: OpenSection, sections: MarkdownSection[]): void {
+function closeSection(section: OpenSection, sections: SourceSection[]): void {
   let lines = section.lines;
   while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
     lines = lines.slice(0, -1);
@@ -43,11 +39,12 @@ function closeSection(section: OpenSection, sections: MarkdownSection[]): void {
     headingPath: section.headingPath,
     startLine: section.startLine,
     endLine: section.startLine + lines.length - 1,
+    pageNumber: null,
     content,
   });
 }
 
-export function extractMarkdown(bytes: Uint8Array): MarkdownExtraction {
+export function extractMarkdown(bytes: Uint8Array): ExtractionResult {
   const decoded = decodeStrictUtf8(bytes);
   if (decoded === null || decoded.includes("\u0000")) {
     return { ok: false, code: "codificacion_invalida" };
@@ -61,7 +58,7 @@ export function extractMarkdown(bytes: Uint8Array): MarkdownExtraction {
     return { ok: false, code: "texto_demasiado_extenso" };
   }
 
-  const sections: MarkdownSection[] = [];
+  const sections: SourceSection[] = [];
   const headings: { level: number; title: string }[] = [];
   let fence: { marker: string; length: number } | null = null;
   let current: OpenSection = { headingPath: [], startLine: 1, lines: [] };
@@ -112,5 +109,5 @@ export function extractMarkdown(bytes: Uint8Array): MarkdownExtraction {
   });
   closeSection(current, sections);
 
-  return { ok: true, sections };
+  return { ok: true, sections, pageCount: null };
 }

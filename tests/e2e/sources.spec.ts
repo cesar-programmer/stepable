@@ -14,6 +14,7 @@ import {
   getLocalAuthTestConfig,
   type LocalTestIdentity,
 } from "../support/local-auth.ts";
+import { syntheticPdf } from "../support/synthetic-pdf.ts";
 
 const config = getLocalAuthTestConfig();
 const admin = createAdminClient(config);
@@ -36,9 +37,11 @@ async function login(page: Page, identity: LocalTestIdentity) {
 }
 
 async function uploadFile(page: Page, name: string, buffer: Buffer) {
-  await page
-    .getByLabel("Archivo Markdown (máximo 1 MiB)")
-    .setInputFiles({ name, mimeType: "text/markdown", buffer });
+  await page.getByLabel(/^Archivo Markdown/).setInputFiles({
+    name,
+    mimeType: name.endsWith(".pdf") ? "application/pdf" : "text/markdown",
+    buffer,
+  });
   await page.getByRole("button", { name: "Cargar fuente" }).click();
 }
 
@@ -66,7 +69,7 @@ function startWorker(): Promise<ChildProcess> {
   });
 }
 
-test.describe.serial("E2.1 Markdown sources in the browser", () => {
+test.describe.serial("E2 sources in the browser", () => {
   test.beforeAll(async () => {
     identities.push(
       await createLocalTestIdentity(admin),
@@ -165,6 +168,41 @@ test.describe.serial("E2.1 Markdown sources in the browser", () => {
     await expect(row.getByText("Falló")).toBeVisible({ timeout: 20_000 });
     await expect(
       row.getByText("El archivo no es texto UTF-8 válido."),
+    ).toBeVisible();
+  });
+
+  test("a responsible uploads a text PDF, reads it by page and sees scanned PDFs fail", async ({
+    page,
+  }) => {
+    await login(page, owner);
+    await page.goto(`/spaces/${spaceId}/sources`);
+
+    await uploadFile(
+      page,
+      "manual-equipo.pdf",
+      syntheticPdf([
+        "Revisar contratos antes de publicar",
+        null,
+        "Fin del manual",
+      ]),
+    );
+    const row = page.getByRole("listitem").filter({ hasText: "manual-equipo" });
+    await expect(row.getByText("Lista")).toBeVisible({ timeout: 20_000 });
+    await expect(
+      row.getByText("PDF · versión 1 · 3 páginas · 2 con texto"),
+    ).toBeVisible();
+    await row.getByRole("link", { name: "manual-equipo" }).click();
+    await expect(page.getByText("Página 3")).toBeVisible();
+    await expect(
+      page.getByText("Revisar contratos antes de publicar"),
+    ).toBeVisible();
+
+    await page.goto(`/spaces/${spaceId}/sources`);
+    await uploadFile(page, "escaneado.pdf", syntheticPdf([null]));
+    const scanned = page.getByRole("listitem").filter({ hasText: "escaneado" });
+    await expect(scanned.getByText("Falló")).toBeVisible({ timeout: 20_000 });
+    await expect(
+      scanned.getByText("El PDF no contiene texto extraíble", { exact: false }),
     ).toBeVisible();
   });
 

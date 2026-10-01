@@ -9,6 +9,7 @@ import { listSpaceSources } from "@/modules/sources/service";
 import { sourceReadDependencies } from "./dependencies";
 import {
   sourceErrorMessages,
+  sourceFormatLabels,
   sourceNoticeMessages,
   sourceStatusLabels,
 } from "./messages";
@@ -66,9 +67,10 @@ export default async function SourcesPage({
           method="post"
         >
           <label>
-            Archivo Markdown (máximo 1 MiB)
+            Archivo Markdown (hasta 1 MiB) o PDF con texto (hasta 8 MiB y 200
+            páginas)
             <input
-              accept=".md,.markdown,text/markdown"
+              accept=".md,.markdown,.pdf,text/markdown,application/pdf"
               name="file"
               required
               type="file"
@@ -101,9 +103,13 @@ export default async function SourcesPage({
                   <strong>{source.title}</strong>
                 )}
                 <span className="muted">
-                  Markdown · versión {source.versionNumber}
+                  {sourceFormatLabels[source.format]} · versión{" "}
+                  {source.versionNumber}
+                  {source.pageCount !== null
+                    ? ` · ${source.pageCount} páginas`
+                    : ""}
                   {source.sectionCount !== null
-                    ? ` · ${source.sectionCount} secciones`
+                    ? ` · ${source.sectionCount} ${source.format === "pdf" ? "con texto" : "secciones"}`
                     : ""}
                 </span>
               </div>

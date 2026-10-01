@@ -4,7 +4,7 @@ import { allowsSpaceAction } from "../../modules/access/authorization.ts";
 import {
   maxActiveSourcesPerSpace,
   type CreateSourceResult,
-  type MarkdownSection,
+  type SourceSection,
   type NewSourceVersion,
   type ProcessingErrorCode,
   type SourceRepository,
@@ -41,6 +41,7 @@ const summaryColumns = {
   status: sourceVersions.status,
   errorCode: sourceVersions.errorCode,
   sectionCount: sourceVersions.sectionCount,
+  pageCount: sourceVersions.pageCount,
   updatedAt: sourceVersions.updatedAt,
 };
 
@@ -167,13 +168,14 @@ export class PostgresSourceRepository implements SourceRepository {
   async listCurrentSections(
     spaceId: string,
     sourceId: string,
-  ): Promise<MarkdownSection[]> {
+  ): Promise<SourceSection[]> {
     return this.database
       .select({
         ordinal: sourceSegments.ordinal,
         headingPath: sourceSegments.headingPath,
         startLine: sourceSegments.startLine,
         endLine: sourceSegments.endLine,
+        pageNumber: sourceSegments.pageNumber,
         content: sourceSegments.content,
       })
       .from(sourceSegments)
@@ -238,7 +240,8 @@ export class PostgresSourceRepository implements SourceRepository {
 
   async completeProcessing(
     versionId: string,
-    sections: MarkdownSection[],
+    sections: SourceSection[],
+    pageCount: number | null,
   ): Promise<boolean> {
     return this.database.transaction(async (transaction) => {
       const [version] = await transaction
@@ -268,6 +271,7 @@ export class PostgresSourceRepository implements SourceRepository {
             headingPath: section.headingPath,
             startLine: section.startLine,
             endLine: section.endLine,
+            pageNumber: section.pageNumber,
             content: section.content,
           })),
         );
@@ -279,6 +283,7 @@ export class PostgresSourceRepository implements SourceRepository {
           status: "lista",
           errorCode: null,
           sectionCount: sections.length,
+          pageCount,
           processedAt: sql`now()`,
           updatedAt: sql`now()`,
         })

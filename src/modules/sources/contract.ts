@@ -1,6 +1,9 @@
 import type { SpaceRole } from "../access/contract.ts";
 
 export const markdownMaxBytes = 1024 * 1024;
+export const pdfMaxBytes = 8 * 1024 * 1024;
+export const pdfMaxPages = 200;
+export const uploadMaxBytes = Math.max(markdownMaxBytes, pdfMaxBytes);
 export const maxActiveSourcesPerSpace = 50;
 export const maxExtractedCharacters = 2_000_000;
 export const sourceTitleMaxLength = 120;
@@ -36,16 +39,45 @@ export const processingErrorCodes = [
   "almacenamiento_no_disponible",
   "error_interno",
   "tiempo_agotado",
+  "pdf_danado",
+  "pdf_protegido",
+  "demasiadas_paginas",
+  "sin_texto_extraible",
+  "pdf_demasiado_complejo",
 ] as const;
 export type ProcessingErrorCode = (typeof processingErrorCodes)[number];
 
-export type MarkdownSection = {
+/** Markdown sections carry lines and headings; PDF sections carry a page. */
+export type SourceSection = {
   ordinal: number;
   headingPath: string[];
-  startLine: number;
-  endLine: number;
+  startLine: number | null;
+  endLine: number | null;
+  pageNumber: number | null;
   content: string;
 };
+
+export type ExtractionResult =
+  | { ok: true; sections: SourceSection[]; pageCount: number | null }
+  | { ok: false; code: ProcessingErrorCode };
+
+export type PdfPageText = { pageNumber: number; text: string };
+
+export type PdfExtractionResult =
+  | { kind: "pages"; pageCount: number; pages: PdfPageText[] }
+  | {
+      kind: "rejected";
+      code:
+        | "pdf_danado"
+        | "pdf_protegido"
+        | "demasiadas_paginas"
+        | "pdf_demasiado_complejo";
+    }
+  | { kind: "transient"; code: "tiempo_agotado" | "error_interno" };
+
+export interface PdfTextExtractor {
+  extract(bytes: Uint8Array): Promise<PdfExtractionResult>;
+}
 
 export type SourceSummary = {
   id: string;
@@ -55,6 +87,7 @@ export type SourceSummary = {
   status: SourceVersionStatus;
   errorCode: string | null;
   sectionCount: number | null;
+  pageCount: number | null;
   updatedAt: Date;
 };
 
@@ -66,7 +99,7 @@ export type SourceListing = {
 
 export type SourceContent = {
   source: SourceSummary;
-  sections: MarkdownSection[];
+  sections: SourceSection[];
 };
 
 export type NewSourceVersion = {
@@ -104,11 +137,12 @@ export interface SourceRepository {
   listCurrentSections(
     spaceId: string,
     sourceId: string,
-  ): Promise<MarkdownSection[]>;
+  ): Promise<SourceSection[]>;
   startProcessing(versionId: string): Promise<VersionForProcessing | null>;
   completeProcessing(
     versionId: string,
-    sections: MarkdownSection[],
+    sections: SourceSection[],
+    pageCount: number | null,
   ): Promise<boolean>;
   failProcessing(
     versionId: string,

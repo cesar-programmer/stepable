@@ -39,7 +39,11 @@ export default async function SourcePage({ params }: SourcePageProps) {
       <h1>{source.title}</h1>
       <p>
         Estado: <strong>{sourceStatusLabels[source.status]}</strong>
-        {source.status === "lista" ? ` · ${sections.length} secciones` : ""}
+        {source.status === "lista"
+          ? source.format === "pdf"
+            ? ` · ${source.pageCount} páginas, ${sections.length} con texto`
+            : ` · ${sections.length} secciones`
+          : ""}
       </p>
       {source.status === "fallida" && source.errorCode ? (
         <p className="error" role="alert">
@@ -52,10 +56,13 @@ export default async function SourcePage({ params }: SourcePageProps) {
         {sections.map((section) => (
           <li key={section.ordinal}>
             <p className="muted">
-              {section.headingPath.length > 0
-                ? section.headingPath.join(" › ")
-                : "Inicio del documento"}{" "}
-              · líneas {section.startLine}–{section.endLine}
+              {section.pageNumber !== null
+                ? `Página ${section.pageNumber}`
+                : `${
+                    section.headingPath.length > 0
+                      ? section.headingPath.join(" › ")
+                      : "Inicio del documento"
+                  } · líneas ${section.startLine}–${section.endLine}`}
             </p>
             <pre>{section.content}</pre>
           </li>

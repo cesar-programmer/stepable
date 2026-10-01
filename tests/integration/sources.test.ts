@@ -15,7 +15,10 @@ import {
   SupabaseSourceStorage,
 } from "../../src/adapters/supabase/source-storage.ts";
 import { bootstrapSpace } from "../../src/modules/access/bootstrap-space.ts";
-import { markdownMaxBytes } from "../../src/modules/sources/contract.ts";
+import {
+  markdownMaxBytes,
+  pdfMaxBytes,
+} from "../../src/modules/sources/contract.ts";
 import {
   listSpaceSources,
   readSourceContent,
@@ -33,6 +36,7 @@ import {
   getLocalAuthTestConfig,
   type LocalTestIdentity,
 } from "../support/local-auth.ts";
+import { syntheticPdf } from "../support/synthetic-pdf.ts";
 
 const config = getLocalAuthTestConfig();
 const admin = createAdminClient(config);
@@ -106,7 +110,7 @@ async function storedObjects(targetSpaceId: string): Promise<string[]> {
   return rows.map((row) => row.name);
 }
 
-describe("E2.1 Markdown sources", () => {
+describe("E2 Markdown and PDF sources", () => {
   beforeAll(async () => {
     identities.push(
       await createLocalTestIdentity(admin),
@@ -267,6 +271,79 @@ describe("E2.1 Markdown sources", () => {
     expect(await storedObjects(spaceId)).toEqual(before);
   });
 
+  it("processes PDFs with text per page and rejects invalid PDFs visibly", async () => {
+    const guide = await upload(
+      "manual.pdf",
+      syntheticPdf([
+        "Contratos de API\nVersionar siempre",
+        null,
+        "Íconos: set único",
+      ]),
+    );
+    const short = await upload("corto.pdf", syntheticPdf(["Hola"]));
+    const scanned = await upload("escaneado.pdf", syntheticPdf([null, null]));
+    const encrypted = await upload(
+      "cifrado.pdf",
+      syntheticPdf([null], { userPassword: "secreto" }),
+    );
+    if (
+      guide.kind !== "queued" ||
+      short.kind !== "queued" ||
+      scanned.kind !== "queued" ||
+      encrypted.kind !== "queued"
+    ) {
+      throw new Error("Carga PDF rechazada");
+    }
+
+    expect(await waitForTerminalStatus(guide.sourceId)).toMatchObject({
+      format: "pdf",
+      status: "lista",
+      pageCount: 3,
+      sectionCount: 2,
+    });
+    const content = await readSourceContent(dependencies, {
+      identityId: member.id,
+      spaceId,
+      sourceId: guide.sourceId,
+    });
+    expect(
+      content?.sections.map(({ pageNumber, content: text }) => ({
+        pageNumber,
+        text,
+      })),
+    ).toEqual([
+      { pageNumber: 1, text: "Contratos de API\nVersionar siempre" },
+      { pageNumber: 3, text: "Íconos: set único" },
+    ]);
+    expect(await waitForTerminalStatus(short.sourceId)).toMatchObject({
+      status: "lista",
+      sectionCount: 1,
+    });
+    expect(await waitForTerminalStatus(scanned.sourceId)).toMatchObject({
+      status: "fallida",
+      errorCode: "sin_texto_extraible",
+    });
+    expect(await waitForTerminalStatus(encrypted.sourceId)).toMatchObject({
+      status: "fallida",
+      errorCode: "pdf_protegido",
+    });
+
+    const before = await storedObjects(spaceId);
+    await expect(upload("falso.pdf", encode("no soy un PDF"))).resolves.toEqual(
+      {
+        kind: "rejected",
+        code: "formato_no_admitido",
+      },
+    );
+    const oversized = new Uint8Array(pdfMaxBytes + 1);
+    oversized.set(encode("%PDF-1.4\n"));
+    await expect(upload("grande.pdf", oversized)).resolves.toEqual({
+      kind: "rejected",
+      code: "archivo_demasiado_grande",
+    });
+    expect(await storedObjects(spaceId)).toEqual(before);
+  }, 60_000);
+
   it("isolates sources by space and role, including crossed identifiers", async () => {
     const sourceId = await queuedSourceId("aislada.md", "# Privada\nSolo A.");
     await waitForTerminalStatus(sourceId);
@@ -329,10 +406,10 @@ describe("E2.1 Markdown sources", () => {
       update public.source_versions set status = 'procesando' where id = ${version.id}
     `;
     expect(
-      await sourceRepository.completeProcessing(version.id, sections),
+      await sourceRepository.completeProcessing(version.id, sections, null),
     ).toBe(true);
     expect(
-      await sourceRepository.completeProcessing(version.id, sections),
+      await sourceRepository.completeProcessing(version.id, sections, null),
     ).toBe(false);
     expect(
       await sourceRepository.listCurrentSections(spaceId, sourceId),

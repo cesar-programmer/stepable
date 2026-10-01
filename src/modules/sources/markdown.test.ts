@@ -29,6 +29,7 @@ describe("Markdown extraction", () => {
           headingPath: [],
           startLine: 1,
           endLine: 1,
+          pageNumber: null,
           content: "Introducción breve.",
         },
         {
@@ -36,6 +37,7 @@ describe("Markdown extraction", () => {
           headingPath: ["Guía de APIs"],
           startLine: 3,
           endLine: 4,
+          pageNumber: null,
           content: "# Guía de APIs\nUsar contratos versionados.",
         },
         {
@@ -43,6 +45,7 @@ describe("Markdown extraction", () => {
           headingPath: ["Guía de APIs", "Errores"],
           startLine: 5,
           endLine: 6,
+          pageNumber: null,
           content: "## Errores ##\nResponder con códigos estables.",
         },
         {
@@ -50,9 +53,11 @@ describe("Markdown extraction", () => {
           headingPath: ["Íconos"],
           startLine: 7,
           endLine: 8,
+          pageNumber: null,
           content: "# Íconos\nUsar el set compartido.",
         },
       ],
+      pageCount: null,
     });
   });
 
@@ -75,9 +80,11 @@ describe("Markdown extraction", () => {
           headingPath: [],
           startLine: 1,
           endLine: 1,
+          pageNumber: null,
           content: "Hola",
         },
       ],
+      pageCount: null,
     });
   });
 

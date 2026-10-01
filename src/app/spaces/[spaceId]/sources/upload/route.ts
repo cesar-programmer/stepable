@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 import { authorizeSpaceAction } from "@/modules/access/authorization";
 import { spaceIdSchema } from "@/modules/access/input";
-import { markdownMaxBytes } from "@/modules/sources/contract";
+import { uploadMaxBytes } from "@/modules/sources/contract";
 import { uploadSource } from "@/modules/sources/service";
 
 import { sourceUploadDependencies } from "../dependencies";
@@ -75,7 +75,7 @@ export async function POST(
   }
 
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
-  if (declaredLength > markdownMaxBytes + multipartOverheadBytes) {
+  if (declaredLength > uploadMaxBytes + multipartOverheadBytes) {
     return back("error", "archivo_demasiado_grande");
   }
 
@@ -90,7 +90,7 @@ export async function POST(
   if (!(file instanceof File)) {
     return back("error", "solicitud_invalida");
   }
-  if (file.size > markdownMaxBytes) {
+  if (file.size > uploadMaxBytes) {
     return back("error", "archivo_demasiado_grande");
   }
 

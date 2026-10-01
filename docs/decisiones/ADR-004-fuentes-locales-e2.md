@@ -1,6 +1,6 @@
 # ADR-004 · Fuentes locales para E2
 
-Fecha: 2026-10-01 · Estado: **aceptado parcialmente**: E2.1 cerrada; E2.2 autorizada con los límites de PDF propuestos; E2.3–E2.4 propuestas.
+Fecha: 2026-10-01 · Estado: **aceptado parcialmente**: E2.1 y E2.2 cerradas; E2.3 autorizada; E2.4 propuesta.
 
 ## Contexto
 
@@ -35,6 +35,15 @@ Se aplican en E2.1:
 - uso exclusivo de documentos sintéticos.
 
 `pdfjs-dist` sigue propuesto para E2.2.
+
+## Resolución de E2.2 del 2026-10-01
+
+El usuario aceptó los límites de PDF (≤ 8 MiB, ≤ 200 páginas, sin cifrar, sin OCR) y autorizó implementar E2.2 con `pdfjs-dist` si era compatible. Se verificó `pdfjs-dist` 6.3.289:
+- declara compatibilidad con Node `>=22.13.0 || >=24` y el entorno usa Node 24.19;
+- funciona en Node con la compilación `legacy`, sin la dependencia opcional de canvas;
+- ya no contiene generación de código (`eval`/`new Function`), por lo que la mitigación prevista con `isEvalSupported` dejó de existir y de ser necesaria.
+
+Se rechaza cualquier PDF con diccionario de cifrado, aunque solo tenga contraseña de propietario, para cumplir “sin cifrar”.
 
 ## Alternativas consideradas
 

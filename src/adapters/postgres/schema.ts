@@ -252,6 +252,7 @@ export const sourceVersions = pgTable(
     status: sourceVersionStatus("status").notNull().default("en_cola"),
     errorCode: text("error_code"),
     sectionCount: integer("section_count"),
+    pageCount: integer("page_count"),
     attempts: integer("attempts").notNull().default(0),
     createdBy: uuid("created_by")
       .notNull()
@@ -282,8 +283,9 @@ export const sourceSegments = pgTable(
       .references(() => sourceVersions.id, { onDelete: "cascade" }),
     ordinal: integer("ordinal").notNull(),
     headingPath: text("heading_path").array().notNull().default([]),
-    startLine: integer("start_line").notNull(),
-    endLine: integer("end_line").notNull(),
+    startLine: integer("start_line"),
+    endLine: integer("end_line"),
+    pageNumber: integer("page_number"),
     content: text("content").notNull(),
   },
   (table) => [primaryKey({ columns: [table.versionId, table.ordinal] })],

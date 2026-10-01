@@ -39,16 +39,16 @@ Fuentes contradictorias, eliminación de fuentes citadas, ruta obsoleta y doble 
 
 ## Ciclo de vida de fuentes (E2)
 
-Estado: RN-19, RN-20 y RN-25 se aplican desde E2.1 (2026-10-01) a la primera versión de fuentes Markdown. RN-21–RN-24 siguen **propuestas**: conservación de versiones y eliminación se decidirán al implementar reemplazo (E2.3) y borrado (E2.4). Contradicciones, rutas obsoletas y referencias históricas siguen abiertas para E3/E4 ([ADR-004](decisiones/ADR-004-fuentes-locales-e2.md)).
+Estado: RN-19, RN-20 y RN-25 se aplican desde E2.1/E2.2 (2026-10-01) a la primera versión de fuentes Markdown y PDF. RN-21–RN-24 siguen **propuestas**: conservación de versiones y eliminación se decidirán al implementar reemplazo (E2.3) y borrado (E2.4). Contradicciones, rutas obsoletas y referencias históricas siguen abiertas para E3/E4 ([ADR-004](decisiones/ADR-004-fuentes-locales-e2.md)).
 
 Estados de versión: `en_cola`, `procesando`, `lista`, `fallida`, `reemplazada`, `descartada`. Estados de fuente: `activa`, `eliminada`.
 
 | ID | Regla | Estado |
 | --- | --- | --- |
-| RN-19 | Una fuente está **vigente** cuando está `activa` y tiene una versión vigente en estado `lista`. Cada fuente tiene como máximo una versión vigente. Solo el contenido de esa versión será elegible en entregas posteriores. | Aplicada en E2.1 |
-| RN-20 | La primera carga crea la fuente y su versión 1 `en_cola`. Si el procesamiento falla, la fuente existe sin versión vigente y muestra el motivo al responsable. | Aplicada en E2.1; reintento manual y eliminación en E2.3/E2.4 |
+| RN-19 | Una fuente está **vigente** cuando está `activa` y tiene una versión vigente en estado `lista`. Cada fuente tiene como máximo una versión vigente. Solo el contenido de esa versión será elegible en entregas posteriores. | Aplicada en E2.1–E2.2 |
+| RN-20 | La primera carga crea la fuente y su versión 1 `en_cola`. Si el procesamiento falla, la fuente existe sin versión vigente y muestra el motivo al responsable. | Aplicada en E2.1–E2.2; reintento manual y eliminación en E2.3/E2.4 |
 | RN-21 | Reemplazar crea una versión candidata. La vigente lo sigue siendo hasta que la candidata quede `lista`; entonces el cambio es atómico. Solo puede haber una candidata en curso por fuente. Un archivo idéntico (SHA-256) a la vigente se rechaza como “sin cambios”. | Propuesta para E2.3 |
 | RN-22 | Si la candidata falla, la versión vigente no cambia ni pierde contenido. El responsable puede reintentar, descartar la candidata o cargar otro archivo. | Propuesta para E2.3 |
 | RN-23 | Reintentar procesa la misma versión: no crea otra versión ni duplica el texto extraído. Límites en el [documento 04 §19](04-arquitectura.md#19-fuentes-locales-en-e2). | Los reintentos automáticos se aplican en E2.1; los manuales, en E2.3 |
 | RN-24 | Eliminar retira la fuente de listados y elegibilidad en la misma transacción. La conservación posterior se decide en E2.4 ([documento 05](05-datos-y-permisos.md#fuentes-e2)). | Propuesta para E2.4 |
-| RN-25 | Fuente, versiones, texto, archivos y trabajos pertenecen a un único espacio. Toda lectura y escritura filtra por espacio y pasa por la autorización central. La clave de almacenamiento nunca es autorización. | Aplicada en E2.1 |
+| RN-25 | Fuente, versiones, texto, archivos y trabajos pertenecen a un único espacio. Toda lectura y escritura filtra por espacio y pasa por la autorización central. La clave de almacenamiento nunca es autorización. | Aplicada en E2.1–E2.2 |

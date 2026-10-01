@@ -1,5 +1,19 @@
 # Historial de cambios
 
+## 2026-10-01 · 1.9 · Cierre de E2.2
+
+- El usuario confirmó que la prueba manual de E2.2 funcionó correctamente y aceptó la entrega; no se le atribuyen comprobaciones adicionales.
+- Se reutiliza la verificación automática aprobada; después solo cambió el formato de un script.
+- E2.2 queda consolidada en un commit local, sin push. E2.3 queda autorizada.
+
+## 2026-10-01 · 1.8 · Implementación de E2.2
+
+- Añadida la carga de PDF con texto (≤ 8 MiB, ≤ 200 páginas, sin cifrar, sin OCR) con firma validada en la carga.
+- Extracción por página con `pdfjs-dist` 6.3.289 en un hilo aislado con memoria y tiempo limitados. PDF sin texto, cifrados, dañados o fuera de límites terminan en “Falló” con un motivo comprensible; los cortos con texto se aceptan.
+- Migración incremental para la ubicación por página y el número de páginas; Markdown y permisos sin cambios.
+- Añadidos un generador de PDF sintéticos para pruebas y `pnpm sources:sample-pdfs` para la prueba manual.
+- Aprobadas 46 pruebas unitarias, 33 de integración y 16 de navegador. Sin comprobación manual atribuida, commit ni push.
+
 ## 2026-10-01 · 1.7 · Cierre de E2.1
 
 - El usuario confirmó que la prueba manual de E2.1 funcionó correctamente y aceptó la entrega; no se le atribuyen escenarios adicionales.

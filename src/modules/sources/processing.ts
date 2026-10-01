@@ -1,17 +1,40 @@
 import {
+  type ExtractionResult,
+  type PdfTextExtractor,
   type ProcessingErrorCode,
   type SourceFileStorage,
   type SourceRepository,
   TransientProcessingError,
 } from "./contract.ts";
 import { extractMarkdown } from "./markdown.ts";
+import { pdfPagesToSections } from "./pdf.ts";
 
 export type ProcessingOutcome = "lista" | "fallida" | "omitida";
 
 type ProcessingDependencies = {
   sourceRepository: SourceRepository;
   storage: SourceFileStorage;
+  pdfExtractor: PdfTextExtractor;
 };
+
+type Extraction =
+  | ExtractionResult
+  | { ok: "transient"; code: "tiempo_agotado" | "error_interno" };
+
+async function extract(
+  dependencies: ProcessingDependencies,
+  format: "markdown" | "pdf",
+  bytes: Uint8Array,
+): Promise<Extraction> {
+  if (format === "markdown") return extractMarkdown(bytes);
+
+  const result = await dependencies.pdfExtractor.extract(bytes);
+  if (result.kind === "transient") {
+    return { ok: "transient", code: result.code };
+  }
+  if (result.kind === "rejected") return { ok: false, code: result.code };
+  return pdfPagesToSections(result.pageCount, result.pages);
+}
 
 async function transientFailure(
   dependencies: ProcessingDependencies,
@@ -55,10 +78,16 @@ export async function processSourceVersion(
     );
   }
 
-  const extraction =
-    version.format === "markdown"
-      ? extractMarkdown(bytes)
-      : ({ ok: false, code: "error_interno" } as const);
+  const extraction = await extract(dependencies, version.format, bytes);
+  if (extraction.ok === "transient") {
+    return transientFailure(
+      dependencies,
+      input.versionId,
+      extraction.code,
+      input.finalAttempt,
+      null,
+    );
+  }
   if (!extraction.ok) {
     return (await dependencies.sourceRepository.failProcessing(
       input.versionId,
@@ -72,6 +101,7 @@ export async function processSourceVersion(
     return (await dependencies.sourceRepository.completeProcessing(
       input.versionId,
       extraction.sections,
+      extraction.pageCount,
     ))
       ? "lista"
       : "omitida";

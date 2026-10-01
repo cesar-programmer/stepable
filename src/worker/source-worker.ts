@@ -4,10 +4,14 @@ import {
   startSourceBoss,
   type SourceJobData,
 } from "../adapters/pg-boss/source-queue.ts";
+import { WorkerThreadPdfExtractor } from "../adapters/pdfjs/pdf-text-extractor.ts";
 import { createPostgresDatabase } from "../adapters/postgres/database.ts";
 import { PostgresSourceRepository } from "../adapters/postgres/source-repository.ts";
 import { SupabaseSourceStorage } from "../adapters/supabase/source-storage.ts";
-import { TransientProcessingError } from "../modules/sources/contract.ts";
+import {
+  type PdfTextExtractor,
+  TransientProcessingError,
+} from "../modules/sources/contract.ts";
 import { processSourceVersion } from "../modules/sources/processing.ts";
 
 // Longer than three 60 s attempts plus their retry delays, so only a version
@@ -25,6 +29,7 @@ export async function startSourceWorker(options: {
   supabaseUrl: string;
   serviceRoleKey: string;
   pollingIntervalSeconds?: number;
+  pdfExtractor?: PdfTextExtractor;
 }): Promise<SourceWorker> {
   const connection = createPostgresDatabase(options.databaseUrl);
   const repository = new PostgresSourceRepository(connection.database, null);
@@ -32,6 +37,7 @@ export async function startSourceWorker(options: {
     options.supabaseUrl,
     options.serviceRoleKey,
   );
+  const pdfExtractor = options.pdfExtractor ?? new WorkerThreadPdfExtractor();
   const boss = createSourceBoss(options.databaseUrl, "worker");
 
   try {
@@ -49,7 +55,7 @@ export async function startSourceWorker(options: {
         const attempt = job.retryCount + 1;
         try {
           const outcome = await processSourceVersion(
-            { sourceRepository: repository, storage },
+            { sourceRepository: repository, storage, pdfExtractor },
             {
               versionId: job.data.versionId,
               finalAttempt: job.retryCount >= job.retryLimit,
