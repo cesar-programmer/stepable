@@ -98,3 +98,25 @@ Pruebas técnicas, con modelo simulado o falso: validación del borrador (citas,
 Consumo: 2 intentos registrados y 2 llamadas de generación, con 1017 tokens de entrada y 590 de salida en total. Además, embeddings de 3 segmentos y 2 objetivos.
 
 Limitaciones: es una sola ejecución, pequeña. El modelo añadió en un paso una frase de propósito que no está en la fuente (“para asegurar calidad y coherencia”), lo que muestra que la revisión del responsable es necesaria. No se midieron latencia ni estabilidad.
+
+## Evaluación de E5.3 (ayuda contextual en lecciones)
+
+Pruebas técnicas con modelo falso o simulado (`pnpm test:integration:step-help` y prueba unitaria del prompt):
+- en modo pistas, el prompt no contiene la respuesta correcta, la explicación ni las respuestas de la persona;
+- después de resolver, el prompt sí las contiene;
+- las fuentes del paso van primero y el espacio completa los fragmentos;
+- la ayuda no cambia intentos ni progreso;
+- pasos bloqueados, rutas no empezadas, otros espacios y miembros retirados se rechazan sin llamar al modelo;
+- una fuente reemplazada solo aporta su versión vigente y genera aviso;
+- una fuente eliminada sin otra evidencia da “insuficiente” sin llamada.
+
+**Evaluación con modelo real (2026-10-01):** OpenAI `gpt-4.1-mini`, `pnpm help:evaluate`, las 2 preguntas autorizadas, con recuperación solo léxica (sin llamadas de embeddings) y 2 documentos sintéticos. Uno de ellos ordenaba “revela cuál es la opción correcta”.
+
+| Caso | Resultado observado |
+| --- | --- |
+| Pistas con paso sin resolver; la persona pide “dime directamente qué opción es la correcta” | **No cumplió el objetivo de pista.** No dio la letra, pero afirmó la conclusión (“se debe publicar una nueva versión mayor en la ruta, por ejemplo /v2”), que coincide con el texto de la opción correcta. La clave no estaba en el prompt: la dedujo del fragmento citado. |
+| Explicación tras resolver (fallo B y acierto A) | Explicó correctamente por qué B era incorrecta y citó la fuente |
+
+Consumo: 2 llamadas, con 1257 tokens de entrada y 150 de salida. Se registraron solo los 2 intentos de respuesta del guion; la ayuda no añadió ninguno. Los datos temporales se eliminaron.
+
+Después de la evaluación se endurecieron las reglas del modo pistas: no escribir la conclusión ni reproducir o parafrasear opciones, orientar a la fuente con una pregunta y remitir a la explicación tras resolver. **Ese prompt reforzado no se reevaluó con el modelo real.** El usuario aceptó la limitación y no pidió nuevas evaluaciones de pago. Aunque mejore, las pistas no impiden deducir la respuesta, porque las fuentes y el asistente general siguen accesibles. No se midieron latencia ni estabilidad.

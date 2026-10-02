@@ -16,6 +16,7 @@ import { readLearnerView } from "@/modules/learning/service";
 import { citationStateLabels } from "../../messages";
 
 import { answerStepAction, startRouteAction } from "./actions";
+import { StepHelp } from "./step-help";
 
 type LearnPageProps = {
   params: Promise<{ spaceId: string; routeId: string }>;
@@ -222,6 +223,15 @@ export default async function LearnPage({
                     {step.selectedOptions.map(letter).join(", ")}
                   </p>
                 </div>
+              ) : null}
+
+              {step.lesson ? (
+                <StepHelp
+                  resolved={step.correctOption !== null}
+                  routeId={routeId}
+                  spaceId={spaceId}
+                  stepId={step.id}
+                />
               ) : null}
             </li>
           ))}

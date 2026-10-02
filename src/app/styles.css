@@ -455,3 +455,9 @@ textarea {
   padding: 0.5rem;
   text-align: left;
 }
+
+.step-help {
+  margin-top: 1rem;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 0.75rem;
+}

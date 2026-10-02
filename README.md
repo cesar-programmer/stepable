@@ -1,6 +1,6 @@
 # Stepable · Base documental V0
 
-Versión documental: 3.2 · Fecha: 2026-10-01 · Estado: E1, E2, E3, E4.1, E5.1 y E5.2 cerradas localmente (prototipo con documentos sintéticos).
+Versión documental: 3.4 · Fecha: 2026-10-01 · Estado: E1, E2, E3, E4.1, E5.1, E5.2 y E5.3 cerradas localmente (prototipo con documentos sintéticos).
 
 Este repositorio contiene la base documental y la aplicación local de Stepable. E1 implementa identidad, espacios, invitaciones, membresías, autorización vigente y auditoría mínima de mutaciones de acceso. El piloto y los proveedores siguen pendientes.
 
@@ -134,7 +134,7 @@ Usar una fuente desechable y seguir la [prueba manual de E2.4](docs/07-entregas-
 
 ### Asistente (E3): configuración local de IA
 
-El asistente funciona sin IA y muestra solo fragmentos hasta configurarla. Las claves van únicamente en `.env.development.local`, que Git ignora y que `pnpm env:start` no sobrescribe (a diferencia de `.env.local`), nunca en el código ni en el chat; los nombres de las variables están en `.env.example`. Tras configurarlas, reiniciar `pnpm dev` y `pnpm worker`. Las pruebas automáticas fuerzan el modo `simulado` y el namespace de trabajos `pruebas`, de modo que un `pnpm worker` real nunca toma sus trabajos. Las de navegador no reutilizan un `pnpm dev` arrancado: si el puerto 3000 está ocupado, fallan sin enviar nada y hay que detenerlo. `pnpm assistant:evaluate` y `pnpm routes:evaluate` hacen llamadas reales y solo deben ejecutarse con autorización expresa.
+El asistente funciona sin IA y muestra solo fragmentos hasta configurarla. Las claves van únicamente en `.env.development.local`, que Git ignora y que `pnpm env:start` no sobrescribe (a diferencia de `.env.local`), nunca en el código ni en el chat; los nombres de las variables están en `.env.example`. Tras configurarlas, reiniciar `pnpm dev` y `pnpm worker`. Las pruebas automáticas fuerzan el modo `simulado` y el namespace de trabajos `pruebas`, de modo que un `pnpm worker` real nunca toma sus trabajos. Las de navegador no reutilizan un `pnpm dev` arrancado: si el puerto 3000 está ocupado, fallan sin enviar nada y hay que detenerlo. `pnpm assistant:evaluate`, `pnpm routes:evaluate` y `pnpm help:evaluate` hacen llamadas reales y solo deben ejecutarse con autorización expresa.
 
 `env:start` crea o reutiliza la red Docker `stepable-local` y publica los puertos solo en `127.0.0.1`. Supabase CLI puede mostrar el aviso genérico `All services bind to 0.0.0.0`; la comprobación válida es el enlace efectivo de Docker. Con esta red, `docker inspect` debe mostrar `127.0.0.1` —no `0.0.0.0` ni `::`— para los puertos publicados.
 

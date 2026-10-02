@@ -449,3 +449,14 @@ Estado: prototipo local implementado el 2026-10-01 ([ADR-007](decisiones/ADR-007
 ### Progreso del equipo (E5.2)
 
 `/spaces/[spaceId]/routes/[routeId]/progress`, solo lectura y sin migración. `readTeamProgress` autoriza `consultar_progreso_equipo` y lee la versión publicada. `listTeamProgress` une las membresías activas con el progreso de esa versión (comparación al milisegundo de `route_published_at`) y sus intentos. Los totales se derivan con las mismas reglas de E5.1 ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md)).
+
+## 24. Ayuda contextual en lecciones (E5.3)
+
+Estado: cerrada para el prototipo local el 2026-10-01 ([ADR-008](decisiones/ADR-008-ayuda-contextual-e5-3.md)), sin migración ni infraestructura nueva. Regla: RN-34.
+
+- **Servicio:** `askStepHelp` (`src/modules/learning/help.ts`). Revalida `consultar_rutas` y `consultar_fuentes`, lee el paso con `findRoute(…, true)` y deriva su estado con `deriveProgress`. Los pasos bloqueados, las rutas no empezadas y los identificadores ajenos se rechazan antes de buscar.
+- **Prompt:** `buildStepHelpPrompt` (`help-prompt.ts`). En modo pistas, el tipo `StepHelpContext` no admite la clave de respuesta. El paso, la duda y los fragmentos van en etiquetas neutralizadas; la lección no cuenta como evidencia.
+- **Recuperación:** reutiliza la búsqueda léxica y la semántica de E3 con el filtro `sourceIds`. Primero busca en las fuentes activas del paso y después completa con el espacio, hasta 6 fragmentos. Un solo embedding de la consulta sirve para ambas búsquedas.
+- **Salida:** `parseModelAnswer` y citas construidas desde los fragmentos, marcadas con `fromStepSources`. El log `step_help` registra identificadores, modo, resultado, conteos y tokens.
+- **Interfaz:** componente cliente `step-help.tsx` dentro de `/learn`; antes de resolver, la respuesta se titula “Ayuda para comprender” y después “Explicación”, con `useActionState`; la acción `askStepHelpAction` solo envía identificadores y la duda.
+- **Modelo simulado:** reconoce los marcadores de modo y responde “Pista simulada” o “Explicación simulada”.

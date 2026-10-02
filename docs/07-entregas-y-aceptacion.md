@@ -390,3 +390,35 @@ Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-007](decisiones/
 2. Como responsable: abrir una ruta publicada → **Progreso del equipo**. Comprobar el resumen y que cada miembro activo, incluido el responsable, aparece con su estado y con resueltos y acertados por separado.
 3. Comprobar que un miembro sin progreso aparece como “No empezada” y que un miembro retirado no aparece.
 4. Como integrante: abrir la misma URL de progreso → 404.
+
+## E5.3 · Ayuda contextual en lecciones
+
+Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-008](decisiones/ADR-008-ayuda-contextual-e5-3.md), RN-34). Cubre la parte de RF-08 dentro de las lecciones.
+
+**Entregado:**
+- “Pedir ayuda” en cada paso visible, con duda opcional;
+- “Ayuda para comprender” sin clave antes de resolver y “Explicación” después;
+- búsqueda prioritaria en las fuentes del paso, con las demás citas marcadas como “otra fuente del espacio”;
+- aviso si las fuentes del paso cambiaron;
+- “insuficiente” sin evidencia;
+- ningún efecto en intentos ni progreso.
+
+**Fuera de E5.3:** ejercicios de código (RF-06), límite acumulado de gasto (PEN-08), historial de conversaciones y piloto. La V0 no está completa.
+
+- **Pruebas técnicas:**
+  - 71 unitarias (2 del prompt de ayuda);
+  - `pnpm test:integration:step-help` 5/5;
+  - `pnpm test:e2e:learning` 3/3, con ayuda antes de responder, intento sin consumir y explicación tras resolver;
+  - regresión: integración 62/62 y navegador 25/25;
+  - tipos, lint, Prettier y `pnpm build`;
+  - tras renombrar la etiqueta a “Ayuda para comprender”: tipos, lint y Prettier de los archivos afectados y `pnpm test:e2e:learning` 3/3. El resto de la evidencia se reutiliza.
+- **Evaluación con modelo real:** 2 preguntas. La explicación fue correcta, pero el modo pistas expuso la conclusión deducida del fragmento. Las instrucciones se reforzaron después; el prompt reforzado no se reevaluó con el modelo real (documento 06).
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E5.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Aceptó como limitación del prototipo que la ayuda previa pueda revelar o permitir deducir la respuesta, sin más barreras ni evaluaciones de pago por ahora.
+
+### E5.3 · Prueba manual
+
+1. `pnpm dev` (no hace falta `pnpm worker`). Con IA real, cada ayuda es una llamada de pago pequeña.
+2. Como integrante: abrir una ruta publicada → **Recorrer ruta**, empezarla si hace falta, y en el paso actual pulsar **Pedir ayuda** sin escribir nada. Debe aparecer “Ayuda para comprender” con citas y el mismo “Intento n de 3” que antes.
+3. Escribir una duda que pida la respuesta directamente y pedir ayuda. Observar si el asistente evita dar la opción; anotar si no lo hace.
+4. Resolver el paso y pedir ayuda otra vez: debe aparecer “Explicación”.
+5. Opcional: en una ruta con aviso “Revisar”, pedir ayuda en un paso afectado y comprobar el aviso de fuentes cambiadas.

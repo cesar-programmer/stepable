@@ -1,5 +1,17 @@
 # Historial de cambios
 
+## 2026-10-01 · 3.4 · Cierre de E5.3
+
+- El usuario confirmó la comprobación manual de E5.3 y aceptó la entrega; no se le atribuyen escenarios adicionales. Aceptó como limitación que la ayuda previa pueda revelar o permitir deducir la respuesta.
+- La etiqueta “Pistas” pasa a “Ayuda para comprender”. Se verificó solo lo afectado (tipos, lint, Prettier y navegador de aprendizaje 3/3); el prompt reforzado no se reevaluó con el modelo real y no hubo llamadas de pago.
+- ADR-008 aceptado. E5.3 cerrada en un commit local, sin push.
+
+## 2026-10-01 · 3.3 · Implementación de E5.3
+
+- Añadida la ayuda contextual por paso (“Pedir ayuda”). Antes de resolver da pistas sin la clave en el prompt; después explica la respuesta. Busca primero en las fuentes del paso, avisa de fuentes cambiadas y no altera intentos ni progreso (RN-34, ADR-008 propuesto).
+- Pruebas técnicas: 71 unitarias, 62 de integración y 25 de navegador. Evaluación real con 2 preguntas: explicación correcta; las pistas expusieron la conclusión. Las reglas se endurecieron después sin reevaluar.
+- Sin comprobación manual atribuida, commit ni push. La V0 sigue incompleta: faltan RF-06, PEN-08 y el piloto.
+
 ## 2026-10-01 · 3.2 · Cierre de E5.2
 
 - El usuario confirmó la comprobación manual de E5.2 y aceptó la entrega; no se le atribuyen escenarios adicionales.

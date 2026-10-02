@@ -3,11 +3,14 @@
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
+import { configuredModels } from "@/adapters/ai/models";
 import { PostgresAccessRepository } from "@/adapters/postgres/access-repository";
 import { getApplicationDatabase } from "@/adapters/postgres/database";
+import { PostgresKnowledgeRepository } from "@/adapters/postgres/knowledge-repository";
 import { PostgresLearningRepository } from "@/adapters/postgres/learning-repository";
 import { PostgresRouteRepository } from "@/adapters/postgres/route-repository";
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
+import { askStepHelp, type StepHelpResult } from "@/modules/learning/help";
 import { answerStep, startRoute } from "@/modules/learning/service";
 
 const idsSchema = z.object({ spaceId: z.uuid(), routeId: z.uuid() });
@@ -60,4 +63,45 @@ export async function answerStepAction(formData: FormData) {
   redirect(
     `${path}?ultimo=${result.correct ? "correcta" : "incorrecta"}&paso=${result.stepId}`,
   );
+}
+
+export type StepHelpState =
+  | { kind: "idle" }
+  | { kind: "authentication_required" }
+  | (StepHelpResult & { question: string });
+
+/**
+ * Only identifiers and the learner's optional doubt come from the browser;
+ * the step, its state and the answer key are read on the server.
+ */
+export async function askStepHelpAction(
+  _previous: StepHelpState,
+  formData: FormData,
+): Promise<StepHelpState> {
+  const question = formData.get("question");
+  const text = typeof question === "string" ? question : "";
+  const identity = await (
+    await createSupabaseIdentityGateway()
+  ).currentIdentity();
+  if (!identity) return { kind: "authentication_required" };
+
+  const database = getApplicationDatabase();
+  const models = configuredModels(process.env);
+  const result = await askStepHelp(
+    {
+      ...dependencies(),
+      knowledgeRepository: new PostgresKnowledgeRepository(database),
+      chatModel: models.chatModel,
+      embedder: models.embedder,
+      log: (entry) => console.log(JSON.stringify(entry)),
+    },
+    {
+      identityId: identity.id,
+      spaceId: String(formData.get("spaceId") ?? ""),
+      routeId: String(formData.get("routeId") ?? ""),
+      stepId: String(formData.get("stepId") ?? ""),
+      question: text,
+    },
+  );
+  return { ...result, question: text };
 }

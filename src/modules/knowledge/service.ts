@@ -26,7 +26,7 @@ export type AssistantDependencies = {
   log?: (entry: Record<string, unknown>) => void;
 };
 
-function toCitations(
+export function toCitations(
   refs: number[],
   fragments: RetrievedFragment[],
 ): Citation[] {

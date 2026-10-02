@@ -224,3 +224,7 @@ Restricción aceptada: durante esta etapa solo se cargan documentos sintéticos,
 ## Progreso de aprendizaje (E5.1)
 
 Ambos roles activos (`consultar_rutas`) pueden recorrer rutas publicadas. Cada usuario solo lee y escribe su propio progreso. Desde E5.2, los responsables activos ven los totales por miembro activo de una ruta publicada (`consultar_progreso_equipo`), sin respuestas ni detalle por paso; los integrantes no tienen esa acción. Las conversaciones del asistente no se guardan y nunca forman parte de esta vista (RN-04). La membresía se revalida al consultar y al guardar, y un miembro retirado pierde el acceso en la siguiente solicitud. La retención del progreso y de los intentos para datos reales sigue en PEN-06 ([ADR-007](decisiones/ADR-007-recorrido-e5-1.md)).
+
+## Ayuda contextual (E5.3)
+
+Requiere `consultar_rutas` y `consultar_fuentes` (ambos roles activos), sobre el propio progreso y en un paso visible. Al proveedor se envían la duda, el texto visible del paso (lección, pregunta y opciones) y hasta 6 fragmentos vigentes del espacio. La respuesta correcta y la explicación solo se envían cuando el paso ya está resuelto. No se guardan dudas ni respuestas, y no se escribe progreso ([ADR-008](decisiones/ADR-008-ayuda-contextual-e5-3.md)).

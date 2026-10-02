@@ -21,26 +21,29 @@ function escapeAttribute(value: string): string {
   );
 }
 
-// Content cannot close its own fragment tag or open a new one.
-function neutralizeTags(content: string): string {
-  return content.replace(/<\s*(\/?)\s*(fragmento|pregunta)/gi, "‹$1$2");
+// Content cannot close its own tag or open a new one.
+export function neutralizeTags(content: string): string {
+  return content.replace(/<\s*(\/?)\s*(fragmento|pregunta|paso)/gi, "‹$1$2");
+}
+
+export function renderFragments(fragments: RetrievedFragment[]): string[] {
+  return fragments.map(
+    (fragment) =>
+      `<fragmento id="${fragment.ref}" fuente="${escapeAttribute(fragment.sourceTitle)}" version="${fragment.versionNumber}" ubicacion="${escapeAttribute(describeLocation(fragment))}">\n${neutralizeTags(fragment.content)}\n</fragmento>`,
+  );
 }
 
 export function buildAssistantPrompt(
   question: string,
   fragments: RetrievedFragment[],
 ): { system: string; user: string } {
-  const blocks = fragments.map(
-    (fragment) =>
-      `<fragmento id="${fragment.ref}" fuente="${escapeAttribute(fragment.sourceTitle)}" version="${fragment.versionNumber}" ubicacion="${escapeAttribute(describeLocation(fragment))}">\n${neutralizeTags(fragment.content)}\n</fragmento>`,
-  );
   return {
     system: systemPrompt,
     user: [
       `<pregunta>\n${neutralizeTags(question)}\n</pregunta>`,
       "",
       "Fragmentos recuperados del espacio:",
-      ...blocks,
+      ...renderFragments(fragments),
     ].join("\n"),
   };
 }

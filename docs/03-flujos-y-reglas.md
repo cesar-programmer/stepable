@@ -74,3 +74,11 @@ Estado: aplicadas el 2026-10-01 en el prototipo local ([ADR-007](decisiones/ADR-
 | RN-31 | La ruta está **completada** cuando todos sus pasos están resueltos, sin nota mínima. El resultado cuenta los pasos acertados, no los envíos, y completar no implica dominio del contenido. | Aplicada en E5.1 |
 | RN-32 | El progreso es privado de cada usuario, pertenece a la versión publicada recorrida y se califica en el servidor. Un envío repetido no cuenta como un intento nuevo. Una ruta marcada “Revisar” puede continuarse con el aviso visible. | Aplicada en E5.1 |
 | RN-33 | Solo los responsables activos ven el progreso del equipo de una ruta publicada: totales por miembro activo (estado, pasos resueltos, pasos acertados, fechas), sin respuestas ni detalle por paso y sin mezclar versiones. Los retirados se ocultan; “no empezada” no implica obligación. | Aplicada en E5.2 |
+
+### Ayuda contextual en lecciones (E5.3)
+
+Estado: aplicada el 2026-10-01 en el prototipo local ([ADR-008](decisiones/ADR-008-ayuda-contextual-e5-3.md)). El usuario aceptó como limitación que la ayuda previa pueda revelar o permitir deducir la respuesta.
+
+| ID | Regla | Estado |
+| --- | --- | --- |
+| RN-34 | Cada paso visible ofrece “Pedir ayuda”. Antes de resolverlo, el asistente ofrece “Ayuda para comprender”: explica conceptos y orienta, con la instrucción de no elegir opción ni entregar la solución; la clave y la explicación nunca se envían al modelo en ese momento. Después de resolverlo, puede explicar la respuesta. La ayuda no consume intentos ni cambia el progreso. Busca primero en las fuentes citadas por el paso y conserva las citas verificables; si alguna fuente cambió o se eliminó, avisa y no presenta la versión vigente como respaldo de la lección. No garantiza que la respuesta no pueda revelarse o deducirse. | Aplicada en E5.3 |

@@ -123,6 +123,19 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
     await page.getByRole("button", { name: "Empezar ruta" }).click();
 
     await expect(page.getByText("Respuesta correcta:")).toHaveCount(0);
+
+    // Help before resolving gives hints and does not use an attempt.
+    const firstStep = page.locator(".route-steps > li").first();
+    await firstStep.getByRole("button", { name: "Pedir ayuda" }).click();
+    const hints = firstStep.getByRole("region", {
+      name: "Respuesta del asistente",
+    });
+    await expect(hints).toContainText("Ayuda para comprender");
+    await expect(hints).toContainText("Pista simulada");
+    await expect(hints.getByRole("link", { name: "Contratos" })).toBeVisible();
+    await page.reload();
+    await expect(firstStep.getByText("Intento 1 de 3")).toBeVisible();
+
     await respond(page, 1, "B. Una versión menor");
     await expect(page.getByText("Te quedan 2 intentos.")).toBeVisible();
     await expect(page.getByText("Respuesta correcta:")).toHaveCount(0);
@@ -133,6 +146,12 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
     await expect(
       page.getByText("Lo indica la guía de contratos."),
     ).toBeVisible();
+
+    // Once resolved, help explains the answer.
+    await firstStep.getByRole("button", { name: "Pedir ayuda" }).click();
+    await expect(
+      firstStep.getByRole("region", { name: "Respuesta del asistente" }),
+    ).toContainText("Explicación simulada");
 
     // Returning later keeps the stored progress.
     await page.goto(learnUrl);

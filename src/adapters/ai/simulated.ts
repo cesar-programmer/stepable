@@ -3,6 +3,10 @@ import type {
   ChatModel,
   TextEmbedder,
 } from "../../modules/knowledge/contract.ts";
+import {
+  stepExplanationMarker,
+  stepHintMarker,
+} from "../../modules/learning/help-prompt.ts";
 import { routePromptMarker } from "../../modules/routes/generation.ts";
 
 /**
@@ -26,10 +30,15 @@ export class SimulatedChatModel implements ChatModel {
       return { text: JSON.stringify({ estado: "insuficiente", citas: [] }) };
     }
     const excerpt = first[2].replace(/\s+/g, " ").slice(0, 200);
+    const prefix = input.system.includes(stepHintMarker)
+      ? "Pista simulada"
+      : input.system.includes(stepExplanationMarker)
+        ? "Explicación simulada"
+        : "Respuesta simulada";
     return {
       text: JSON.stringify({
         estado: "respondida",
-        respuesta: `Respuesta simulada a partir de la documentación: ${excerpt} [${first[1]}]`,
+        respuesta: `${prefix} a partir de la documentación: ${excerpt} [${first[1]}]`,
         citas: [Number(first[1])],
       }),
     };

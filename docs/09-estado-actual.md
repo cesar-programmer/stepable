@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E5.1 y E5.2 cerradas para el prototipo local · Versión documental: 3.2.
+Actualizado: 2026-10-01 · Fase: E5.3 cerrada para el prototipo local · Versión documental: 3.4.
 
 ## Hechos acordados
 
@@ -32,9 +32,11 @@ Actualizado: 2026-10-01 · Fase: E5.1 y E5.2 cerradas para el prototipo local ·
 
 - E5.1 aprobada el 2026-10-01 con cinco reglas: 3 intentos, respuesta correcta y explicación al resolver, avance secuencial, ruta completada sin nota mínima y progreso ligado a la versión publicada (ADR-007).
 
+- E5.3 autorizada el 2026-10-01: ayuda contextual por paso, con pistas sin clave antes de resolver y explicación después. No consume intentos, reutiliza E3 y autoriza hasta 2 preguntas reales de evaluación (RN-34, ADR-008). Aceptada el 2026-10-01 con la limitación de que la ayuda previa puede revelar o permitir deducir la respuesta.
+
 ## Actualización más reciente
 
-2026-10-01: el usuario confirmó la comprobación manual de E5.2 y aceptó la entrega. E5.2 se cierra en un commit local, reutilizando la verificación técnica (solo cambió documentación); sin llamadas de IA.
+2026-10-01: el usuario confirmó la comprobación manual de E5.3 y aceptó la entrega. La etiqueta “Pistas” pasó a “Ayuda para comprender”; se verificó solo lo afectado y E5.3 se cierra en un commit local, sin push ni llamadas de pago adicionales.
 
 ## Realizado
 
@@ -158,13 +160,20 @@ Actualizado: 2026-10-01 · Fase: E5.1 y E5.2 cerradas para el prototipo local ·
 - E5.2, 2026-10-01 (pruebas técnicas): 69 unitarias, `pnpm test:integration:team-progress` 2/2, integración 57/57, `pnpm test:e2e:learning` 3/3, `pnpm test:e2e:routes` 2/2, `pnpm verify` y `git diff --check`. Sin procesos de desarrollo en marcha, sin trabajos fuera de `pruebas` y con los datos conservados.
 - Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E5.2 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Estado agregado posterior: 2 membresías activas, 1 retirada y 1 progreso completado.
 
+- E5.3, 2026-10-01:
+  - pruebas técnicas: 71 unitarias, `pnpm test:integration:step-help` 5/5, integración 62/62, navegador 25/25 (aprendizaje 3/3), tipos, lint, Prettier y `pnpm build`. Sin procesos de desarrollo en marcha, sin trabajos fuera de `pruebas` y con los datos conservados (1 progreso, 4 intentos, 5 embeddings);
+  - evaluación con modelo real: 2 llamadas (1257/150 tokens), sin embeddings. Pistas: sin letra, pero con la conclusión deducida del fragmento. Explicación: correcta y citada (documento 06);
+  - después de la evaluación se reforzaron las instrucciones de orientación; el prompt reforzado no se reevaluó con el modelo real;
+  - cambio de etiqueta a “Ayuda para comprender”: tipos, lint y Prettier de lo afectado y `pnpm test:e2e:learning` 3/3; el resto de la evidencia se reutiliza;
+  - Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E5.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Aceptó como limitación del prototipo que la ayuda previa pueda revelar o permitir deducir la respuesta, sin más barreras ni evaluaciones de pago por ahora.
+
 ## No realizado
 
-No se implementaron detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
+No se implementaron ejercicios de código (RF-06), filtro posterior de respuestas que revelen la opción, detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Contrastar el prototipo con el alcance V0 y recomendar una siguiente entrega pequeña de demostración y validación con documentos sintéticos, sin implementarla.
+Acordar con el usuario la siguiente entrega hacia el cierre de la V0 (recomendación pendiente de aprobación en la sesión del 2026-10-01), sin implementarla hasta su autorización.
 
 ## Decisiones que requieren aprobación
 
@@ -181,7 +190,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E5.1 está cerrada en `68d3163` y E5.2 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
+E5.1 está cerrada en `68d3163`, E5.2 en `e9169d9` y E5.3 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
 
 ## Formato para futuras sesiones
 
