@@ -1,4 +1,4 @@
-import type { RouteCitation } from "../routes/contract.ts";
+import type { RouteCitation, StepCode } from "../routes/contract.ts";
 
 import type { AttemptRecord, StepLearningState } from "./rules.ts";
 
@@ -16,6 +16,7 @@ export type LearnerStep = {
   selectedOptions: number[];
   lesson: string | null;
   question: string | null;
+  code: StepCode | null;
   options: string[] | null;
   citations: RouteCitation[];
   correctOption: number | null;

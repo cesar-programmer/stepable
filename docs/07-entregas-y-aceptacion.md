@@ -13,7 +13,7 @@ Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003.
 | E2 Fuentes | RF-03 | CA-02: archivo permitido llega a listo, error se ve y se puede reintentar sin duplicar resultados |
 | E3 Asistente | RF-08 | CA-03: preguntas de referencia producen evidencia resoluble; preguntas sin respaldo reconocen insuficiencia; aislamiento por espacio. Prototipo local cerrado el 2026-10-01; historial de conversaciones (“chats aislados” persistentes) pospuesto |
 | E4 Autoría | RF-04, RF-05 | CA-04: borrador editable, publicación solo por responsable y versión publicada estable. E4.1 cerrada en el prototipo local el 2026-10-01 |
-| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 y E5.2 cerradas para opción múltiple; RF-06 (lectura de código y completar fragmentos) pendiente |
+| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 y E5.2 cerradas para opción múltiple; lectura de código en E5.4; completar fragmentos pendiente |
 | E6 Piloto | Recorrido completo | CA-06: prueba documentada con usuarios invitados, incidencias y consumo registrado |
 
 RF-10 es transversal: errores y límites deben incorporarse en las entregas que consumen recursos. El chat contextual de lecciones se integra en E5; E3 entrega el chat general.
@@ -422,3 +422,33 @@ Estado: **cerrada para el prototipo local** el 2026-10-01 ([ADR-008](decisiones/
 3. Escribir una duda que pida la respuesta directamente y pedir ayuda. Observar si el asistente evita dar la opción; anotar si no lo hace.
 4. Resolver el paso y pedir ayuda otra vez: debe aparecer “Explicación”.
 5. Opcional: en una ruta con aviso “Revisar”, pedir ayuda en un paso afectado y comprobar el aviso de fuentes cambiadas.
+
+## E5.4 · Preguntas de lectura de código
+
+Estado: **cerrada para el prototipo local** el 2026-10-03 ([ADR-009](decisiones/ADR-009-lectura-de-codigo-e5-4.md), RN-35). Cubre la lectura de código de RF-06.
+
+**Entregado:**
+- fragmento de código opcional, de solo lectura, con lenguaje opcional y origen (copia de la fuente o ejemplo ilustrativo);
+- propuesta por IA solo con respaldo de las fuentes, más edición del responsable;
+- presentación como texto y recorrido, progreso y ayuda reutilizados;
+- rutas, borradores y progresos existentes sin cambios.
+
+**Fuera de E5.4:** completar fragmentos, ejecución de código y nuevas reglas de calificación.
+
+- **Pruebas técnicas:**
+  - 72 unitarias (1 nueva de generación con código; la del prompt de ayuda se amplió);
+  - integración 62/62, ampliando `routes` (generación, edición y publicación con código) y `step-help` (código en el contexto, sin clave);
+  - navegador 25/25, ampliando `routes` (ruta sin código forzado y código añadido por el responsable, visible al integrante) y `learning` (texto literal sin interpretar HTML);
+  - `pnpm verify` y `git diff --check`.
+- **Evaluación con modelo real:** 1 generación (678/38 tokens). El resultado fue “insuficiente”, sin pasos; no se observó código generado (documento 06).
+- **Incidencia de la prueba manual (2026-10-03):** la ayuda rechazaba como no verificable la explicación del código del paso. Se corrigió permitiendo citar ese código como “Código del paso” (causa y ajuste en [ADR-009](decisiones/ADR-009-lectura-de-codigo-e5-4.md)). Verificación con modelo simulado: 73 unitarias, `pnpm test:integration:step-help` 6/6, integración 63/63, `pnpm test:e2e:learning` 3/3, `pnpm test:e2e:assistant` 2/2 y `pnpm verify`. Sin llamadas reales.
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-03: confirmó que la corrección de la ayuda sobre el código y la prueba manual de E5.4 funcionan correctamente, y aceptó la entrega. No se le atribuyen pruebas adicionales.
+- **Pendiente:** La generación automática de pasos con código queda pendiente de una evaluación real exitosa: la única generación real devolvió “insuficiente” y la confirmación manual no sustituye esa evidencia.
+
+### E5.4 · Prueba manual
+
+1. `pnpm db:migrate` (añade las columnas de código sin tocar los datos) y después `pnpm dev`.
+2. Como responsable: abrir un borrador, o generar uno con el simulador, y en un paso pegar código con indentación en **Código de solo lectura**, poner un lenguaje, elegir el origen y pulsar **Guardar paso**.
+3. Publicar la ruta. Comprobar que el código se ve con sus espacios, como texto, con la etiqueta de su origen.
+4. Como integrante: recorrer la ruta, responder el paso con código y pulsar **Pedir ayuda** preguntando qué hace el código. La ayuda debe explicarlo y mostrar “[código] Código del paso” entre sus citas, sin presentar el ejemplo como práctica de la empresa.
+5. Opcional: comprobar que una ruta anterior se sigue viendo y recorriendo igual, sin código.

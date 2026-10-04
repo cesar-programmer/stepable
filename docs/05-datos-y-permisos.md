@@ -227,4 +227,4 @@ Ambos roles activos (`consultar_rutas`) pueden recorrer rutas publicadas. Cada u
 
 ## Ayuda contextual (E5.3)
 
-Requiere `consultar_rutas` y `consultar_fuentes` (ambos roles activos), sobre el propio progreso y en un paso visible. Al proveedor se envían la duda, el texto visible del paso (lección, pregunta y opciones) y hasta 6 fragmentos vigentes del espacio. La respuesta correcta y la explicación solo se envían cuando el paso ya está resuelto. No se guardan dudas ni respuestas, y no se escribe progreso ([ADR-008](decisiones/ADR-008-ayuda-contextual-e5-3.md)).
+Requiere `consultar_rutas` y `consultar_fuentes` (ambos roles activos), sobre el propio progreso y en un paso visible. Al proveedor se envían la duda, el texto visible del paso (lección, pregunta, opciones y, desde E5.4, su código de solo lectura) y hasta 6 fragmentos vigentes del espacio. La respuesta correcta y la explicación solo se envían cuando el paso ya está resuelto. No se guardan dudas ni respuestas, y no se escribe progreso ([ADR-008](decisiones/ADR-008-ayuda-contextual-e5-3.md)).

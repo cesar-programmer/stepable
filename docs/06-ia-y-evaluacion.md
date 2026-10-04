@@ -120,3 +120,25 @@ Pruebas técnicas con modelo falso o simulado (`pnpm test:integration:step-help`
 Consumo: 2 llamadas, con 1257 tokens de entrada y 150 de salida. Se registraron solo los 2 intentos de respuesta del guion; la ayuda no añadió ninguno. Los datos temporales se eliminaron.
 
 Después de la evaluación se endurecieron las reglas del modo pistas: no escribir la conclusión ni reproducir o parafrasear opciones, orientar a la fuente con una pregunta y remitir a la explicación tras resolver. **Ese prompt reforzado no se reevaluó con el modelo real.** El usuario aceptó la limitación y no pidió nuevas evaluaciones de pago. Aunque mejore, las pistas no impiden deducir la respuesta, porque las fuentes y el asistente general siguen accesibles. No se midieron latencia ni estabilidad.
+
+## Evaluación de E5.4 (lectura de código)
+
+Pruebas técnicas con modelo falso o simulado:
+- validación del borrador con código opcional: copia literal verificada, copia declarada pero no encontrada (pasa a ilustrativa), indentación conservada, lenguaje no válido descartado y pasos sin código;
+- persistencia de la generación;
+- edición para añadir, cambiar y quitar el código;
+- publicación;
+- presentación como texto: el HTML del código no crea elementos;
+- recorrido con progreso y ayuda que incluye el código sin la clave;
+- una ruta generada desde fuentes sin código no recibe código;
+- corrección del 2026-10-03: una explicación que solo cita el código del paso (`[código]`) se acepta; sin ninguna evidencia, o con el marcador en un paso sin código, sigue siendo no verificable.
+
+**Evaluación con modelo real (2026-10-01):** OpenAI `gpt-4.1-mini`, `pnpm routes:evaluate --codigo`, la única generación autorizada, sin embeddings (solo recuperación léxica). Se usaron 2 documentos sintéticos: una guía con una convención (cliente `httpClient` y `Result<T>`) y un ejemplo de código en TypeScript, y una norma de revisión de código.
+
+| Caso | Resultado observado |
+| --- | --- |
+| Objetivo: leer y escribir funciones de servicio HTTP según la convención | `insuficiente`, sin pasos y, por tanto, sin código generado |
+
+Consumo: 1 intento registrado y 1 llamada, con 678 tokens de entrada y 38 de salida. Los datos temporales se eliminaron.
+
+Limitaciones: con el modelo real no se observó ningún paso con código, así que la calidad de esos pasos y el etiquetado del origen no están evaluados con IA real. No se verificó la causa del resultado “insuficiente”; una hipótesis es que el material era escaso para el mínimo de 3 pasos o que el objetivo pedía “escribir” código. No se repitió la generación.

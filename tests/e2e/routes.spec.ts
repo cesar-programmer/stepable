@@ -138,7 +138,12 @@ test.describe.serial("E4.1 onboarding routes in the browser", () => {
       { timeout: 20_000 },
     );
     routeUrl = page.url();
+    // Sources without code yield general steps; the responsible adds one.
+    const codeField = page.getByLabel(/Código de solo lectura/).first();
+    await expect(codeField).toHaveValue("");
     await page.getByLabel("Título del paso 1").fill("Versionar contratos");
+    await codeField.fill('if (incompatible) {\n  ruta = "/v2";\n}');
+    await page.getByLabel("Lenguaje del código (opcional)").first().fill("ts");
     await page.getByRole("button", { name: "Guardar paso 1" }).click();
     await expect(page.getByText("Paso guardado.")).toBeVisible();
 
@@ -158,6 +163,12 @@ test.describe.serial("E4.1 onboarding routes in the browser", () => {
     await page.goto(`/spaces/${spaceId}/routes`);
     await page.getByRole("link", { name: "Ruta simulada" }).click();
     await expect(page.getByText("1. Versionar contratos")).toBeVisible();
+    expect(await page.locator(".code-block code").textContent()).toBe(
+      'if (incompatible) {\n  ruta = "/v2";\n}',
+    );
+    await expect(page.locator(".code-block figcaption")).toHaveText(
+      "Ejemplo ilustrativo: no es código real de la empresa · ts",
+    );
     await expect(page.getByText("Respuesta correcta")).toHaveCount(0);
     await expect(
       page.getByRole("link", { name: "Contratos de API" }).first(),

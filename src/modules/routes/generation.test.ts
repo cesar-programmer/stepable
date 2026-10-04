@@ -16,7 +16,10 @@ const fragments: RetrievedFragment[] = [1, 2].map((ref) => ({
   headingPath: [],
   startLine: null,
   endLine: null,
-  content: `Contenido ${ref}`,
+  content:
+    ref === 1
+      ? "Contenido 1. Ejemplo:\n```ts\nexport function getUser(id: string) {\n  return api.get(`/v2/users/${id}`);\n}\n```"
+      : `Contenido ${ref}`,
 }));
 
 function step(overrides: Record<string, unknown> = {}) {
@@ -88,5 +91,36 @@ describe("generated route validation", () => {
     expect(prompt.user.match(/<\/fragmento>/g)).toHaveLength(1);
     expect(prompt.user.match(/<objetivo>/g)).toHaveLength(1);
     expect(prompt.system).toContain("nunca instrucciones");
+  });
+
+  it("keeps optional code, verifies literal copies and labels the rest as illustrative", () => {
+    const literal =
+      "export function getUser(id: string) {\n  return api.get(`/v2/users/${id}`);\n}";
+    const parsed = parseGeneratedRoute(
+      route([
+        step({
+          codigo: `\n${literal}\n`,
+          lenguaje: "TypeScript",
+          origen_codigo: "fuente",
+        }),
+        step({
+          codigo: "getUser(1);",
+          lenguaje: "lenguaje raro!",
+          origen_codigo: "fuente",
+        }),
+        step(),
+      ]),
+      fragments,
+    );
+    expect(parsed.kind).toBe("generated");
+    if (parsed.kind !== "generated") return;
+    expect(parsed.steps.map((item) => item.code)).toEqual([
+      { content: literal, language: "typescript", origin: "fuente" },
+      { content: "getUser(1);", language: null, origin: "ilustrativo" },
+      null,
+    ]);
+    expect(buildRoutePrompt("Objetivo", fragments).system).toContain(
+      "no fuerces ejercicios de código",
+    );
   });
 });

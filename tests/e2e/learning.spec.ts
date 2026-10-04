@@ -25,6 +25,8 @@ let owner: LocalTestIdentity;
 let member: LocalTestIdentity;
 let foreign: LocalTestIdentity;
 let learnUrl: string;
+// Markup and indentation must reach the page as literal text.
+const snippet = 'if (incompatible) {\n  aviso = "<b id=inyectado>v2</b>";\n}';
 
 async function login(page: Page, identity: LocalTestIdentity) {
   await page.goto("/login");
@@ -85,6 +87,11 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
           title: "Versionar",
           lesson: "Un cambio incompatible exige una versión mayor [1].",
           question: "¿Qué exige un cambio incompatible?",
+          code: {
+            content: snippet,
+            language: "ts",
+            origin: "ilustrativo",
+          },
           options: ["Una versión mayor", "Una versión menor", "Nada"],
           correct: 0,
           explanation: "Lo indica la guía de contratos.",
@@ -123,6 +130,13 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
     await page.getByRole("button", { name: "Empezar ruta" }).click();
 
     await expect(page.getByText("Respuesta correcta:")).toHaveCount(0);
+
+    const code = page.locator(".code-block code");
+    expect(await code.textContent()).toBe(snippet);
+    await expect(page.locator("#inyectado")).toHaveCount(0);
+    await expect(
+      page.getByText("Ejemplo ilustrativo: no es código real de la empresa"),
+    ).toBeVisible();
 
     // Help before resolving gives hints and does not use an attempt.
     const firstStep = page.locator(".route-steps > li").first();

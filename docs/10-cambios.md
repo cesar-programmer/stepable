@@ -1,5 +1,23 @@
 # Historial de cambios
 
+## 2026-10-03 · 3.6 · Cierre de E5.4
+
+- El usuario confirmó la corrección de la ayuda sobre “Código del paso” y la prueba manual de E5.4, y aceptó la entrega; no se le atribuyen pruebas adicionales.
+- Se reutilizó la verificación técnica aprobada (después solo cambió documentación); sin llamadas reales.
+- La generación automática de pasos con código sigue pendiente de una evaluación real exitosa. E5.4 cerrada en un commit local, sin push.
+
+## 2026-10-03 · 3.5 · Corrección de la ayuda con código (E5.4)
+
+- Causa: el prompt de ayuda solo admitía citas a fragmentos y el validador rechazaba toda respuesta sin una cita válida, así que la explicación de un código no cubierto por los fragmentos se descartaba como no verificable.
+- Ajuste: la ayuda puede citar el código del paso como “Código del paso” (`[código]`) solo para explicar lo que hace; las prácticas de la empresa siguen exigiendo fuentes. Las citas [n] se validan igual.
+- Verificado con modelo simulado (73 unitarias, 63 de integración y navegador afectado); sin llamadas reales, commit ni push.
+
+## 2026-10-01 · 3.5 · Implementación de E5.4
+
+- Añadidas preguntas de lectura de código: fragmento opcional de solo lectura, con lenguaje y origen (fuente o ilustrativo), propuesto por la IA con respaldo de las fuentes y editable por el responsable. Se muestra como texto y reutiliza recorrido, progreso y ayuda (RN-35, ADR-009 propuesto). Migración aditiva, sin cambios en rutas existentes.
+- Pruebas técnicas: 72 unitarias, 62 de integración y 25 de navegador. La única generación real devolvió “insuficiente”, sin código observado.
+- Sin comprobación manual atribuida, commit ni push. Siguen pendientes completar fragmentos y el control de consumo.
+
 ## 2026-10-01 · 3.4 · Cierre de E5.3
 
 - El usuario confirmó la comprobación manual de E5.3 y aceptó la entrega; no se le atribuyen escenarios adicionales. Aceptó como limitación que la ayuda previa pueda revelar o permitir deducir la respuesta.

@@ -9,6 +9,7 @@ export type SeedStep = {
   options: string[];
   correct: number;
   explanation: string;
+  code?: { content: string; language: string | null; origin: string };
 };
 
 /** Inserts an already published route citing one source version. Test-only. */
@@ -36,9 +37,11 @@ export async function seedPublishedRoute(
     const [inserted] = await client<{ id: string }[]>`
       insert into public.route_steps
         (route_id, position, title, lesson, question, options, correct_option,
-         explanation)
+         explanation, code, code_language, code_origin)
       values (${routeId}, ${index + 1}, ${step.title}, ${step.lesson},
-        ${step.question}, ${step.options}, ${step.correct}, ${step.explanation})
+        ${step.question}, ${step.options}, ${step.correct}, ${step.explanation},
+        ${step.code?.content ?? null}, ${step.code?.language ?? null},
+        ${step.code?.origin ?? null})
       returning id
     `;
     await client`

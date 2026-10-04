@@ -94,6 +94,7 @@ export async function readLearnerView(
         selectedOptions: state?.selectedOptions ?? [],
         lesson: visible ? step.lesson : null,
         question: visible ? step.question : null,
+        code: visible ? step.code : null,
         options: visible ? step.options : null,
         citations: visible ? step.citations : [],
         correctOption: resolved ? step.correctOption : null,

@@ -49,17 +49,20 @@ let changedRoute: { routeId: string; stepIds: string[] };
 let deletedRoute: { routeId: string; stepIds: string[] };
 
 const calls: { system: string; user: string }[] = [];
+const citeFirstReply = {
+  estado: "respondida",
+  respuesta: "Piensa en la compatibilidad [1].",
+  citas: [1],
+};
+// A test may replace the next reply; it is reset after each call.
+let nextReply: object | null = null;
 const citeFirst: ChatModel = {
   label: "prueba",
   async complete({ system, user }) {
     calls.push({ system, user });
-    return {
-      text: JSON.stringify({
-        estado: "respondida",
-        respuesta: "Piensa en la compatibilidad [1].",
-        citas: [1],
-      }),
-    };
+    const reply = nextReply ?? citeFirstReply;
+    nextReply = null;
+    return { text: JSON.stringify(reply) };
   },
 };
 
@@ -154,6 +157,11 @@ describe("E5.3 contextual help inside a step", () => {
           title: "Versionar contratos",
           lesson: "Un cambio incompatible exige una versión mayor [1].",
           question: "¿Qué exige un cambio incompatible en un contrato?",
+          code: {
+            content: 'if (incompatible) {\n  ruta = "/v2";\n}',
+            language: "ts",
+            origin: "ilustrativo",
+          },
           options: ["Una versión mayor", "Una versión menor", "Nada"],
           correct: 0,
           explanation: secretExplanation,
@@ -286,6 +294,7 @@ describe("E5.3 contextual help inside a step", () => {
     expect(`${system}\n${user}`).not.toContain(secretExplanation);
     expect(user).not.toMatch(/Respuesta correcta|Respuestas de la persona/);
     expect(user).toContain("¿Qué exige un cambio incompatible en un contrato?");
+    expect(user).toContain('if (incompatible) {\n  ruta = "/v2";\n}');
     // Step sources come first; another source of the space only fills in.
     if (result.kind !== "answered") throw new Error(result.kind);
     expect(result.fragments[0].sourceId).toBe(contractsSourceId);
@@ -322,6 +331,40 @@ describe("E5.3 contextual help inside a step", () => {
     expect(calls[0].user).toContain("Respuesta correcta: A");
     expect(calls[0].user).toContain("Respuestas de la persona: B, A");
     expect(await progressSnapshot(member)).toEqual(before);
+  });
+
+  it("explains the step's own code citing it as “Código del paso” when no fragment covers it", async () => {
+    // The step is resolved (previous test) and has illustrative code.
+    const codeOnly = {
+      estado: "respondida",
+      respuesta:
+        'Si el cambio es incompatible, el código asigna la ruta "/v2" [código].',
+      citas: [],
+    };
+    calls.length = 0;
+    nextReply = codeOnly;
+    const result = await help(member, { question: "¿Qué hace el código?" });
+    expect(result).toMatchObject({
+      kind: "answered",
+      mode: "explicacion",
+      citesStepCode: true,
+      citations: [],
+    });
+    expect(calls[0].system).toContain("cítalo como [código]");
+    expect(calls[0].system).toContain("No lo uses para afirmar convenciones");
+    expect(calls[0].user).toContain("Código del paso [código]");
+
+    // Without any evidence the answer is still rejected (the reported case).
+    nextReply = { ...codeOnly, respuesta: "El código asigna /v2." };
+    expect(await help(member)).toMatchObject({ kind: "unverifiable" });
+    // A step without code cannot use the marker as evidence.
+    nextReply = codeOnly;
+    expect(
+      await help(member, {
+        routeId: changedRoute.routeId,
+        stepId: changedRoute.stepIds[0],
+      }),
+    ).toMatchObject({ kind: "unverifiable" });
   });
 
   it("refuses locked steps, other spaces, revoked members and invalid input before calling the model", async () => {

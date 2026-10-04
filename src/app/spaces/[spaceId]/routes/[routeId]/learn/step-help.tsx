@@ -82,6 +82,12 @@ export function StepHelp({
           </p>
           <p className="answer-text">{state.answer}</p>
           <ol className="citation-list">
+            {state.citesStepCode ? (
+              <li>
+                [código] Código del paso: describe lo que hace el código
+                mostrado, no una práctica de la empresa
+              </li>
+            ) : null}
             {state.citations.map((citation) => (
               <li key={citation.ref}>
                 [{citation.ref}]{" "}

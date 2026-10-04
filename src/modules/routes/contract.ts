@@ -13,6 +13,8 @@ export const routeLimits = {
   questionMaxChars: 400,
   optionMaxChars: 200,
   explanationMaxChars: 800,
+  codeMaxChars: 3000,
+  codeLanguageMaxChars: 30,
   candidates: 12,
   fragments: 12,
   fragmentMaxChars: 1500,
@@ -47,12 +49,27 @@ export type RouteCitation = {
   currentVersionNumber: number | null;
 };
 
+/**
+ * "fuente": copied from a cited fragment; "ilustrativo": an example built
+ * from the sources, never presented as the company's real code.
+ */
+export const codeOrigins = ["fuente", "ilustrativo"] as const;
+export type CodeOrigin = (typeof codeOrigins)[number];
+
+/** Optional read-only snippet; plain text, never executed or parsed. */
+export type StepCode = {
+  content: string;
+  language: string | null;
+  origin: CodeOrigin;
+};
+
 export type RouteStep = {
   id: string;
   position: number;
   title: string;
   lesson: string;
   question: string;
+  code: StepCode | null;
   options: string[];
   /** Null for members: the answer key is not delivered before E5. */
   correctOption: number | null;
@@ -92,6 +109,7 @@ export type StepEdit = {
   title: string;
   lesson: string;
   question: string;
+  code: StepCode | null;
   options: string[];
   correctOption: number;
   explanation: string;

@@ -82,3 +82,11 @@ Estado: aplicada el 2026-10-01 en el prototipo local ([ADR-008](decisiones/ADR-0
 | ID | Regla | Estado |
 | --- | --- | --- |
 | RN-34 | Cada paso visible ofrece “Pedir ayuda”. Antes de resolverlo, el asistente ofrece “Ayuda para comprender”: explica conceptos y orienta, con la instrucción de no elegir opción ni entregar la solución; la clave y la explicación nunca se envían al modelo en ese momento. Después de resolverlo, puede explicar la respuesta. La ayuda no consume intentos ni cambia el progreso. Busca primero en las fuentes citadas por el paso y conserva las citas verificables; si alguna fuente cambió o se eliminó, avisa y no presenta la versión vigente como respaldo de la lección. No garantiza que la respuesta no pueda revelarse o deducirse. | Aplicada en E5.3 |
+
+### Lectura de código (E5.4)
+
+Estado: aplicada en el prototipo local (comprobación manual del usuario del 2026-10-03; generación automática de código sin evaluación real exitosa) ([ADR-009](decisiones/ADR-009-lectura-de-codigo-e5-4.md)).
+
+| ID | Regla | Estado |
+| --- | --- | --- |
+| RN-35 | Un paso puede incluir, de forma opcional, un fragmento de código de solo lectura (lenguaje opcional) sobre el que trata su pregunta de opción múltiple. Se califica igual que cualquier paso. La IA solo lo propone cuando las fuentes seleccionadas lo respaldan, sin inventar convenciones ni forzarlo. Un ejemplo construido se etiqueta como ilustrativo y nunca como código real de la empresa. El responsable puede añadirlo, editarlo o quitarlo antes de publicar. El código se muestra como texto y nunca se ejecuta ni se interpreta como HTML. La ayuda puede explicar lo que hace el código visible citándolo como “Código del paso”; las afirmaciones sobre prácticas de la empresa siguen exigiendo fuentes documentales. | Aplicada en E5.4 |

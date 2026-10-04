@@ -13,6 +13,7 @@ import type { LearnerStep } from "@/modules/learning/contract";
 import { maxAttemptsPerStep } from "@/modules/learning/rules";
 import { readLearnerView } from "@/modules/learning/service";
 
+import { CodeBlock } from "../../code-block";
 import { citationStateLabels } from "../../messages";
 
 import { answerStepAction, startRouteAction } from "./actions";
@@ -163,6 +164,7 @@ export default async function LearnPage({
                 <>
                   <p className="answer-text">{step.lesson}</p>
                   <StepCitations spaceId={spaceId} step={step} />
+                  {step.code ? <CodeBlock code={step.code} /> : null}
                   <p>
                     <strong>Pregunta:</strong> {step.question}
                   </p>

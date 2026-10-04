@@ -22,7 +22,6 @@ import {
   type RouteListing,
   type RouteMutationResult,
   type RouteRepository,
-  type StepEdit,
 } from "./contract.ts";
 import {
   buildRoutePrompt,
@@ -263,7 +262,11 @@ type MutationInput = {
 
 export async function editRouteStep(
   dependencies: Dependencies,
-  input: MutationInput & { stepId: string; edit: StepEdit },
+  // Omitting `code` removes the snippet; the editor always sends it.
+  input: MutationInput & {
+    stepId: string;
+    edit: z.input<typeof stepEditSchema>;
+  },
 ): Promise<RouteMutationResult> {
   const edit = stepEditSchema.safeParse(input.edit);
   if (!edit.success) return { kind: "invalid" };

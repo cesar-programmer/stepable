@@ -24,6 +24,7 @@ import {
   routeGenerationLabels,
   routeNoticeMessages,
 } from "../messages";
+import { CodeBlock } from "../code-block";
 
 type RoutePageProps = {
   params: Promise<{ spaceId: string; routeId: string }>;
@@ -85,6 +86,7 @@ function ReadOnlyStep({ spaceId, step }: { spaceId: string; step: RouteStep }) {
       </h2>
       <p className="answer-text">{step.lesson}</p>
       <Citations spaceId={spaceId} step={step} />
+      {step.code ? <CodeBlock code={step.code} /> : null}
       <p>
         <strong>Pregunta:</strong> {step.question}
       </p>
@@ -136,6 +138,39 @@ function EditableStep({
           />
         </label>
         <Citations spaceId={spaceId} step={step} />
+        <label>
+          Código de solo lectura (opcional; vacío para quitarlo)
+          <textarea
+            className="code-input"
+            defaultValue={step.code?.content ?? ""}
+            maxLength={3000}
+            name="code"
+            rows={6}
+            spellCheck={false}
+            wrap="off"
+          />
+        </label>
+        <label>
+          Lenguaje del código (opcional)
+          <input
+            defaultValue={step.code?.language ?? ""}
+            maxLength={30}
+            name="codeLanguage"
+            placeholder="por ejemplo, typescript"
+          />
+        </label>
+        <label>
+          Origen del código
+          <select
+            defaultValue={step.code?.origin ?? "ilustrativo"}
+            name="codeOrigin"
+          >
+            <option value="fuente">
+              Copiado literalmente de una fuente citada
+            </option>
+            <option value="ilustrativo">Ejemplo ilustrativo</option>
+          </select>
+        </label>
         <label>
           Pregunta
           <input defaultValue={step.question} name="question" required />

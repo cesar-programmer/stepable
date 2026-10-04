@@ -3,6 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { allowsSpaceAction } from "../../modules/access/authorization.ts";
 import {
   routeLimits,
+  type CodeOrigin,
   type DraftStep,
   type GenerationClaim,
   type RequestGenerationResult,
@@ -377,10 +378,13 @@ export class PostgresRouteRepository implements RouteRepository {
             transaction,
             sql`insert into public.route_steps
                   (route_id, position, title, lesson, question, options,
-                   correct_option, explanation)
+                   correct_option, explanation, code, code_language,
+                   code_origin)
                 values (${input.routeId}, ${step.position}, ${step.title},
                   ${step.lesson}, ${step.question}, ${textArray(step.options)},
-                  ${step.correctOption}, ${step.explanation})
+                  ${step.correctOption}, ${step.explanation},
+                  ${step.code?.content ?? null}, ${step.code?.language ?? null},
+                  ${step.code?.origin ?? null})
                 returning id`,
           );
           for (const citation of step.citations) {
@@ -475,10 +479,13 @@ export class PostgresRouteRepository implements RouteRepository {
       options: string[];
       correct_option: number;
       explanation: string;
+      code: string | null;
+      code_language: string | null;
+      code_origin: CodeOrigin | null;
     }>(
       this.database,
       sql`select id, position, title, lesson, question, options, correct_option,
-            explanation
+            explanation, code, code_language, code_origin
           from public.route_steps where route_id = ${routeId}
           order by position`,
     );
@@ -519,6 +526,14 @@ export class PostgresRouteRepository implements RouteRepository {
         title: step.title,
         lesson: step.lesson,
         question: step.question,
+        code:
+          step.code !== null && step.code_origin !== null
+            ? {
+                content: step.code,
+                language: step.code_language,
+                origin: step.code_origin,
+              }
+            : null,
         options: step.options,
         correctOption: step.correct_option,
         explanation: step.explanation,
@@ -601,7 +616,10 @@ export class PostgresRouteRepository implements RouteRepository {
               question = ${input.edit.question},
               options = ${textArray(input.edit.options)},
               correct_option = ${input.edit.correctOption},
-              explanation = ${input.edit.explanation}
+              explanation = ${input.edit.explanation},
+              code = ${input.edit.code?.content ?? null},
+              code_language = ${input.edit.code?.language ?? null},
+              code_origin = ${input.edit.code?.origin ?? null}
             where id = ${input.stepId}`,
       );
       return { kind: "ok" };

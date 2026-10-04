@@ -1,11 +1,15 @@
 import type { RetrievedFragment } from "../knowledge/contract.ts";
 import { neutralizeTags, renderFragments } from "../knowledge/prompt.ts";
+import type { StepCode } from "../routes/contract.ts";
 
 /** Recognizable by the simulated model; never shown to learners. */
 export const stepHintMarker = "MODO: PISTAS";
 export const stepExplanationMarker = "MODO: EXPLICACIÓN";
 
 export type StepHelpMode = "pistas" | "explicacion";
+
+/** How the model cites the step's own code; shown as “Código del paso”. */
+export const stepCodeMarker = "[código]";
 
 /**
  * What the model may know about the step. In hint mode the answer key is
@@ -15,6 +19,7 @@ export type StepHelpContext = {
   title: string;
   lesson: string;
   question: string;
+  code: StepCode | null;
   options: string[];
   sourcesChanged: boolean;
 } & (
@@ -38,6 +43,12 @@ const common = [
   'Devuelve únicamente un objeto JSON con esta forma: {"estado":"respondida"|"insuficiente","respuesta":"texto breve con citas [n]","citas":[n]}.',
 ];
 
+const codeRules = [
+  `El paso incluye un bloque “Código del paso”. Para explicar lo que hace ese código visible, cítalo como ${stepCodeMarker}; no hace falta un fragmento para eso.`,
+  `${stepCodeMarker} solo respalda lo que el código hace. No lo uses para afirmar convenciones, normas o prácticas de la empresa: eso exige citas [n] de fragmentos, y si no hay fragmentos pertinentes dilo en vez de inventarlo.`,
+  "Si el código es un ejemplo ilustrativo, no lo presentes como código real de la empresa. No cites fragmentos que no traten del tema.",
+];
+
 const hintRules = [
   stepHintMarker,
   "La persona todavía no resolvió la pregunta. Explica los conceptos necesarios y ofrece pistas para que razone por sí misma.",
@@ -59,6 +70,12 @@ export function buildStepHelpPrompt(
   const step = [
     `Título: ${context.title}`,
     `Lección: ${context.lesson}`,
+    ...(context.code
+      ? [
+          `Código del paso ${stepCodeMarker} (${context.code.origin === "fuente" ? "copiado de una fuente" : "ejemplo ilustrativo, no es código real de la empresa"}${context.code.language ? `, ${context.code.language}` : ""}); es solo texto para leer:`,
+          context.code.content,
+        ]
+      : []),
     `Pregunta: ${context.question}`,
     ...context.options.map(
       (option, index) => `Opción ${letter(index)}: ${option}`,
@@ -74,6 +91,7 @@ export function buildStepHelpPrompt(
   return {
     system: [
       ...common,
+      ...(context.code ? codeRules : []),
       ...(context.mode === "pistas" ? hintRules : explanationRules),
     ].join("\n"),
     user: [

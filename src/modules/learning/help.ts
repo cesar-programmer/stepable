@@ -19,6 +19,7 @@ import type { RouteRepository } from "../routes/contract.ts";
 import type { LearningRepository } from "./contract.ts";
 import {
   buildStepHelpPrompt,
+  stepCodeMarker,
   type StepHelpContext,
   type StepHelpMode,
 } from "./help-prompt.ts";
@@ -43,6 +44,8 @@ export type StepHelpResult =
       sourcesChanged: boolean;
       answer: string;
       citations: StepHelpCitation[];
+      /** The answer relies on the step's own visible code. */
+      citesStepCode: boolean;
       fragments: RetrievedFragment[];
     }
   | {
@@ -156,6 +159,7 @@ export async function askStepHelp(
     title: step.title,
     lesson: step.lesson,
     question: step.question,
+    code: step.code,
     options: step.options,
     sourcesChanged,
   };
@@ -236,7 +240,9 @@ export async function askStepHelp(
   };
   const shared = { mode, sourcesChanged, fragments };
 
-  if (fragments.length === 0) {
+  // The step's own code is evidence of what it does, so it can still be
+  // explained without fragments; company practices still need fragments.
+  if (fragments.length === 0 && !step.code) {
     return finish({ kind: "insufficient", ...shared });
   }
   if (!dependencies.chatModel) {
@@ -254,6 +260,7 @@ export async function askStepHelp(
   const parsed = parseModelAnswer(
     completion.text,
     fragments.map((fragment) => fragment.ref),
+    step.code ? { marker: stepCodeMarker } : undefined,
   );
   if (parsed.kind !== "answered") {
     return finish({ kind: parsed.kind, ...shared }, completion.usage);
@@ -267,6 +274,7 @@ export async function askStepHelp(
         ...citation,
         fromStepSources: fromStep.has(citation.sourceId),
       })),
+      citesStepCode: parsed.citesLocal,
     },
     completion.usage,
   );

@@ -53,14 +53,36 @@ function simulatedRoute(user: string): ChatCompletion {
   if (fragments.length === 0) {
     return { text: JSON.stringify({ estado: "insuficiente", pasos: [] }) };
   }
+  // Only a fragment with a fenced code block yields a code-reading step.
+  const withCode = fragments
+    .map(([, ref, content]) => ({
+      ref,
+      block: /```([\w+#.-]*)\n([\s\S]*?)\n```/.exec(content),
+    }))
+    .find((candidate) => candidate.block);
   const pasos = [0, 1, 2].map((index) => {
-    const [, ref, content] = fragments[index % fragments.length];
+    const [, ref, content] =
+      index === 0 && withCode
+        ? (fragments.find(([, candidate]) => candidate === withCode.ref) ??
+          fragments[0])
+        : fragments[index % fragments.length];
     const excerpt = content.replace(/\s+/g, " ").slice(0, 160);
+    const code =
+      index === 0 && withCode?.block
+        ? {
+            codigo: withCode.block[2],
+            lenguaje: withCode.block[1] || null,
+            origen_codigo: "fuente",
+          }
+        : { codigo: null, lenguaje: null, origen_codigo: null };
     return {
       titulo: `Paso simulado ${index + 1}`,
       leccion: `Según la documentación: ${excerpt} [${ref}]`,
       citas: [Number(ref)],
-      pregunta: `¿Qué indica el fragmento ${ref}?`,
+      ...code,
+      pregunta: code.codigo
+        ? `¿Qué hace el código del fragmento ${ref}?`
+        : `¿Qué indica el fragmento ${ref}?`,
       opciones: ["Lo que dice la documentación", "Otra cosa", "Nada"],
       correcta: 0,
       explicacion: `Lo indica el fragmento [${ref}].`,

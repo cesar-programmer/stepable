@@ -460,3 +460,14 @@ Estado: cerrada para el prototipo local el 2026-10-01 ([ADR-008](decisiones/ADR-
 - **Salida:** `parseModelAnswer` y citas construidas desde los fragmentos, marcadas con `fromStepSources`. El log `step_help` registra identificadores, modo, resultado, conteos y tokens.
 - **Interfaz:** componente cliente `step-help.tsx` dentro de `/learn`; antes de resolver, la respuesta se titula “Ayuda para comprender” y después “Explicación”, con `useActionState`; la acción `askStepHelpAction` solo envía identificadores y la duda.
 - **Modelo simulado:** reconoce los marcadores de modo y responde “Pista simulada” o “Explicación simulada”.
+
+## 25. Lectura de código en pasos (E5.4)
+
+Estado: cerrada para el prototipo local el 2026-10-03 ([ADR-009](decisiones/ADR-009-lectura-de-codigo-e5-4.md)). Regla: RN-35.
+
+- **Datos:** migración `20261001090000_e5_4_step_code.sql`, con `code`, `code_language` y `code_origin` nulos en `route_steps` y una restricción que exige los tres juntos (3000 caracteres como máximo, origen `fuente` o `ilustrativo`). No reescribe pasos existentes.
+- **Contrato:** `StepCode`, presente en `RouteStep`, `StepEdit` y `LearnerStep`. Si el paso está bloqueado, `LearnerStep.code` es nulo.
+- **Generación:** el prompt admite `codigo`, `lenguaje` y `origen_codigo`. `parseGeneratedRoute` normaliza el código: conserva la indentación y quita solo las líneas vacías exteriores. Comprueba la copia literal contra los fragmentos citados y descarta lenguajes no válidos.
+- **Interfaz:** `routes/code-block.tsx` (`<pre><code>` con texto escapado y etiqueta de origen) en la vista de la ruta y en `/learn`. El editor añade código, lenguaje y origen, y el código vacío lo quita.
+- **Ayuda:** `buildStepHelpPrompt` incluye el código con su origen dentro de la etiqueta `<paso>` neutralizada, identificado como “Código del paso [código]”. `parseModelAnswer` admite un marcador local opcional (`localEvidence`): solo la ayuda lo habilita, y solo para pasos con código. El resultado indica `citesStepCode` y las citas [n] se validan igual que antes.
+- **Modelo simulado:** propone un paso de lectura de código solo si un fragmento contiene un bloque de código delimitado.

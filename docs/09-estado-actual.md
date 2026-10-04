@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-01 · Fase: E5.3 cerrada para el prototipo local · Versión documental: 3.4.
+Actualizado: 2026-10-03 · Fase: E5.4 cerrada para el prototipo local · Versión documental: 3.6.
 
 ## Hechos acordados
 
@@ -34,9 +34,11 @@ Actualizado: 2026-10-01 · Fase: E5.3 cerrada para el prototipo local · Versió
 
 - E5.3 autorizada el 2026-10-01: ayuda contextual por paso, con pistas sin clave antes de resolver y explicación después. No consume intentos, reutiliza E3 y autoriza hasta 2 preguntas reales de evaluación (RN-34, ADR-008). Aceptada el 2026-10-01 con la limitación de que la ayuda previa puede revelar o permitir deducir la respuesta.
 
+- E5.4 autorizada el 2026-10-01: preguntas de opción múltiple sobre un fragmento de código opcional de solo lectura, propuesto por la IA solo con respaldo de las fuentes y editable por el responsable. Autoriza 1 generación real de evaluación; quedan excluidos completar fragmentos, ejecución y nuevas reglas de calificación (RN-35, ADR-009 propuesto).
+
 ## Actualización más reciente
 
-2026-10-01: el usuario confirmó la comprobación manual de E5.3 y aceptó la entrega. La etiqueta “Pistas” pasó a “Ayuda para comprender”; se verificó solo lo afectado y E5.3 se cierra en un commit local, sin push ni llamadas de pago adicionales.
+2026-10-03: el usuario confirmó la corrección de la ayuda sobre “Código del paso” y la prueba manual de E5.4, y aceptó la entrega. Se cierra en un commit local, sin push, reutilizando la verificación técnica (después solo cambió documentación). La generación automática de pasos con código queda pendiente de una evaluación real exitosa: la única generación real devolvió “insuficiente” y la confirmación manual no sustituye esa evidencia.
 
 ## Realizado
 
@@ -167,13 +169,20 @@ Actualizado: 2026-10-01 · Fase: E5.3 cerrada para el prototipo local · Versió
   - cambio de etiqueta a “Ayuda para comprender”: tipos, lint y Prettier de lo afectado y `pnpm test:e2e:learning` 3/3; el resto de la evidencia se reutiliza;
   - Comprobación manual del usuario del 2026-10-01: confirmó que la comprobación manual de E5.3 funcionó correctamente y aceptó la entrega. No se le atribuyen escenarios adicionales. Aceptó como limitación del prototipo que la ayuda previa pueda revelar o permitir deducir la respuesta, sin más barreras ni evaluaciones de pago por ahora.
 
+- E5.4, 2026-10-01:
+  - pruebas técnicas: 72 unitarias, integración 62/62, navegador 25/25, `pnpm verify` y `git diff --check`. Sin procesos de desarrollo en marcha, sin trabajos nuevos fuera de `pruebas` y con los datos conservados (3 rutas y sus pasos sin código, 1 progreso, 4 intentos);
+  - evaluación con modelo real: 1 generación (678/38 tokens), sin embeddings; resultado “insuficiente”, sin código generado (documento 06);
+  - corrección del 2026-10-03 (ayuda con “Código del paso”): 73 unitarias, integración 63/63, `pnpm test:e2e:learning` 3/3, `pnpm test:e2e:assistant` 2/2 y `pnpm verify`; sin llamadas reales;
+  - Comprobación manual del usuario del 2026-10-03: confirmó que la corrección de la ayuda sobre el código y la prueba manual de E5.4 funcionan correctamente, y aceptó la entrega. No se le atribuyen pruebas adicionales.
+  - pendiente: La generación automática de pasos con código queda pendiente de una evaluación real exitosa: la única generación real devolvió “insuficiente” y la confirmación manual no sustituye esa evidencia.
+
 ## No realizado
 
-No se implementaron ejercicios de código (RF-06), filtro posterior de respuestas que revelen la opción, detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
+No se implementaron completar fragmentos (RF-06), ejecución de código, filtro posterior de respuestas que revelen la opción, detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Acordar con el usuario la siguiente entrega hacia el cierre de la V0 (recomendación pendiente de aprobación en la sesión del 2026-10-01), sin implementarla hasta su autorización.
+Implementar E5.5 (completar fragmentos acotados de código), autorizada el 2026-10-03, y dejarla sin commit hasta la comprobación del usuario.
 
 ## Decisiones que requieren aprobación
 
@@ -190,7 +199,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E5.1 está cerrada en `68d3163`, E5.2 en `e9169d9` y E5.3 en el commit local siguiente, todos sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
+E5.1 está cerrada en `68d3163`, E5.2 en `e9169d9` y E5.3 en `afd8cb5`, todos sin push. E5.4 está cerrada en el commit local siguiente, sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
 
 ## Formato para futuras sesiones
 

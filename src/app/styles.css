@@ -461,3 +461,17 @@ textarea {
   border-top: 1px dashed #cbd5e1;
   padding-top: 0.75rem;
 }
+
+.code-block {
+  margin: 1rem 0;
+}
+
+.code-block pre {
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}

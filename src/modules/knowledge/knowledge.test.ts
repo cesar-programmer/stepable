@@ -32,7 +32,32 @@ describe("model answer validation", () => {
         '```json\n{"estado":"respondida","respuesta":"Usar /v2 [1][2].","citas":[1]}\n```',
         [1, 2],
       ),
-    ).toEqual({ kind: "answered", answer: "Usar /v2 [1][2].", refs: [1, 2] });
+    ).toEqual({
+      kind: "answered",
+      answer: "Usar /v2 [1][2].",
+      refs: [1, 2],
+      citesLocal: false,
+    });
+  });
+
+  it("accepts the caller's local evidence marker only when enabled, still checking [n]", () => {
+    const local = { marker: "[código]" };
+    const codeOnly =
+      '{"estado":"respondida","respuesta":"El código devuelve /v2 [código].","citas":[]}';
+    expect(parseModelAnswer(codeOnly, [1], local)).toEqual({
+      kind: "answered",
+      answer: "El código devuelve /v2 [código].",
+      refs: [],
+      citesLocal: true,
+    });
+    expect(parseModelAnswer(codeOnly, [1])).toEqual({ kind: "unverifiable" });
+    expect(
+      parseModelAnswer(
+        '{"estado":"respondida","respuesta":"Así lo hace [código]; es norma [4].","citas":[4]}',
+        [1],
+        local,
+      ),
+    ).toEqual({ kind: "unverifiable" });
   });
 
   it("rejects invented citations, uncited answers and invalid output", () => {

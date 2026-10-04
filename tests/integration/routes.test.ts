@@ -75,6 +75,10 @@ function routeModel(override?: (user: string) => string): {
           titulo: `Paso ${index + 1}`,
           leccion: `Contenido del paso [${refs[index % refs.length]}]`,
           citas: [refs[index % refs.length]],
+          // Only the first step reads code; the others stay general.
+          codigo: index === 0 ? "\n\n  return v2(contrato);\n" : null,
+          lenguaje: index === 0 ? "TypeScript" : null,
+          origen_codigo: index === 0 ? "ilustrativo" : null,
           pregunta: `Pregunta ${index + 1}`,
           opciones: ["Correcta", "Incorrecta", "Otra"],
           correcta: 0,
@@ -132,6 +136,7 @@ const stepEdit = (step: RouteStep, changes: Partial<RouteStep> = {}) => ({
   title: changes.title ?? step.title,
   lesson: changes.lesson ?? step.lesson,
   question: changes.question ?? step.question,
+  code: changes.code !== undefined ? changes.code : step.code,
   options: changes.options ?? step.options,
   correctOption: changes.correctOption ?? step.correctOption ?? 0,
   explanation: changes.explanation ?? step.explanation ?? "",
@@ -261,6 +266,15 @@ describe("E4.1 AI-drafted onboarding routes", () => {
       state: "vigente",
       versionNumber: 1,
     });
+    expect(route.steps.map((step) => step.code)).toEqual([
+      {
+        content: "  return v2(contrato);",
+        language: "typescript",
+        origin: "ilustrativo",
+      },
+      null,
+      null,
+    ]);
 
     // Drafts are invisible to members and other spaces.
     expect(await routeAs(member, queued.routeId)).toBeNull();
@@ -403,6 +417,11 @@ describe("E4.1 AI-drafted onboarding routes", () => {
         stepId: first.id,
         edit: stepEdit(first, {
           title: "Versionar contratos",
+          code: {
+            content: 'if (rompe) {\n  publicar("/v2");\n}',
+            language: "ts",
+            origin: "fuente",
+          },
           options: ["Mayor en la ruta", "Menor", "Ninguna"],
           correctOption: 0,
         }),
@@ -441,6 +460,22 @@ describe("E4.1 AI-drafted onboarding routes", () => {
       [2, second.id],
     ]);
     expect(route.steps[0].title).toBe("Versionar contratos");
+    // The responsible adds code to a general step and removes it again.
+    for (const code of [
+      { content: "x", language: null, origin: "ilustrativo" as const },
+      null,
+    ]) {
+      await expect(
+        editRouteStep(dependencies, {
+          ...base,
+          editVersion: route.editVersion,
+          stepId: second.id,
+          edit: stepEdit(route.steps[1], { code }),
+        }),
+      ).resolves.toEqual({ kind: "ok" });
+      route = await editable(queued.routeId);
+      expect(route.steps[1].code).toEqual(code);
+    }
 
     await expect(
       publishRoute(dependencies, {
@@ -458,6 +493,11 @@ describe("E4.1 AI-drafted onboarding routes", () => {
     expect(published?.route.status).toBe("publicada");
     expect(published?.route.steps[0]).toMatchObject({
       title: "Versionar contratos",
+      code: {
+        content: 'if (rompe) {\n  publicar("/v2");\n}',
+        language: "ts",
+        origin: "fuente",
+      },
       correctOption: null,
       explanation: null,
     });

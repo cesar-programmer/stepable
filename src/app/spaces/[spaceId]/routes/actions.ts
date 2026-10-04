@@ -10,6 +10,7 @@ import { PostgresRouteRepository } from "@/adapters/postgres/route-repository";
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 import { getServerEnvironment } from "@/lib/env";
 import type { RouteMutationResult } from "@/modules/routes/contract";
+import { normalizeCode } from "@/modules/routes/generation";
 import {
   deleteRouteStep,
   editRouteStep,
@@ -123,6 +124,16 @@ export async function saveStepAction(formData: FormData) {
       title: String(formData.get("title") ?? ""),
       lesson: String(formData.get("lesson") ?? ""),
       question: String(formData.get("question") ?? ""),
+      code: normalizeCode(String(formData.get("code") ?? ""))
+        ? {
+            content: String(formData.get("code")),
+            language: String(formData.get("codeLanguage") ?? ""),
+            origin:
+              formData.get("codeOrigin") === "fuente"
+                ? "fuente"
+                : "ilustrativo",
+          }
+        : null,
       options: entries.map((entry) => entry.text),
       correctOption: entries.findIndex((entry) => entry.index === correct),
       explanation: String(formData.get("explanation") ?? ""),
