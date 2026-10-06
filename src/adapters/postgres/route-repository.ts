@@ -82,6 +82,7 @@ type SummaryRow = {
   generation_status: RouteSummary["generationStatus"];
   generation_error: string | null;
   generation_missing_activities: RequestedActivity[] | null;
+  generation_error_detail: string | null;
   needs_review: boolean;
   updated_at: Date;
   edit_version: number;
@@ -98,6 +99,7 @@ function toSummary(row: SummaryRow): RouteSummary {
     generationStatus: row.generation_status,
     generationError: row.generation_error,
     missingActivities: row.generation_missing_activities,
+    generationErrorDetail: row.generation_error_detail,
     needsReview: row.needs_review,
     updatedAt: new Date(row.updated_at),
   };
@@ -306,6 +308,7 @@ export class PostgresRouteRepository implements RouteRepository {
         sql`update public.routes
             set generation_status = 'en_cola', generation_token = ${input.token},
               generation_error = null, generation_missing_activities = null,
+              generation_error_detail = null,
               generation_started_at = null, title = null,
               edit_version = edit_version + 1, updated_at = now()
             where id = ${input.routeId}`,
@@ -386,6 +389,7 @@ export class PostgresRouteRepository implements RouteRepository {
     token: string;
     status: "lista" | "insuficiente" | "fallida";
     errorCode?: string;
+    errorDetail?: string;
     missingActivities?: RequestedActivity[];
     title?: string;
     steps?: DraftStep[];
@@ -433,6 +437,7 @@ export class PostgresRouteRepository implements RouteRepository {
         sql`update public.routes
             set generation_status = ${input.status}::public.route_generation_status,
               generation_error = ${input.errorCode ?? null},
+              generation_error_detail = ${input.errorDetail ?? null},
               generation_missing_activities = ${
                 input.missingActivities
                   ? textArray(input.missingActivities)
@@ -539,7 +544,7 @@ export class PostgresRouteRepository implements RouteRepository {
       sql`select route.id, route.title, route.objective,
             route.requested_activities, route.status,
             route.generation_status, route.generation_error,
-            route.generation_missing_activities, route.updated_at,
+            route.generation_missing_activities, route.generation_error_detail, route.updated_at,
             route.edit_version, route.published_at, ${needsReview} as needs_review
           from public.routes route
           where route.space_id = ${spaceId}
@@ -559,7 +564,7 @@ export class PostgresRouteRepository implements RouteRepository {
       sql`select route.id, route.title, route.objective,
             route.requested_activities, route.status,
             route.generation_status, route.generation_error,
-            route.generation_missing_activities, route.updated_at,
+            route.generation_missing_activities, route.generation_error_detail, route.updated_at,
             route.edit_version, route.published_at, ${needsReview} as needs_review
           from public.routes route
           where route.id = ${routeId} and route.space_id = ${spaceId}

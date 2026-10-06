@@ -1,5 +1,17 @@
 # Historial de cambios
 
+## 2026-10-06 · 4.5 · Preparación de la demostración
+
+- Textos útiles en la portada y en `/spaces`; contraseña mínima local de Supabase en 8 caracteres, con los datos conservados y comprobado con un cambio de contraseña.
+- El motivo de un borrador no válido (paso y campos, sin contenido) se guarda en la ruta y se muestra en el panel de recuperación. El guion pide revisarlo antes de gastar otro intento.
+- Registro corregido de las 2 llamadas de la preparación: se citan la línea del usuario que las permitía, la contradicción con el texto pegado y su confirmación posterior. El motivo del primer borrador no válido no se conservó.
+
+## 2026-10-06 · 4.4 · Preparación de la demostración
+
+- Fuente sintética `samples/demo/guia-servicios-http.md` y guion de demostración (documento 07).
+- `pnpm routes:evaluate --demo`: 2 generaciones reales (unos 0,0042 USD). La primera fue “borrador no válido” y la segunda generó los tres tipos de forma coherente. El validador registra ahora qué paso y qué campo fallan, sin contenido.
+- Estado actualizado del conjunto de evaluación (documento 06). Sin commit ni push.
+
 ## 2026-10-06 · 4.3 · Cierre de RF-10
 
 - El usuario confirmó su comprobación manual del control de consumo y aceptó RF-10 para el prototipo local; no se le atribuyen escenarios adicionales.

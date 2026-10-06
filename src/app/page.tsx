@@ -3,11 +3,12 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <main>
-      <p className="eyebrow">Acceso local E1.6</p>
+      <p className="eyebrow">Onboarding y consultas para equipos</p>
       <h1>Stepable</h1>
       <p>
-        La base local permite probar identidad, sesión, invitaciones y el ciclo
-        de membresías por espacio.
+        Convierte la documentación de tu equipo en rutas de aprendizaje
+        revisadas, con preguntas, ejercicios de código y un asistente que
+        responde citando las fuentes.
       </p>
       <div className="actions">
         <Link className="button" href="/login">

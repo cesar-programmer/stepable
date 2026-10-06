@@ -347,8 +347,10 @@ describe("E4.1 AI-drafted onboarding routes", () => {
     await expect(generate(bad.routeId, invented.model)).resolves.toBe(
       "fallida",
     );
+    // Only the failed check is stored (no content), to review it first.
     expect(await editable(bad.routeId)).toMatchObject({
       generationError: "borrador_no_valido",
+      generationErrorDetail: "paso_1:citas",
       steps: [],
     });
   });

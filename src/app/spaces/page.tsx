@@ -27,7 +27,7 @@ export default async function SpacesPage({ searchParams }: SpacesPageProps) {
 
   return (
     <main>
-      <p className="eyebrow">Acceso local E1.6</p>
+      <p className="eyebrow">Elige un espacio para continuar</p>
       <h1>Tus espacios</h1>
       {notice === "left-space" ? (
         <p className="notice">Ya no tienes acceso a ese espacio.</p>

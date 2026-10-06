@@ -231,7 +231,12 @@ function codeOrigin(
 export type ParsedRoute =
   | { kind: "generated"; title: string; steps: DraftStep[] }
   | { kind: "insufficient" }
-  | { kind: "invalid"; reason?: "solucion_visible" };
+  | {
+      kind: "invalid";
+      reason?: "solucion_visible";
+      /** Which check failed (step and field names only), for logs. */
+      detail?: string;
+    };
 
 /**
  * A fill-in step whose lesson or question shows the hole's line already
@@ -277,7 +282,7 @@ export function parseGeneratedRoute(
       ),
     );
   } catch {
-    return { kind: "invalid" };
+    return { kind: "invalid", detail: "json_o_estructura" };
   }
   if (parsed.estado === "insuficiente") return { kind: "insufficient" };
 
@@ -288,7 +293,7 @@ export function parseGeneratedRoute(
     parsed.pasos.length < routeLimits.minGeneratedSteps ||
     parsed.pasos.length > routeLimits.maxSteps
   ) {
-    return { kind: "invalid" };
+    return { kind: "invalid", detail: "titulo_o_numero_de_pasos" };
   }
 
   const byRef = new Map(fragments.map((fragment) => [fragment.ref, fragment]));
@@ -329,15 +334,25 @@ export function parseGeneratedRoute(
       acceptedAnswers: fillIn ? step.respuestas_aceptadas : null,
       explanation: step.explicacion,
     });
-    if (
-      !edit.success ||
-      refs.length === 0 ||
-      refs.some((ref) => !byRef.has(ref))
-    ) {
-      return { kind: "invalid" };
+    if (!edit.success) {
+      const fields = [
+        ...new Set(edit.error.issues.map((issue) => issue.path.join("."))),
+      ];
+      return {
+        kind: "invalid",
+        // Known names only: nothing written by the model reaches the logs.
+        detail: `paso_${index + 1}:${fillIn ? "completar" : "opcion_multiple"}:${fields.join(",")}`,
+      };
+    }
+    if (refs.length === 0 || refs.some((ref) => !byRef.has(ref))) {
+      return { kind: "invalid", detail: `paso_${index + 1}:citas` };
     }
     if (revealsFillInSolution(edit.data)) {
-      return { kind: "invalid", reason: "solucion_visible" };
+      return {
+        kind: "invalid",
+        reason: "solucion_visible",
+        detail: `paso_${index + 1}:solucion_visible`,
+      };
     }
     steps.push({
       position: index + 1,

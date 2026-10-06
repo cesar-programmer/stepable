@@ -188,6 +188,7 @@ export async function generateRouteDraft(
     status: "lista" | "insuficiente" | "fallida",
     extra: {
       errorCode?: string;
+      errorDetail?: string;
       missingActivities?: RequestedActivity[];
       title?: string;
       steps?: DraftStep[];
@@ -289,6 +290,7 @@ export async function generateRouteDraft(
     routeId: claim.routeId,
     spaceId: claim.spaceId,
     outcome: parsed.kind,
+    invalidDetail: parsed.kind === "invalid" ? parsed.detail : undefined,
     requested: claim.requestedActivities,
     missing,
     fragments: fragments.length,
@@ -299,6 +301,7 @@ export async function generateRouteDraft(
   if (parsed.kind === "invalid") {
     return finish("fallida", {
       errorCode: parsed.reason ?? "borrador_no_valido",
+      errorDetail: parsed.detail?.slice(0, 120),
     });
   }
   if (missing.length > 0) {

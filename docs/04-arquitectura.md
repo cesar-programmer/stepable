@@ -493,6 +493,7 @@ Estado: cerrada para el prototipo local el 2026-10-06 ([ADR-010](decisiones/ADR-
 - **Prompt:** `buildRoutePrompt(objective, fragments, requested)` incluye la línea `TIPOS_SOLICITADOS:` y la definición solo de los tipos pedidos, con la instrucción de usar “insuficiente” en lugar de sustituirlos.
 - **Servidor:** `missingRequestedActivities` clasifica cada paso con `activityKind` (completar; opción múltiple con código = lectura de código; sin código = opción múltiple). Si falta algún tipo, `generateRouteDraft` termina en `fallida` con `tipos_no_cubiertos`, sin reintentar. El log registra los tipos pedidos y los que faltan.
 - **Solución visible:** `revealsFillInSolution` rechaza (`solucion_visible`, sin reintento) un paso “completar” generado cuya lección o pregunta contiene la línea del hueco ya completada con una respuesta aceptada. Solo aplica a la generación; el editor del responsable no lo impide.
+- **Detalle de validación:** `parseGeneratedRoute` devuelve `detail` (paso, tipo conocido y campos del esquema, sin texto del modelo). Se guarda en `routes.generation_error_detail`, se registra como `invalidDetail` en el log y el panel de recuperación lo muestra traducido.
 - **Modelo simulado:** usa solo los tipos pedidos y responde “insuficiente” si se piden tipos de código y ningún fragmento contiene un bloque de código.
 
 ### Mensajes de generación fallida (corrección de E5.5)

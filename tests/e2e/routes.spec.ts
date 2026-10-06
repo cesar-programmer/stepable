@@ -261,4 +261,28 @@ test.describe.serial("E4.1 onboarding routes in the browser", () => {
     expect(await attempts()).toBe(before + 1);
     expect(page.url()).toContain(routeId);
   });
+
+  test("an invalid draft shows which check failed, without content", async ({
+    page,
+  }) => {
+    const routeId = randomUUID();
+    await connection.client`
+      insert into public.routes
+        (id, space_id, objective, generation_status, generation_error,
+         generation_error_detail, generation_token, created_by)
+      values (${routeId}, ${spaceId}, 'Aprender los contratos de la API',
+        'fallida', 'borrador_no_valido', 'paso_3:completar:code,acceptedAnswers',
+        ${randomUUID()}, ${owner.id})
+    `;
+    await connection.client`
+      insert into public.route_sources (route_id, space_id, source_id)
+      values (${routeId}, ${spaceId}, ${sourceId})
+    `;
+    await login(page, owner);
+    await page.goto(`/spaces/${spaceId}/routes/${routeId}`);
+    await expect(page.getByTestId("validation-detail")).toContainText(
+      "paso 3 (Completar código): código (hueco único), respuestas aceptadas",
+    );
+    await expect(page.getByText("borrador_no_valido")).toHaveCount(0);
+  });
 });

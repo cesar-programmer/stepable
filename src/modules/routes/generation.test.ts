@@ -65,21 +65,36 @@ describe("generated route validation", () => {
   });
 
   it("rejects invented citations, uncited lessons and invalid questions", () => {
-    const invalid = [
-      [step(), step(), step({ leccion: "Inventado [9]" })],
-      [step(), step(), step({ leccion: "Sin citas", citas: [] })],
-      [step(), step(), step({ opciones: ["Así", "así", "Nunca"] })],
-      [step(), step(), step({ correcta: 3 })],
-      [step(), step(), step({ opciones: ["Solo", "dos"] })],
-      [step(), step()],
+    // The detail names the failed check (no content), for the logs.
+    const invalid: [unknown[], string][] = [
+      [[step(), step(), step({ leccion: "Inventado [9]" })], "paso_3:citas"],
+      [
+        [step(), step(), step({ leccion: "Sin citas", citas: [] })],
+        "paso_3:citas",
+      ],
+      [
+        [step(), step(), step({ opciones: ["Así", "así", "Nunca"] })],
+        "paso_3:opcion_multiple:options",
+      ],
+      [
+        [step(), step(), step({ correcta: 3 })],
+        "paso_3:opcion_multiple:correctOption",
+      ],
+      [
+        [step(), step(), step({ opciones: ["Solo", "dos"] })],
+        "paso_3:opcion_multiple:options",
+      ],
+      [[step(), step()], "titulo_o_numero_de_pasos"],
     ];
-    for (const pasos of invalid) {
+    for (const [pasos, detail] of invalid) {
       expect(parseGeneratedRoute(route(pasos), fragments)).toEqual({
         kind: "invalid",
+        detail,
       });
     }
     expect(parseGeneratedRoute("texto libre", fragments)).toEqual({
       kind: "invalid",
+      detail: "json_o_estructura",
     });
   });
 
@@ -242,6 +257,10 @@ describe("generated route validation", () => {
         ]),
         fragments,
       ),
-    ).toEqual({ kind: "invalid", reason: "solucion_visible" });
+    ).toEqual({
+      kind: "invalid",
+      reason: "solucion_visible",
+      detail: "paso_1:solucion_visible",
+    });
   });
 });

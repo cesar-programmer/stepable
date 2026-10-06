@@ -112,6 +112,8 @@ export type RouteSummary = {
   status: RouteStatus;
   generationStatus: RouteGenerationStatus;
   generationError: string | null;
+  /** Failed validation check (step and field names only); null if none. */
+  generationErrorDetail: string | null;
   /** Requested types the draft lacked ("tipos_no_cubiertos"); null if unknown. */
   missingActivities: RequestedActivity[] | null;
   needsReview: boolean;
@@ -214,6 +216,7 @@ export interface RouteRepository {
     token: string;
     status: "lista" | "insuficiente" | "fallida";
     errorCode?: string;
+    errorDetail?: string;
     missingActivities?: RequestedActivity[];
     title?: string;
     steps?: DraftStep[];

@@ -529,3 +529,22 @@ Un límite en 0 bloquea antes de llamar, así que no hay gasto.
 2. Detén `pnpm dev` y arráncalo con un límite en 0: `env STEPABLE_AI_BUDGET_SPACE_DAILY_USD=0 pnpm dev`. Pregunta al asistente: debe aparecer el mensaje del límite diario del espacio y los fragmentos encontrados, sin llamada al modelo.
 3. Repite con `env STEPABLE_AI_BUDGET_GLOBAL_USD=0 pnpm dev`: el mensaje debe decir que el operador debe ampliar el presupuesto, sin prometer un restablecimiento. Con `env STEPABLE_AI_USER_DAILY_QUERIES=0 pnpm dev`, “Pedir ayuda” debe mostrar el límite del usuario.
 4. Vuelve a arrancar `pnpm dev` sin variables. El resumen del espacio debe seguir en 0,0000 USD si no hiciste consultas reales.
+
+## Preparación de la demostración (2026-10-06)
+
+- Textos provisionales “Acceso local E1.6” sustituidos en la portada y en `/spaces`.
+- Contraseña mínima local de Supabase en 8 caracteres. La pila se reinició conservando los datos, sin `db reset`. Se comprobó que un cambio de contraseña de 7 caracteres se rechaza (`weak_password`) y uno de 8 se acepta. La API de administración no aplica esta regla.
+- Diagnóstico de validación: paso, tipo y campos (solo nombres conocidos), guardados en `routes.generation_error_detail`, mostrados en el panel de recuperación y registrados en el log. La salida cruda del modelo solo aparece en `pnpm routes:evaluate`, que usa documentos sintéticos.
+- Verificación afectada: 83 unitarias, `pnpm test:integration:routes` 8/8, `pnpm test:integration:auth` 3/3, navegador de rutas 4/4 y de portada y autenticación 3/3, `pnpm verify` y `git diff --check`. Sin llamadas de pago.
+
+## Guion de demostración con documentos sintéticos
+
+Material: `samples/demo/guia-servicios-http.md` (empresa ficticia). Requiere `pnpm dev` y `pnpm worker` con la IA real configurada. El costo estimado de un recorrido completo está por debajo de 0,02 USD y se ve en el resumen del espacio.
+
+1. **Cargar fuentes (responsable):** Fuentes → Cargar → el archivo de demostración. Esperar “Lista”.
+2. **Generar:** Rutas → objetivo “Que una persona nueva aprenda a escribir, leer y probar funciones de servicio HTTP según las convenciones del equipo Plataforma” → elegir la fuente → marcar Opción múltiple, Lectura de código y Completar código → Generar borrador.
+   - **Si falla:** leer el motivo del panel (tipo de fallo y, en un borrador no válido, el paso y el campo). Decidir entonces si ajustar actividades, fuentes u objetivo. Solo si tiene sentido, usar “Generar con estos cambios”, que gasta 1 intento y hace 1 llamada. No reintentar sin revisar el motivo; hay 5 intentos por espacio y día.
+3. **Revisar el borrador:** comprobar las citas, la etiqueta de origen del código y las respuestas aceptadas del ejercicio de completar. Editar lo necesario y publicar.
+4. **Recorrer como integrante:** empezar la ruta. Responder la opción múltiple y la lectura de código. En el ejercicio de completar, fallar una vez para ver el intento descontado y acertar después.
+5. **Pedir ayuda:** en el ejercicio de completar, antes de resolverlo (ayuda para comprender) y después (explicación).
+6. **Consultar progreso (responsable):** Progreso del equipo en la ruta y el resumen de consumo en la página del espacio.

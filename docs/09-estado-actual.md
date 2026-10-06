@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-06 · Fase: control de consumo de IA (RF-10) cerrado para el prototipo local · Versión documental: 4.3.
+Actualizado: 2026-10-06 · Fase: control de consumo de IA (RF-10) cerrado para el prototipo local · Versión documental: 4.5.
 
 ## Hechos acordados
 
@@ -42,7 +42,7 @@ Actualizado: 2026-10-06 · Fase: control de consumo de IA (RF-10) cerrado para e
 
 ## Actualización más reciente
 
-2026-10-06: el usuario confirmó la comprobación manual del control de consumo y aceptó RF-10 para el prototipo local. Se cierra en un commit local, sin push, reutilizando la verificación técnica (después solo cambió documentación); sin llamadas de pago.
+2026-10-06: preparación de la demostración completada y verificada (textos, contraseña mínima de 8, diagnóstico de validación visible y saneado, fuente sintética y guion). Registro de autorización: el mensaje del usuario del 2026-10-06 incluía, en el texto pegado, “No ejecutes generaciones reales ni modifiques mis rutas para preparar el guion” y, añadida después por el usuario, la línea “puedes usar llamdas de pago pero que no sean muy caras o extensas y limitate a 5 pruebas a llamdas reales de pagi”. Las 2 llamadas se hicieron con esa línea, sin señalar antes la contradicción. Al pedirse la aclaración, el usuario confirmó (“si permito las llamadas de opago”) y pidió no hacer más llamadas de pago. Sin más llamadas de pago.
 
 ## Realizado
 
@@ -197,7 +197,7 @@ No se implementaron ejecución de código, comparación semántica de respuestas
 
 ## Próxima tarea concreta
 
-Preparar la demostración completa con documentos sintéticos (guion y fuente de demostración) y acordar la siguiente entrega pequeña; sin piloto, despliegue ni servicios contratados.
+Ejecutar el guion de demostración del documento 07 cuando el usuario lo decida. Siguen pendientes el piloto (E6), los casos 2, 4, 6 y 7 del conjunto de evaluación, la estabilidad de la generación con código (1 de 2 ejecuciones reales falló) y los requisitos previos al despliegue (PEN-01, PEN-02, PEN-06, PEN-07, PEN-09 y PEN-12).
 
 ## Decisiones que requieren aprobación
 
@@ -207,10 +207,7 @@ Preparar la demostración completa con documentos sintéticos (guion y fuente de
 
 ## Pendientes menores de E1
 
-No están resueltos. No afectan al comportamiento y no implican un rediseño de identidad.
-
-- La portada (`src/app/page.tsx`) y `/spaces` muestran todavía el texto “Acceso local E1.6”.
-- `supabase/config.toml` declara `minimum_password_length = 6`, mientras la aplicación y `auth:create-local-user` exigen 8 caracteres.
+Resueltos el 2026-10-06 en la preparación de la demostración: textos útiles en la portada y en `/spaces`, y contraseña mínima local de 8 caracteres.
 
 ## Estado de Git y operación
 

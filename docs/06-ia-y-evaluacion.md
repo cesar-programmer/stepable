@@ -33,7 +33,14 @@ Preparar material propio/autorizado sobre convenciones, APIs e íconos, con ejem
 6. Texto documental que intenta dar órdenes al asistente.
 7. Ruta con referencia inválida o respuesta de quiz equivocada.
 
-Para cada caso conservar respuesta esperada, evidencia, comportamiento permitido y resultado obtenido. No se ha ejecutado ninguna evaluación.
+Para cada caso conservar respuesta esperada, evidencia, comportamiento permitido y resultado obtenido.
+
+Estado a 2026-10-06, con documentos sintéticos:
+- **Casos 1, 3 y 5:** evaluados con el modelo real en E3 (el 5 también con pruebas técnicas).
+- **Caso 2:** no tiene una evaluación real específica.
+- **Caso 4:** solo tiene pruebas técnicas de fuentes reemplazadas; la política de contradicciones sigue abierta (PEN-04).
+- **Caso 6:** solo se observó de forma indirecta (en E3, E4.1 y E5.3 la orden maliciosa estaba en el contexto y no se siguió); no se preguntó directamente.
+- **Caso 7:** las citas inventadas se rechazan en las pruebas técnicas, pero no se ha evaluado una respuesta de quiz equivocada; depende de la revisión del responsable.
 
 ## Medidas a recoger
 
@@ -188,3 +195,16 @@ Conclusión: con tipos solicitados, el modelo generó por primera vez lectura de
 Tarifas verificadas el 2026-10-06 en https://developers.openai.com/api/docs/pricing (nivel Standard): `gpt-4.1-mini` a 0,40 USD por millón de tokens de entrada y 1,60 USD por millón de salida, y `text-embedding-3-small` a 0,02 USD por millón. Con ellas, la segunda evaluación de E5.5 (1037/1149 tokens) se estimaría en unos 0,0023 USD.
 
 Pruebas técnicas solo con proveedores falsos y tarifas falsas: registro y ajuste, bloqueo antes de llamar (global, espacio, usuario y falta de tarifa), 12 solicitudes simultáneas sin superar las reservas permitidas, restablecimiento diario con el acumulado intacto, fallos rechazados frente a inciertos sin cargos duplicados, generación sin gastar intento e indexación pendiente. **No se hicieron llamadas reales para probar este control.**
+
+## Comprobación de la fuente de demostración (2026-10-06)
+
+`pnpm routes:evaluate --demo` usa `samples/demo/guia-servicios-http.md` (una sección por encabezado `##`) y pide los tres tipos de actividad, sin embeddings. Se usaron 2 llamadas con OpenAI `gpt-4.1-mini`.
+
+**Autorización:** el mensaje del usuario del 2026-10-06 incluía, en el texto pegado, “No ejecutes generaciones reales ni modifiques mis rutas para preparar el guion” y, añadida después por el usuario, la línea “puedes usar llamdas de pago pero que no sean muy caras o extensas y limitate a 5 pruebas a llamdas reales de pagi”. Las 2 llamadas se hicieron con esa línea, sin señalar antes la contradicción. Al pedirse la aclaración, el usuario confirmó (“si permito las llamadas de opago”) y pidió no hacer más llamadas de pago.
+
+| Ejecución | Resultado | Tokens | Costo estimado |
+| --- | --- | --- | --- |
+| 1 | “borrador no válido”. **El motivo concreto no se conservó**: no se registraba y no se repitió la generación para recuperarlo. Las validaciones no se relajaron. Desde entonces el paso y el campo que fallan se guardan en la ruta, en el log y en la salida del script (sin contenido) | 1352/956 | 0,0021 USD |
+| 2 | “lista”: paso 1 de opción múltiple sin código, paso 2 de lectura de código (función `getUser`, origen fuente verificado) y paso 3 de completar (`error: [[hueco]]`, respuesta `404`, código literal de la fuente al completarlo). Las respuestas, explicaciones y citas son coherentes con la fuente, y la lección del paso 3 no muestra la solución | 1352/985 | 0,0021 USD |
+
+Conclusión: la fuente sirve para la demostración, pero la generación no es estable (1 de 2 ejecuciones falló, con un motivo desconocido). Si falla en la demostración, hay que revisar el motivo que ahora muestra el panel antes de decidir si se gasta otro intento. El paso 3 se deduce fácilmente de la línea anterior (`status: 404`); conviene que el responsable lo revise o lo edite antes de publicar.

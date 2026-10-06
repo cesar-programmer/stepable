@@ -14,6 +14,37 @@ import {
 } from "../actions";
 import { requestedActivityLabels, routeErrorMessages } from "../messages";
 
+const fieldLabels: Record<string, string> = {
+  title: "título",
+  lesson: "lección",
+  question: "pregunta",
+  code: "código (hueco único)",
+  options: "opciones",
+  correctOption: "respuesta correcta",
+  acceptedAnswers: "respuestas aceptadas",
+  explanation: "explicación",
+  citas: "citas",
+  solucion_visible: "solución visible en la lección o la pregunta",
+};
+
+/** "paso_3:completar:code,acceptedAnswers" → readable text (no content). */
+export function describeValidationDetail(detail: string): string {
+  if (detail === "json_o_estructura") {
+    return "la respuesta del modelo no tenía el formato esperado";
+  }
+  if (detail === "titulo_o_numero_de_pasos") {
+    return "el título o el número de pasos no son válidos";
+  }
+  const [step, ...rest] = detail.split(":");
+  const fields = rest
+    .at(-1)!
+    .split(",")
+    .map((field) => fieldLabels[field.split(".")[0]] ?? field);
+  const kind =
+    rest.length > 1 ? ` (${requestedActivityLabels[rest[0]] ?? rest[0]})` : "";
+  return `${step.replace("paso_", "paso ")}${kind}: ${[...new Set(fields)].join(", ")}`;
+}
+
 const labels = (types: string[]) =>
   types.map((type) => requestedActivityLabels[type] ?? type).join(", ");
 
@@ -91,6 +122,13 @@ export function GenerationRecovery({
     <section aria-label="Recuperar la generación" className="assistant-answer">
       <h2>{title}</h2>
       <p role="alert">{explanation}</p>
+      {route.generationErrorDetail ? (
+        <p className="muted" data-testid="validation-detail">
+          Motivo de la validación:{" "}
+          {describeValidationDetail(route.generationErrorDetail)}. Revísalo
+          antes de decidir si generas de nuevo.
+        </p>
+      ) : null}
       {codeRequested && (insufficient || missingTypes) ? (
         <p className="muted" data-testid="code-evidence">
           {withCode.length === 0
