@@ -10,6 +10,7 @@ import { bootstrapSpace } from "../../src/modules/access/bootstrap-space.ts";
 import {
   answerStep,
   readLearnerView,
+  readTeamProgress,
   startRoute,
 } from "../../src/modules/learning/service.ts";
 import {
@@ -244,6 +245,120 @@ describe("E5.1 learner progress on published routes", () => {
       where route_id = ${routeId} and profile_id = ${member.id}
     `;
     expect(progress.completed_at).not.toBeNull();
+  });
+
+  it("grades a fill-in step by exact text, alongside multiple choice", async () => {
+    const source = await seedReadySource(connection.client, {
+      spaceId,
+      creatorId: owner.id,
+      title: "Servicios",
+      sections: ["Toda llamada HTTP usa httpClient."],
+    });
+    const mixed = await seedPublishedRoute(connection.client, {
+      spaceId,
+      creatorId: owner.id,
+      title: "Ruta mixta",
+      source: { ...source, title: "Servicios" },
+      steps: [
+        step(1),
+        {
+          title: "Completar llamada",
+          lesson: "Las llamadas usan el cliente compartido [1].",
+          question: "Completa la llamada.",
+          code: {
+            content: "const r = await [[hueco]](`/v2/users/${id}`);",
+            language: "ts",
+            origin: "ilustrativo",
+          },
+          options: [],
+          correct: null,
+          explanation: "Se usa el cliente compartido.",
+          activityType: "completar",
+          acceptedAnswers: ["httpClient.get", "this.httpClient.get"],
+        },
+      ],
+    });
+    const ids = { identityId: owner.id, spaceId, routeId: mixed.routeId };
+    const respond = (
+      input: { selectedOption?: number; answerText?: string },
+      stepId = mixed.stepIds[1],
+      submissionId: string = randomUUID(),
+    ) => answerStep(dependencies, { ...ids, stepId, submissionId, ...input });
+    await startRoute(dependencies, ids);
+    await expect(
+      respond({ selectedOption: 0 }, mixed.stepIds[0]),
+    ).resolves.toMatchObject({
+      correct: true,
+    });
+
+    let fillIn = (await readLearnerView(dependencies, ids))?.steps[1];
+    expect(fillIn).toMatchObject({
+      activityType: "completar",
+      state: "actual",
+      options: [],
+      acceptedAnswers: null,
+      explanation: null,
+    });
+    expect(fillIn?.code?.content).toContain("[[hueco]]");
+
+    // The response must match the activity; nothing is recorded otherwise.
+    await expect(respond({ selectedOption: 0 })).resolves.toEqual({
+      kind: "invalid",
+    });
+    await expect(respond({ answerText: "   " })).resolves.toEqual({
+      kind: "invalid",
+    });
+    await expect(
+      respond({ answerText: "x" }, mixed.stepIds[0]),
+    ).resolves.toEqual({ kind: "invalid" });
+    // Case, inner spaces and punctuation count.
+    const wrong = randomUUID();
+    await expect(
+      respond({ answerText: "HttpClient.get" }, undefined, wrong),
+    ).resolves.toMatchObject({
+      correct: false,
+      attemptsLeft: 2,
+    });
+    await expect(
+      respond({ answerText: "HttpClient.get" }, undefined, wrong),
+    ).resolves.toMatchObject({
+      repeated: true,
+      attemptsLeft: 2,
+    });
+    await expect(
+      respond({ answerText: "httpClient .get" }),
+    ).resolves.toMatchObject({
+      correct: false,
+      attemptsLeft: 1,
+    });
+    // A variant is accepted; only the ends are trimmed.
+    await expect(
+      respond({ answerText: "  this.httpClient.get " }),
+    ).resolves.toMatchObject({
+      correct: true,
+      resolved: true,
+      completed: true,
+    });
+
+    const finished = await readLearnerView(dependencies, ids);
+    fillIn = finished?.steps[1];
+    expect(fillIn).toMatchObject({
+      state: "acertado",
+      attemptsUsed: 3,
+      acceptedAnswers: ["httpClient.get", "this.httpClient.get"],
+      explanation: "Se usa el cliente compartido.",
+      writtenAnswers: [
+        "HttpClient.get",
+        "httpClient .get",
+        "this.httpClient.get",
+      ],
+    });
+    expect(finished).toMatchObject({ completed: true, correctSteps: 2 });
+
+    const team = await readTeamProgress(dependencies, ids);
+    expect(
+      team?.members.find((item) => item.profileId === owner.id),
+    ).toMatchObject({ state: "completada", resolvedSteps: 2, correctSteps: 2 });
   });
 
   it("keeps progress private per user and revalidates membership", async () => {

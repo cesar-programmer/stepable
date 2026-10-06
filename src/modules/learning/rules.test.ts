@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveProgress, type AttemptRecord } from "./rules.ts";
+import {
+  deriveProgress,
+  isAcceptedAnswer,
+  type AttemptRecord,
+} from "./rules.ts";
 
 const attempt = (
   stepId: string,
   attemptNumber: number,
   correct: boolean,
-): AttemptRecord => ({ stepId, attemptNumber, selectedOption: 0, correct });
+): AttemptRecord => ({
+  stepId,
+  attemptNumber,
+  selectedOption: 0,
+  answerText: null,
+  correct,
+});
 
 describe("learning progress rules", () => {
   it("unlocks steps in order and keeps later steps blocked", () => {
@@ -59,5 +69,17 @@ describe("learning progress rules", () => {
       correctSteps: 1,
       currentStepId: null,
     });
+  });
+});
+
+describe("fill-in grading", () => {
+  it("only ignores leading and trailing spaces", () => {
+    const accepted = ["httpClient.get", "this.httpClient.get"];
+    expect(isAcceptedAnswer("  httpClient.get \n", accepted)).toBe(true);
+    expect(isAcceptedAnswer("this.httpClient.get", accepted)).toBe(true);
+    expect(isAcceptedAnswer("HttpClient.get", accepted)).toBe(false);
+    expect(isAcceptedAnswer("httpClient .get", accepted)).toBe(false);
+    expect(isAcceptedAnswer("httpClient.get;", accepted)).toBe(false);
+    expect(isAcceptedAnswer("fetch", accepted)).toBe(false);
   });
 });

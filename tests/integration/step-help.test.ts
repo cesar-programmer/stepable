@@ -47,6 +47,7 @@ let routeId: string;
 let stepIds: string[];
 let changedRoute: { routeId: string; stepIds: string[] };
 let deletedRoute: { routeId: string; stepIds: string[] };
+let fillInRoute: { routeId: string; stepIds: string[] };
 
 const calls: { system: string; user: string }[] = [];
 const citeFirstReply = {
@@ -235,7 +236,36 @@ describe("E5.3 contextual help inside a step", () => {
       where id = ${bikes.sourceId}
     `;
 
-    for (const route of [routeId, changedRoute.routeId, deletedRoute.routeId]) {
+    fillInRoute = await seedPublishedRoute(connection.client, {
+      spaceId,
+      creatorId: owner.id,
+      title: "Ruta de completar",
+      source: { ...contracts, title: "Guía de contratos" },
+      steps: [
+        {
+          title: "Completar versión",
+          lesson: "Un cambio incompatible exige una versión mayor [1].",
+          question: "Completa la ruta de la nueva versión.",
+          code: {
+            content: "publicar([[hueco]]);",
+            language: "ts",
+            origin: "ilustrativo",
+          },
+          options: [],
+          correct: null,
+          explanation: secretExplanation,
+          activityType: "completar",
+          acceptedAnswers: ["RESPUESTA-RESERVADA", "VARIANTE-RESERVADA"],
+        },
+      ],
+    });
+
+    for (const route of [
+      routeId,
+      changedRoute.routeId,
+      deletedRoute.routeId,
+      fillInRoute.routeId,
+    ]) {
       await startRoute(learningDependencies, {
         identityId: member.id,
         spaceId,
@@ -365,6 +395,34 @@ describe("E5.3 contextual help inside a step", () => {
         stepId: changedRoute.stepIds[0],
       }),
     ).toMatchObject({ kind: "unverifiable" });
+  });
+
+  it("sends the hole but not the accepted answers until a fill-in step is resolved", async () => {
+    const target = {
+      routeId: fillInRoute.routeId,
+      stepId: fillInRoute.stepIds[0],
+    };
+    calls.length = 0;
+    expect(await help(member, target)).toMatchObject({ mode: "pistas" });
+    expect(calls[0].user).toContain("publicar([[hueco]]);");
+    expect(calls[0].system).toContain(
+      "No escribas el texto que va en el hueco",
+    );
+    expect(calls[0].user).not.toMatch(/RESERVADA/);
+
+    await answerStep(learningDependencies, {
+      identityId: member.id,
+      spaceId,
+      ...target,
+      answerText: "RESPUESTA-RESERVADA",
+      submissionId: randomUUID(),
+    });
+    calls.length = 0;
+    expect(await help(member, target)).toMatchObject({ mode: "explicacion" });
+    expect(calls[0].user).toContain(
+      "Respuesta principal del hueco: RESPUESTA-RESERVADA",
+    );
+    expect(calls[0].user).toContain("Variantes aceptadas: VARIANTE-RESERVADA");
   });
 
   it("refuses locked steps, other spaces, revoked members and invalid input before calling the model", async () => {

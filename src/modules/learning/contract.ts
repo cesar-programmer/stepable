@@ -1,4 +1,8 @@
-import type { RouteCitation, StepCode } from "../routes/contract.ts";
+import type {
+  ActivityType,
+  RouteCitation,
+  StepCode,
+} from "../routes/contract.ts";
 
 import type { AttemptRecord, StepLearningState } from "./rules.ts";
 
@@ -14,12 +18,16 @@ export type LearnerStep = {
   attemptsUsed: number;
   attemptsLeft: number;
   selectedOptions: number[];
+  writtenAnswers: string[];
   lesson: string | null;
   question: string | null;
+  activityType: ActivityType;
   code: StepCode | null;
   options: string[] | null;
   citations: RouteCitation[];
   correctOption: number | null;
+  /** "completar": main answer first; only once resolved. */
+  acceptedAnswers: string[] | null;
   explanation: string | null;
 };
 
@@ -116,7 +124,8 @@ export interface LearningRepository {
     spaceId: string;
     routeId: string;
     stepId: string;
-    selectedOption: number;
+    selectedOption: number | null;
+    answerText: string | null;
     submissionId: string;
   }): Promise<AnswerResult>;
 }

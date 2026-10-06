@@ -32,7 +32,8 @@ const stateLabels: Record<LearnerStep["state"], string> = {
 };
 
 const errorMessages: Record<string, string> = {
-  invalid: "Elige una de las opciones antes de responder.",
+  invalid:
+    "Elige una opción o escribe una respuesta (hasta 200 caracteres) antes de responder.",
   not_current: "Responde los pasos en orden.",
   already_resolved: "Ese paso ya está resuelto.",
   not_started: "Primero empieza la ruta.",
@@ -184,7 +185,41 @@ export default async function LearnPage({
                 </p>
               ) : null}
 
-              {step.state === "actual" && step.options ? (
+              {step.state === "actual" && step.activityType === "completar" ? (
+                <form action={answerStepAction}>
+                  {hidden}
+                  <input name="stepId" type="hidden" value={step.id} />
+                  <input
+                    name="submissionId"
+                    type="hidden"
+                    value={randomUUID()}
+                  />
+                  <fieldset>
+                    <legend>
+                      Intento {step.attemptsUsed + 1} de {maxAttemptsPerStep}
+                    </legend>
+                    <p className="muted">
+                      Escribe el fragmento exacto que va en [[hueco]]. Se
+                      compara textualmente con las respuestas aceptadas: cuentan
+                      mayúsculas, espacios internos y signos, y solo se ignoran
+                      los espacios al inicio y al final. Una solución
+                      equivalente pero distinta no se acepta.
+                    </p>
+                    <label>
+                      Texto para el hueco del paso {step.position}
+                      <input
+                        autoComplete="off"
+                        className="code-input"
+                        maxLength={200}
+                        name="answerText"
+                        required
+                        spellCheck={false}
+                      />
+                    </label>
+                  </fieldset>
+                  <button type="submit">Responder paso {step.position}</button>
+                </form>
+              ) : step.state === "actual" && step.options ? (
                 <form action={answerStepAction}>
                   {hidden}
                   <input name="stepId" type="hidden" value={step.id} />
@@ -227,9 +262,40 @@ export default async function LearnPage({
                 </div>
               ) : null}
 
+              {step.acceptedAnswers ? (
+                <div className="assistant-answer">
+                  <p>
+                    Solución: <code>{step.acceptedAnswers[0]}</code>
+                  </p>
+                  {step.acceptedAnswers.length > 1 ? (
+                    <p className="muted">
+                      También se aceptaba:{" "}
+                      {step.acceptedAnswers.slice(1).map((answer, index) => (
+                        <span key={index}>
+                          {index > 0 ? " · " : ""}
+                          <code>{answer}</code>
+                        </span>
+                      ))}
+                    </p>
+                  ) : null}
+                  <p className="muted">{step.explanation}</p>
+                  <p className="muted">
+                    Tus respuestas:{" "}
+                    {step.writtenAnswers.map((answer, index) => (
+                      <span key={index}>
+                        {index > 0 ? " · " : ""}
+                        <code>{answer}</code>
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              ) : null}
+
               {step.lesson ? (
                 <StepHelp
-                  resolved={step.correctOption !== null}
+                  resolved={
+                    step.correctOption !== null || step.acceptedAnswers !== null
+                  }
                   routeId={routeId}
                   spaceId={spaceId}
                   stepId={step.id}

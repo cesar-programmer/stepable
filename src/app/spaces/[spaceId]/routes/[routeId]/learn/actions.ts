@@ -50,10 +50,14 @@ export async function startRouteAction(formData: FormData) {
 export async function answerStepAction(formData: FormData) {
   const { path, ...input } = await context(formData);
   const selected = formData.get("selectedOption");
+  const written = formData.get("answerText");
   const result = await answerStep(dependencies(), {
     ...input,
     stepId: String(formData.get("stepId") ?? ""),
-    selectedOption: selected === null ? -1 : Number(selected),
+    // The server checks that the response matches the step's activity.
+    ...(typeof written === "string"
+      ? { answerText: written }
+      : { selectedOption: selected === null ? -1 : Number(selected) }),
     submissionId: String(formData.get("submissionId") ?? ""),
   });
   if (result.kind === "unauthorized" || result.kind === "not_found") {

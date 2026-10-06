@@ -3,7 +3,9 @@ import { sql, type SQL } from "drizzle-orm";
 import { allowsSpaceAction } from "../../modules/access/authorization.ts";
 import {
   routeLimits,
+  type ActivityType,
   type CodeOrigin,
+  type RequestedActivity,
   type DraftStep,
   type GenerationClaim,
   type RequestGenerationResult,
@@ -43,6 +45,8 @@ const textArray = (values: string[]) =>
     values.map((value) => sql`${value}`),
     sql`, `,
   )}]::text[]`;
+const nullableTextArray = (values: string[] | null) =>
+  values === null ? sql`null` : textArray(values);
 
 const uuidList = (ids: string[]) =>
   sql.join(
@@ -73,9 +77,11 @@ type SummaryRow = {
   id: string;
   title: string | null;
   objective: string;
+  requested_activities: RequestedActivity[];
   status: RouteSummary["status"];
   generation_status: RouteSummary["generationStatus"];
   generation_error: string | null;
+  generation_missing_activities: RequestedActivity[] | null;
   needs_review: boolean;
   updated_at: Date;
   edit_version: number;
@@ -87,9 +93,11 @@ function toSummary(row: SummaryRow): RouteSummary {
     id: row.id,
     title: row.title,
     objective: row.objective,
+    requestedActivities: row.requested_activities,
     status: row.status,
     generationStatus: row.generation_status,
     generationError: row.generation_error,
+    missingActivities: row.generation_missing_activities,
     needsReview: row.needs_review,
     updatedAt: new Date(row.updated_at),
   };
@@ -114,12 +122,12 @@ async function lockAndAuthorize(
 }
 
 // Attempts already made today (UTC) plus generations still queued or running.
-async function dailyLimitReached(
-  transaction: Transaction,
+async function generationsToday(
+  executor: Pick<Transaction, "execute">,
   spaceId: string,
-): Promise<boolean> {
+): Promise<number> {
   const [row] = await rows<{ used: number }>(
-    transaction,
+    executor,
     sql`select
       (select count(*) from public.route_generation_attempts
         where space_id = ${spaceId}
@@ -128,7 +136,17 @@ async function dailyLimitReached(
         where space_id = ${spaceId}
           and generation_status in ('en_cola', 'generando'))::int as used`,
   );
-  return row.used >= routeLimits.dailyGenerationAttempts;
+  return row.used;
+}
+
+async function dailyLimitReached(
+  transaction: Transaction,
+  spaceId: string,
+): Promise<boolean> {
+  return (
+    (await generationsToday(transaction, spaceId)) >=
+    routeLimits.dailyGenerationAttempts
+  );
 }
 
 type EditableRoute = {
@@ -195,6 +213,7 @@ export class PostgresRouteRepository implements RouteRepository {
     actorIdentityId: string;
     spaceId: string;
     objective: string;
+    requestedActivities: RequestedActivity[];
     sourceIds: string[];
     token: string;
   }): Promise<RequestGenerationResult> {
@@ -227,9 +246,11 @@ export class PostgresRouteRepository implements RouteRepository {
 
       await transaction.execute(
         sql`insert into public.routes
-              (id, space_id, objective, generation_token, created_by)
+              (id, space_id, objective, requested_activities,
+               generation_token, created_by)
             values (${input.routeId}, ${input.spaceId}, ${input.objective},
-              ${input.token}, ${input.actorIdentityId})`,
+              ${textArray(input.requestedActivities)}, ${input.token},
+              ${input.actorIdentityId})`,
       );
       await transaction.execute(
         sql`insert into public.route_sources (route_id, space_id, source_id)
@@ -284,7 +305,8 @@ export class PostgresRouteRepository implements RouteRepository {
       await transaction.execute(
         sql`update public.routes
             set generation_status = 'en_cola', generation_token = ${input.token},
-              generation_error = null, generation_started_at = null, title = null,
+              generation_error = null, generation_missing_activities = null,
+              generation_started_at = null, title = null,
               edit_version = edit_version + 1, updated_at = now()
             where id = ${input.routeId}`,
       );
@@ -301,7 +323,11 @@ export class PostgresRouteRepository implements RouteRepository {
     routeId: string,
     token: string,
   ): Promise<GenerationClaim | null> {
-    const [route] = await rows<{ space_id: string; objective: string }>(
+    const [route] = await rows<{
+      space_id: string;
+      objective: string;
+      requested_activities: RequestedActivity[];
+    }>(
       this.database,
       sql`update public.routes
           set generation_status = 'generando', generation_started_at = now(),
@@ -316,7 +342,7 @@ export class PostgresRouteRepository implements RouteRepository {
                       and space.job_namespace = ${this.jobNamespace})`
                 : sql``
             }
-          returning space_id, objective`,
+          returning space_id, objective, requested_activities`,
     );
     if (!route) return null;
     const sources = await rows<{ source_id: string }>(
@@ -327,6 +353,7 @@ export class PostgresRouteRepository implements RouteRepository {
       routeId,
       spaceId: route.space_id,
       objective: route.objective,
+      requestedActivities: route.requested_activities,
       sourceIds: sources.map((source) => source.source_id),
     };
   }
@@ -359,6 +386,7 @@ export class PostgresRouteRepository implements RouteRepository {
     token: string;
     status: "lista" | "insuficiente" | "fallida";
     errorCode?: string;
+    missingActivities?: RequestedActivity[];
     title?: string;
     steps?: DraftStep[];
   }): Promise<boolean> {
@@ -379,12 +407,13 @@ export class PostgresRouteRepository implements RouteRepository {
             sql`insert into public.route_steps
                   (route_id, position, title, lesson, question, options,
                    correct_option, explanation, code, code_language,
-                   code_origin)
+                   code_origin, activity_type, accepted_answers)
                 values (${input.routeId}, ${step.position}, ${step.title},
                   ${step.lesson}, ${step.question}, ${textArray(step.options)},
                   ${step.correctOption}, ${step.explanation},
                   ${step.code?.content ?? null}, ${step.code?.language ?? null},
-                  ${step.code?.origin ?? null})
+                  ${step.code?.origin ?? null}, ${step.activityType},
+                  ${nullableTextArray(step.acceptedAnswers)})
                 returning id`,
           );
           for (const citation of step.citations) {
@@ -404,11 +433,87 @@ export class PostgresRouteRepository implements RouteRepository {
         sql`update public.routes
             set generation_status = ${input.status}::public.route_generation_status,
               generation_error = ${input.errorCode ?? null},
+              generation_missing_activities = ${
+                input.missingActivities
+                  ? textArray(input.missingActivities)
+                  : null
+              },
               title = ${input.title ?? null},
               edit_version = edit_version + 1, updated_at = now()
             where id = ${input.routeId}`,
       );
       return true;
+    });
+  }
+
+  countGenerationsToday(spaceId: string): Promise<number> {
+    return generationsToday(this.database, spaceId);
+  }
+
+  updateGenerationRequest(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    routeId: string;
+    editVersion: number;
+    objective: string;
+    requestedActivities: RequestedActivity[];
+    sourceIds: string[];
+  }): Promise<RouteMutationResult> {
+    return this.database.transaction(async (transaction) => {
+      if (
+        !(await lockAndAuthorize(
+          transaction,
+          input.spaceId,
+          input.actorIdentityId,
+        ))
+      ) {
+        return { kind: "unauthorized" as const };
+      }
+      const [route] = await rows<EditableRoute>(
+        transaction,
+        sql`select status, generation_status, edit_version from public.routes
+            where id = ${input.routeId} and space_id = ${input.spaceId}
+            for update`,
+      );
+      if (!route) return { kind: "not_found" as const };
+      // Only a draft whose generation ended without a usable result.
+      if (
+        route.status !== "borrador" ||
+        !["insuficiente", "fallida"].includes(route.generation_status)
+      ) {
+        return { kind: "not_editable" as const };
+      }
+      if (route.edit_version !== input.editVersion) {
+        return { kind: "conflict" as const };
+      }
+      const [available] = await rows<{ count: number }>(
+        transaction,
+        sql`select count(*)::int as count from public.sources source
+            join public.source_versions version
+              on version.id = source.current_version_id and version.status = 'lista'
+            where source.space_id = ${input.spaceId}
+              and source.status = 'activa'
+              and source.id in (${uuidList(input.sourceIds)})`,
+      );
+      if (available.count !== input.sourceIds.length) {
+        return { kind: "fuentes_no_disponibles" as const };
+      }
+      await transaction.execute(
+        sql`update public.routes
+            set objective = ${input.objective},
+              requested_activities = ${textArray(input.requestedActivities)}
+            where id = ${input.routeId}`,
+      );
+      await transaction.execute(
+        sql`delete from public.route_sources where route_id = ${input.routeId}`,
+      );
+      await transaction.execute(
+        sql`insert into public.route_sources (route_id, space_id, source_id)
+            select ${input.routeId}::uuid, ${input.spaceId}::uuid, id
+            from unnest(array[${uuidList(input.sourceIds)}]) as id`,
+      );
+      await bumpVersion(transaction, input.routeId);
+      return { kind: "ok" as const };
     });
   }
 
@@ -431,8 +536,10 @@ export class PostgresRouteRepository implements RouteRepository {
   ): Promise<RouteSummary[]> {
     const routes = await rows<SummaryRow>(
       this.database,
-      sql`select route.id, route.title, route.objective, route.status,
-            route.generation_status, route.generation_error, route.updated_at,
+      sql`select route.id, route.title, route.objective,
+            route.requested_activities, route.status,
+            route.generation_status, route.generation_error,
+            route.generation_missing_activities, route.updated_at,
             route.edit_version, route.published_at, ${needsReview} as needs_review
           from public.routes route
           where route.space_id = ${spaceId}
@@ -449,8 +556,10 @@ export class PostgresRouteRepository implements RouteRepository {
   ): Promise<RouteDetail | null> {
     const [route] = await rows<SummaryRow>(
       this.database,
-      sql`select route.id, route.title, route.objective, route.status,
-            route.generation_status, route.generation_error, route.updated_at,
+      sql`select route.id, route.title, route.objective,
+            route.requested_activities, route.status,
+            route.generation_status, route.generation_error,
+            route.generation_missing_activities, route.updated_at,
             route.edit_version, route.published_at, ${needsReview} as needs_review
           from public.routes route
           where route.id = ${routeId} and route.space_id = ${spaceId}
@@ -462,9 +571,15 @@ export class PostgresRouteRepository implements RouteRepository {
       id: string;
       title: string | null;
       active: boolean;
+      has_code_block: boolean;
     }>(
       this.database,
-      sql`select source.id, source.title, source.status = 'activa' as active
+      sql`select source.id, source.title, source.status = 'activa' as active,
+            exists (
+              select 1 from public.source_segments segment
+              where segment.version_id = source.current_version_id
+                and segment.content like '%' || chr(96) || chr(96) || chr(96) || '%'
+            ) as has_code_block
           from public.route_sources selected
           join public.sources source on source.id = selected.source_id
           where selected.route_id = ${routeId}
@@ -477,7 +592,9 @@ export class PostgresRouteRepository implements RouteRepository {
       lesson: string;
       question: string;
       options: string[];
-      correct_option: number;
+      correct_option: number | null;
+      activity_type: ActivityType;
+      accepted_answers: string[] | null;
       explanation: string;
       code: string | null;
       code_language: string | null;
@@ -485,7 +602,8 @@ export class PostgresRouteRepository implements RouteRepository {
     }>(
       this.database,
       sql`select id, position, title, lesson, question, options, correct_option,
-            explanation, code, code_language, code_origin
+            explanation, code, code_language, code_origin, activity_type,
+            accepted_answers
           from public.route_steps where route_id = ${routeId}
           order by position`,
     );
@@ -519,7 +637,12 @@ export class PostgresRouteRepository implements RouteRepository {
       ...toSummary(route),
       editVersion: route.edit_version,
       publishedAt: route.published_at ? new Date(route.published_at) : null,
-      sources,
+      sources: sources.map((source) => ({
+        id: source.id,
+        title: source.title,
+        active: source.active,
+        hasCodeBlock: source.has_code_block,
+      })),
       steps: steps.map((step) => ({
         id: step.id,
         position: step.position,
@@ -535,7 +658,9 @@ export class PostgresRouteRepository implements RouteRepository {
               }
             : null,
         options: step.options,
+        activityType: step.activity_type,
         correctOption: step.correct_option,
+        acceptedAnswers: step.accepted_answers,
         explanation: step.explanation,
         citations: citations
           .filter((citation) => citation.step_id === step.id)
@@ -619,7 +744,9 @@ export class PostgresRouteRepository implements RouteRepository {
               explanation = ${input.edit.explanation},
               code = ${input.edit.code?.content ?? null},
               code_language = ${input.edit.code?.language ?? null},
-              code_origin = ${input.edit.code?.origin ?? null}
+              code_origin = ${input.edit.code?.origin ?? null},
+              activity_type = ${input.edit.activityType},
+              accepted_answers = ${nullableTextArray(input.edit.acceptedAnswers)}
             where id = ${input.stepId}`,
       );
       return { kind: "ok" };

@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-03 · Fase: E5.4 cerrada para el prototipo local · Versión documental: 3.6.
+Actualizado: 2026-10-06 · Fase: E5.5 cerrada para el prototipo local · Versión documental: 4.1.
 
 ## Hechos acordados
 
@@ -36,9 +36,11 @@ Actualizado: 2026-10-03 · Fase: E5.4 cerrada para el prototipo local · Versió
 
 - E5.4 autorizada el 2026-10-01: preguntas de opción múltiple sobre un fragmento de código opcional de solo lectura, propuesto por la IA solo con respaldo de las fuentes y editable por el responsable. Autoriza 1 generación real de evaluación; quedan excluidos completar fragmentos, ejecución y nuevas reglas de calificación (RN-35, ADR-009 propuesto).
 
+- E5.5 autorizada el 2026-10-03: actividad “completar” con un único hueco, respuesta escrita y corrección exacta en el servidor (solo se ignoran los espacios de los extremos), respuestas aceptadas configuradas por el responsable y reutilización de las reglas de E5.1 a E5.3. Las llamadas reales requieren presentar antes el caso (RN-36, ADR-010 propuesto).
+
 ## Actualización más reciente
 
-2026-10-03: el usuario confirmó la corrección de la ayuda sobre “Código del paso” y la prueba manual de E5.4, y aceptó la entrega. Se cierra en un commit local, sin push, reutilizando la verificación técnica (después solo cambió documentación). La generación automática de pasos con código queda pendiente de una evaluación real exitosa: la única generación real devolvió “insuficiente” y la confirmación manual no sustituye esa evidencia.
+2026-10-06: el usuario confirmó la comprobación manual de E5.5 y la recuperación de rutas fallidas, y aceptó la entrega. E5.5 se cierra en un commit local, sin push, reutilizando la verificación técnica (después solo cambió documentación). La V0 sigue incompleta: falta el control de consumo de RF-10 y el piloto.
 
 ## Realizado
 
@@ -176,13 +178,19 @@ Actualizado: 2026-10-03 · Fase: E5.4 cerrada para el prototipo local · Versió
   - Comprobación manual del usuario del 2026-10-03: confirmó que la corrección de la ayuda sobre el código y la prueba manual de E5.4 funcionan correctamente, y aceptó la entrega. No se le atribuyen pruebas adicionales.
   - pendiente: La generación automática de pasos con código queda pendiente de una evaluación real exitosa: la única generación real devolvió “insuficiente” y la confirmación manual no sustituye esa evidencia.
 
+- E5.5, 2026-10-06:
+  - pruebas técnicas: 76 unitarias, integración 65/65, navegador 26/26, `pnpm verify` y `git diff --check`; tras el ajuste de tipos solicitados: 78 unitarias, integración 66/66 y navegador 26/26; tras la corrección de mensajes: integración 66/66 y navegador 27/27. Sin procesos de desarrollo en marcha, sin trabajos nuevos fuera de `pruebas` y con los datos conservados (pasos existentes como opción múltiple, 2 progresos y 5 intentos);
+  - evaluación con modelo real: primera generación solo con opción múltiple (1032/804 tokens); con tipos solicitados, la evaluación real con tipos solicitados (2026-10-06, 1037/1149 tokens) generó 2 pasos de lectura de código y 1 de completar con solución y citas coherentes, pero la lección del paso de completar mostraba el código original con la solución (documento 06);
+  - Comprobación manual del usuario del 2026-10-06: confirmó que la comprobación manual de E5.5 y la recuperación de rutas fallidas funcionan correctamente, y aceptó la entrega. No se le atribuyen escenarios adicionales.
+  - Limitaciones que se conservan: la corrección es solo una comparación textual (no reconoce soluciones equivalentes); la evaluación real fue pequeña (2 generaciones, una sin código y otra con la solución visible en la lección); y la validación de solución visible no se reevaluó con el modelo real.
+
 ## No realizado
 
-No se implementaron completar fragmentos (RF-06), ejecución de código, filtro posterior de respuestas que revelen la opción, detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
+No se implementaron ejecución de código, comparación semántica de respuestas, expresiones regulares configurables, filtro posterior de respuestas que revelen la opción, detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Implementar E5.5 (completar fragmentos acotados de código), autorizada el 2026-10-03, y dejarla sin commit hasta la comprobación del usuario.
+Acordar con el usuario el control de consumo de RF-10 (propuesta presentada el 2026-10-06, pendiente de aprobación) sin implementarlo antes de su autorización.
 
 ## Decisiones que requieren aprobación
 
@@ -199,7 +207,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E5.1 está cerrada en `68d3163`, E5.2 en `e9169d9` y E5.3 en `afd8cb5`, todos sin push. E5.4 está cerrada en el commit local siguiente, sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
+E5.1 está cerrada en `68d3163`, E5.2 en `e9169d9` y E5.3 en `afd8cb5`, todos sin push. E5.4 está cerrada en `183502a`, sin push. E5.5 está cerrada en el commit local siguiente, sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
 
 ## Formato para futuras sesiones
 

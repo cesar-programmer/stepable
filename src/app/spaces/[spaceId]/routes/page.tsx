@@ -8,11 +8,15 @@ import { PostgresSourceRepository } from "@/adapters/postgres/source-repository"
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 import { AutoRefresh } from "@/app/components/auto-refresh";
 import { spaceIdSchema } from "@/modules/access/input";
-import { routeLimits } from "@/modules/routes/contract";
+import { requestedActivityTypes, routeLimits } from "@/modules/routes/contract";
 import { listSpaceRoutes } from "@/modules/routes/service";
 
 import { createRouteAction } from "./actions";
-import { routeErrorMessages, routeGenerationLabels } from "./messages";
+import {
+  requestedActivityLabels,
+  routeErrorMessages,
+  routeGenerationLabels,
+} from "./messages";
 
 type RoutesPageProps = {
   params: Promise<{ spaceId: string }>;
@@ -92,6 +96,25 @@ export default async function RoutesPage({
                 </label>
               ))
             )}
+          </fieldset>
+          <fieldset>
+            <legend>Tipos de actividad (al menos un paso de cada uno)</legend>
+            {requestedActivityTypes.map((type) => (
+              <label className="checkbox" key={type}>
+                <input
+                  defaultChecked={type === "opcion_multiple"}
+                  name="activityTypes"
+                  type="checkbox"
+                  value={type}
+                />
+                {requestedActivityLabels[type]}
+              </label>
+            ))}
+            <p className="muted">
+              Lectura de código y completar código necesitan código en las
+              fuentes seleccionadas. Si no hay evidencia para algún tipo, el
+              borrador queda como insuficiente; no se sustituye por otro tipo.
+            </p>
           </fieldset>
           <p className="muted">
             Cada generación hace una llamada al modelo configurado y cuenta en

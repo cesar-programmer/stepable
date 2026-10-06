@@ -25,6 +25,7 @@ let owner: LocalTestIdentity;
 let member: LocalTestIdentity;
 let foreign: LocalTestIdentity;
 let learnUrl: string;
+let fillInUrl: string;
 // Markup and indentation must reach the page as literal text.
 const snippet = 'if (incompatible) {\n  aviso = "<b id=inyectado>v2</b>";\n}';
 
@@ -107,6 +108,30 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
       ],
     });
     learnUrl = `/spaces/${spaceId}/routes/${routeId}/learn`;
+    const fillIn = await seedPublishedRoute(connection.client, {
+      spaceId,
+      creatorId: owner.id,
+      title: "Ruta de completar",
+      source: { ...source, title: "Contratos" },
+      steps: [
+        {
+          title: "Completar la versión",
+          lesson: "Un cambio incompatible exige una versión mayor [1].",
+          question: "Completa la ruta de la nueva versión.",
+          code: {
+            content: "publicar([[hueco]]);",
+            language: "ts",
+            origin: "ilustrativo",
+          },
+          options: [],
+          correct: null,
+          explanation: "La versión mayor va en la ruta.",
+          activityType: "completar",
+          acceptedAnswers: ['"/v2"', "'/v2'"],
+        },
+      ],
+    });
+    fillInUrl = `/spaces/${spaceId}/routes/${fillIn.routeId}/learn`;
   });
 
   test.afterAll(async () => {
@@ -212,6 +237,35 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
     await login(memberPage, member);
     expect((await memberPage.goto(progressUrl))?.status()).toBe(404);
     await context.close();
+  });
+
+  test("a member completes a code hole with an exact answer", async ({
+    page,
+  }) => {
+    await login(page, member);
+    await page.goto(fillInUrl);
+    await page.getByRole("button", { name: "Empezar ruta" }).click();
+    await expect(page.locator(".code-hole")).toHaveText("[[hueco]]");
+    await expect(
+      page.getByText("Una solución equivalente pero distinta no se acepta."),
+    ).toBeVisible();
+    await expect(page.getByText("Solución:")).toHaveCount(0);
+
+    const field = page.getByLabel("Texto para el hueco del paso 1");
+    await field.fill("/v2");
+    await page.getByRole("button", { name: "Responder paso 1" }).click();
+    await expect(page.getByText("Te quedan 2 intentos.")).toBeVisible();
+    await expect(page.getByText("Solución:")).toHaveCount(0);
+
+    await field.fill("  '/v2'  ");
+    await page.getByRole("button", { name: "Responder paso 1" }).click();
+    await expect(
+      page.getByText("Respuesta correcta.", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("Solución:")).toContainText('"/v2"');
+    await expect(page.getByTestId("learning-summary")).toContainText(
+      "Ruta completada · pasos resueltos 1 de 1 · acertados 1 de 1",
+    );
   });
 
   test("another space cannot open the learner view", async ({ page }) => {

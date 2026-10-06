@@ -13,7 +13,7 @@ Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003.
 | E2 Fuentes | RF-03 | CA-02: archivo permitido llega a listo, error se ve y se puede reintentar sin duplicar resultados |
 | E3 Asistente | RF-08 | CA-03: preguntas de referencia producen evidencia resoluble; preguntas sin respaldo reconocen insuficiencia; aislamiento por espacio. Prototipo local cerrado el 2026-10-01; historial de conversaciones (“chats aislados” persistentes) pospuesto |
 | E4 Autoría | RF-04, RF-05 | CA-04: borrador editable, publicación solo por responsable y versión publicada estable. E4.1 cerrada en el prototipo local el 2026-10-01 |
-| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 y E5.2 cerradas para opción múltiple; lectura de código en E5.4; completar fragmentos pendiente |
+| E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 y E5.2 cerradas para opción múltiple; lectura de código en E5.4; completar fragmentos en E5.5 |
 | E6 Piloto | Recorrido completo | CA-06: prueba documentada con usuarios invitados, incidencias y consumo registrado |
 
 RF-10 es transversal: errores y límites deben incorporarse en las entregas que consumen recursos. El chat contextual de lecciones se integra en E5; E3 entrega el chat general.
@@ -452,3 +452,50 @@ Estado: **cerrada para el prototipo local** el 2026-10-03 ([ADR-009](decisiones/
 3. Publicar la ruta. Comprobar que el código se ve con sus espacios, como texto, con la etiqueta de su origen.
 4. Como integrante: recorrer la ruta, responder el paso con código y pulsar **Pedir ayuda** preguntando qué hace el código. La ayuda debe explicarlo y mostrar “[código] Código del paso” entre sus citas, sin presentar el ejemplo como práctica de la empresa.
 5. Opcional: comprobar que una ruta anterior se sigue viendo y recorriendo igual, sin código.
+
+## E5.5 · Completar fragmentos acotados de código
+
+Estado: **cerrada para el prototipo local** el 2026-10-06 ([ADR-010](decisiones/ADR-010-completar-codigo-e5-5.md), RN-36).
+
+**Entregado:**
+- tipo de actividad “completar”, con un único hueco visible y una respuesta escrita;
+- respuesta principal y variantes configurables por el responsable o propuestas por la IA con respaldo de las fuentes;
+- corrección exacta en el servidor;
+- reglas de intentos, progreso, doble envío, totales y ayuda reutilizadas;
+- opción múltiple y rutas existentes sin cambios;
+- selección de tipos de actividad solicitados al generar, con cobertura validada en el servidor (RN-37).
+
+**Fuera de E5.5:** ejecución de código, comparación semántica, expresiones regulares configurables y nuevas reglas de calificación.
+
+- **Pruebas técnicas:**
+  - 76 unitarias (corrección exacta, validación de la generación y prompt de ayuda);
+  - integración 65/65, ampliando `learning` (ruta mixta), `routes` (edición y publicación de “completar”) y `step-help` (sin solución antes de resolver);
+  - navegador 26/26, con 1 caso nuevo en `learning`: respuesta incorrecta, variante aceptada con espacios en los extremos y solución al resolver;
+  - ajuste de tipos solicitados: 78 unitarias (prompt, cobertura y solución visible), integración 66/66 (`routes`: valores no válidos, borrador sin los tipos pedidos → `tipos_no_cubiertos`, fuente sin código → insuficiente, fuente con código → ambos tipos) y navegador 26/26;
+  - `pnpm verify` y `git diff --check`.
+- **Evaluación con modelo real (documento 06):**
+  - primera generación (1032/804 tokens): solo opción múltiple, sin código;
+  - después se añadió la selección de **tipos solicitados** (RN-37), con validación en el servidor y el motivo `tipos_no_cubiertos`;
+  - segunda generación con lectura y completar (1037/1149 tokens): 2 pasos de lectura y 1 de completar, con solución y citas coherentes, pero la lección del paso de completar mostraba la solución. Se añadió una validación para impedirlo, no evaluada con el modelo real.
+- **Incidencia de la prueba manual (2026-10-06):** una ruta fallida por `tipos_no_cubiertos` seguía mostrando el aviso verde “Generación en cola”, y el error no decía qué faltaba.
+  - Revisión de los datos locales, sin llamadas: las fuentes de esa ruta (un PDF y un Markdown de unos 230 caracteres en total) no contienen código. No tienen bloques, código en línea, llaves, punto y coma ni palabras clave. El modelo devolvió preguntas normales en lugar de “insuficiente” y el servidor las rechazó correctamente.
+  - Corrección: el aviso solo se muestra mientras la generación está pendiente. El error indica los tipos solicitados y los que faltaron (en esa ruta anterior, que no se registró). Se añade una nota sobre si las fuentes seleccionadas contienen bloques de código.
+  - Verificación con modelo simulado: 78 unitarias, integración 66/66, navegador 27/27 (1 caso nuevo en `routes`) y `pnpm verify`. Sin llamadas reales ni regeneraciones.
+- **Recuperación de generaciones fallidas (2026-10-06, RN-38):**
+  - mensajes diferenciados sin códigos internos (insuficiente, actividades no cubiertas y fallo técnico);
+  - “No detectamos bloques de código” como heurística informativa, que no bloquea PDFs;
+  - ajuste del objetivo, las fuentes y las actividades en la misma ruta, más “Usar solo opción múltiple”, sin llamadas ni intentos;
+  - “Generar con estos cambios”, con el consumo indicado y la hora de restablecimiento si se agotó la cuota.
+  - Verificación con modelo simulado: integración 67/67 (fallo → ajuste gratuito → regeneración → borrador listo, conflicto, fuentes ajenas y cuota restante) y navegador 27/27 (recuperación completa en la interfaz y estados exclusivos). En la prueba apareció un fallo real: las casillas conservaban el estado anterior tras guardar. Se corrigió volviendo a montar el formulario. Sin llamadas reales.
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-06: confirmó que la comprobación manual de E5.5 y la recuperación de rutas fallidas funcionan correctamente, y aceptó la entrega. No se le atribuyen escenarios adicionales.
+- **Limitaciones:** Limitaciones que se conservan: la corrección es solo una comparación textual (no reconoce soluciones equivalentes); la evaluación real fue pequeña (2 generaciones, una sin código y otra con la solución visible en la lección); y la validación de solución visible no se reevaluó con el modelo real.
+
+### E5.5 · Prueba manual
+
+1. `pnpm db:migrate` (añade el tipo de actividad y las respuestas escritas sin tocar los datos) y después `pnpm dev`.
+2. Como responsable, en un borrador elige **Tipo de actividad: Completar el hueco del código**. Escribe código con un único `[[hueco]]` y, en **Respuestas aceptadas**, la principal y alguna variante, una por línea. Guarda y publica.
+3. Como integrante, recorre la ruta. El hueco aparece resaltado junto con la explicación de que se compara el texto exacto. Escribe una respuesta con distinta mayúscula: debe contar como incorrecta y descontar un intento.
+4. Escribe la variante aceptada con espacios al principio o al final: debe ser correcta y mostrar la solución, las variantes y la explicación.
+5. Opcional: comprueba que un paso de opción múltiple sigue funcionando igual en la misma ruta o en una anterior.
+6. Al generar una ruta nueva, comprueba que **Opción múltiple** viene marcada por defecto y que se pueden marcar **Lectura de código** y **Completar código**. Con el modelo simulado y una fuente con un bloque de código, el borrador incluye ambos tipos; con una fuente sin código, queda como evidencia insuficiente. Con la IA real, cada generación es una llamada de pago.
+7. En una ruta fallida o insuficiente, comprueba el mensaje y las acciones. **Usar solo opción múltiple** o **Guardar cambios** no deben generar nada ni gastar intentos. **Generar con estos cambios** indica los intentos que quedan y, con el modelo simulado, deja un borrador listo en la misma ruta. Con la IA real es una llamada de pago.

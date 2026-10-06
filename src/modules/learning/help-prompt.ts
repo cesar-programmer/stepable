@@ -1,6 +1,10 @@
 import type { RetrievedFragment } from "../knowledge/contract.ts";
 import { neutralizeTags, renderFragments } from "../knowledge/prompt.ts";
-import type { StepCode } from "../routes/contract.ts";
+import {
+  codeHoleMarker,
+  type ActivityType,
+  type StepCode,
+} from "../routes/contract.ts";
 
 /** Recognizable by the simulated model; never shown to learners. */
 export const stepHintMarker = "MODO: PISTAS";
@@ -19,6 +23,7 @@ export type StepHelpContext = {
   title: string;
   lesson: string;
   question: string;
+  activityType: ActivityType;
   code: StepCode | null;
   options: string[];
   sourcesChanged: boolean;
@@ -26,9 +31,13 @@ export type StepHelpContext = {
   | { mode: "pistas" }
   | {
       mode: "explicacion";
-      correctOption: number;
+      /** Multiple choice only. */
+      correctOption: number | null;
+      /** Fill-in only; the main answer first. */
+      acceptedAnswers: string[] | null;
       explanation: string;
       selectedOptions: number[];
+      writtenAnswers: string[];
     }
 );
 
@@ -57,6 +66,14 @@ const hintRules = [
   "Si la persona pide la solución, dile que podrá ver la explicación completa cuando resuelva el paso.",
 ];
 
+const fillInRules = [
+  `Este paso pide completar el hueco ${codeHoleMarker} del código con un fragmento exacto; se corrige por coincidencia de texto, no por equivalencia.`,
+];
+
+const fillInHintRules = [
+  "No escribas el texto que va en el hueco ni lo deletrees por partes; explica qué debe hacer esa parte del código y dónde buscarlo en las fuentes.",
+];
+
 const explanationRules = [
   stepExplanationMarker,
   "La persona ya resolvió la pregunta. Puedes explicar por qué la respuesta correcta lo es y por qué las demás no, con apoyo en los fragmentos.",
@@ -81,18 +98,31 @@ export function buildStepHelpPrompt(
       (option, index) => `Opción ${letter(index)}: ${option}`,
     ),
   ];
+  const fillIn = context.activityType === "completar";
   if (context.mode === "explicacion") {
+    const [main, ...variants] = context.acceptedAnswers ?? [];
     step.push(
-      `Respuesta correcta: ${letter(context.correctOption)}`,
+      ...(fillIn
+        ? [
+            `Respuesta principal del hueco: ${main}`,
+            `Variantes aceptadas: ${variants.join(" | ") || "ninguna"}`,
+            `Respuestas de la persona: ${context.writtenAnswers.join(" | ") || "ninguna"}`,
+          ]
+        : [
+            `Respuesta correcta: ${letter(context.correctOption ?? 0)}`,
+            `Respuestas de la persona: ${context.selectedOptions.map(letter).join(", ") || "ninguna"}`,
+          ]),
       `Explicación de la ruta: ${context.explanation}`,
-      `Respuestas de la persona: ${context.selectedOptions.map(letter).join(", ") || "ninguna"}`,
     );
   }
   return {
     system: [
       ...common,
       ...(context.code ? codeRules : []),
-      ...(context.mode === "pistas" ? hintRules : explanationRules),
+      ...(fillIn ? fillInRules : []),
+      ...(context.mode === "pistas"
+        ? [...hintRules, ...(fillIn ? fillInHintRules : [])]
+        : explanationRules),
     ].join("\n"),
     user: [
       `<paso fuentes_cambiaron="${context.sourcesChanged ? "sí" : "no"}">`,

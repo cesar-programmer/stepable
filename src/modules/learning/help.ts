@@ -153,12 +153,13 @@ export async function askStepHelp(
   );
   const resolved =
     isResolved(state.state) &&
-    step.correctOption !== null &&
+    (step.correctOption !== null || step.acceptedAnswers !== null) &&
     step.explanation !== null;
   const base = {
     title: step.title,
     lesson: step.lesson,
     question: step.question,
+    activityType: step.activityType,
     code: step.code,
     options: step.options,
     sourcesChanged,
@@ -167,9 +168,11 @@ export async function askStepHelp(
     ? {
         ...base,
         mode: "explicacion",
-        correctOption: step.correctOption as number,
+        correctOption: step.correctOption,
+        acceptedAnswers: step.acceptedAnswers,
         explanation: step.explanation as string,
         selectedOptions: state.selectedOptions,
+        writtenAnswers: state.writtenAnswers,
       }
     : { ...base, mode: "pistas" };
   const mode = context.mode;

@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { RetrievedFragment } from "../knowledge/contract.ts";
 
-import { buildRoutePrompt, parseGeneratedRoute } from "./generation.ts";
+import {
+  buildRoutePrompt,
+  missingRequestedActivities,
+  parseGeneratedRoute,
+  revealsFillInSolution,
+} from "./generation.ts";
 
 const fragments: RetrievedFragment[] = [1, 2].map((ref) => ({
   ref,
@@ -119,8 +124,124 @@ describe("generated route validation", () => {
       { content: "getUser(1);", language: null, origin: "ilustrativo" },
       null,
     ]);
-    expect(buildRoutePrompt("Objetivo", fragments).system).toContain(
-      "no fuerces ejercicios de código",
+  });
+
+  it("accepts a fill-in step with one hole and exact accepted answers", () => {
+    const fillIn = (overrides: Record<string, unknown> = {}) =>
+      step({
+        tipo: "completar",
+        codigo: "const r = await [[hueco]](`/v2/users/${id}`);",
+        origen_codigo: "ilustrativo",
+        opciones: ["sobrante"],
+        correcta: 1,
+        respuestas_aceptadas: [" httpClient.get ", "this.httpClient.get"],
+        ...overrides,
+      });
+    const parsed = parseGeneratedRoute(
+      route([fillIn(), step(), step()]),
+      fragments,
     );
+    expect(parsed.kind).toBe("generated");
+    if (parsed.kind !== "generated") return;
+    expect(parsed.steps[0]).toMatchObject({
+      activityType: "completar",
+      options: [],
+      correctOption: null,
+      acceptedAnswers: ["httpClient.get", "this.httpClient.get"],
+    });
+    expect(parsed.steps[1]).toMatchObject({
+      activityType: "opcion_multiple",
+      acceptedAnswers: null,
+    });
+    for (const invalid of [
+      fillIn({ codigo: "sin hueco" }),
+      fillIn({ codigo: "[[hueco]] y [[hueco]]" }),
+      fillIn({ respuestas_aceptadas: [] }),
+      fillIn({ respuestas_aceptadas: ["a", "a"] }),
+    ]) {
+      expect(
+        parseGeneratedRoute(route([invalid, step(), step()]), fragments).kind,
+      ).toBe("invalid");
+    }
+  });
+
+  it("asks for the requested types and reports the ones a draft lacks", () => {
+    const prompt = buildRoutePrompt("Objetivo", fragments, [
+      "lectura_codigo",
+      "completar",
+    ]).system;
+    expect(prompt).toContain("TIPOS_SOLICITADOS: lectura_codigo, completar");
+    expect(prompt).toContain("no lo sustituyas por otro tipo");
+    expect(prompt).not.toContain('- "opcion_multiple":');
+    expect(buildRoutePrompt("Objetivo", fragments).system).toContain(
+      "TIPOS_SOLICITADOS: opcion_multiple",
+    );
+
+    const code = {
+      content: "x",
+      language: null,
+      origin: "ilustrativo" as const,
+    };
+    const plain = { activityType: "opcion_multiple" as const, code: null };
+    const reading = { activityType: "opcion_multiple" as const, code };
+    const fillIn = { activityType: "completar" as const, code };
+    const all = ["opcion_multiple", "lectura_codigo", "completar"] as const;
+    expect(
+      missingRequestedActivities([plain, reading, fillIn], [...all]),
+    ).toEqual([]);
+    expect(missingRequestedActivities([plain, plain, plain], [...all])).toEqual(
+      ["lectura_codigo", "completar"],
+    );
+    expect(
+      missingRequestedActivities([reading, fillIn], ["opcion_multiple"]),
+    ).toEqual(["opcion_multiple"]);
+  });
+
+  it("rejects a fill-in step whose lesson or question shows the solution", () => {
+    const fillIn = {
+      lesson: "Para probar se simula la respuesta [2].",
+      question: "Completa la llamada a la función probada.",
+      code: {
+        content:
+          'it("x", async () => {\n  expect(await [[hueco]]("1")).toEqual(r);\n});',
+        language: "ts",
+        origin: "ilustrativo" as const,
+      },
+      acceptedAnswers: ["getUser"],
+    };
+    // The real evaluation case: the lesson repeated the original block.
+    const leaking = {
+      ...fillIn,
+      lesson:
+        'Ejemplo:\n```ts\nit("x", async () => {\n  expect(await getUser("1")).toEqual(r);\n});\n``` [2]',
+    };
+    expect(revealsFillInSolution(fillIn)).toBe(false);
+    expect(revealsFillInSolution(leaking)).toBe(true);
+    expect(
+      revealsFillInSolution({
+        ...fillIn,
+        lesson: "La función getUser se prueba [2].",
+      }),
+    ).toBe(false);
+    expect(
+      parseGeneratedRoute(
+        route([
+          {
+            titulo: "Completar",
+            leccion: leaking.lesson,
+            citas: [2],
+            tipo: "completar",
+            codigo: fillIn.code.content,
+            origen_codigo: "ilustrativo",
+            pregunta: fillIn.question,
+            respuestas_aceptadas: ["getUser"],
+            explicacion: "Se prueba getUser [2].",
+          },
+          step(),
+          step(),
+        ]),
+        fragments,
+      ),
+    ).toEqual({ kind: "invalid", reason: "solucion_visible" });
   });
 });

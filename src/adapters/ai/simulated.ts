@@ -7,7 +7,10 @@ import {
   stepExplanationMarker,
   stepHintMarker,
 } from "../../modules/learning/help-prompt.ts";
-import { routePromptMarker } from "../../modules/routes/generation.ts";
+import {
+  requestedActivitiesMarker,
+  routePromptMarker,
+} from "../../modules/routes/generation.ts";
 
 /**
  * Deterministic stand-ins for technical tests only. They exercise the
@@ -22,7 +25,7 @@ export class SimulatedChatModel implements ChatModel {
     user: string;
   }): Promise<ChatCompletion> {
     if (input.system.includes(routePromptMarker))
-      return simulatedRoute(input.user);
+      return simulatedRoute(input.system, input.user);
     const first = /<fragmento id="(\d+)"[^>]*>\n([\s\S]*?)\n<\/fragmento>/.exec(
       input.user,
     );
@@ -45,47 +48,78 @@ export class SimulatedChatModel implements ChatModel {
   }
 }
 
-/** Three steps citing the received fragments in turn. */
-function simulatedRoute(user: string): ChatCompletion {
+/**
+ * Three steps citing the received fragments in turn, using only the
+ * requested activity types (each at least once). Code types need a fenced
+ * code block in some fragment; without one the draft is insufficient.
+ */
+function simulatedRoute(system: string, user: string): ChatCompletion {
+  const insufficient = {
+    text: JSON.stringify({ estado: "insuficiente", pasos: [] }),
+  };
   const fragments = [
     ...user.matchAll(/<fragmento id="(\d+)"[^>]*>\n([\s\S]*?)\n<\/fragmento>/g),
   ];
-  if (fragments.length === 0) {
-    return { text: JSON.stringify({ estado: "insuficiente", pasos: [] }) };
-  }
-  // Only a fragment with a fenced code block yields a code-reading step.
+  if (fragments.length === 0) return insufficient;
+  const requested = (
+    new RegExp(`^${requestedActivitiesMarker} (.+)$`, "m").exec(system)?.[1] ??
+    "opcion_multiple"
+  ).split(", ");
   const withCode = fragments
     .map(([, ref, content]) => ({
       ref,
       block: /```([\w+#.-]*)\n([\s\S]*?)\n```/.exec(content),
     }))
     .find((candidate) => candidate.block);
-  const pasos = [0, 1, 2].map((index) => {
+  const needsCode = requested.some((type) => type !== "opcion_multiple");
+  if (needsCode && !withCode?.block) return insufficient;
+
+  const kinds = [0, 1, 2].map((index) => requested[index] ?? requested[0]);
+  const pasos = kinds.map((kind, index) => {
     const [, ref, content] =
-      index === 0 && withCode
+      kind !== "opcion_multiple" && withCode
         ? (fragments.find(([, candidate]) => candidate === withCode.ref) ??
           fragments[0])
         : fragments[index % fragments.length];
     const excerpt = content.replace(/\s+/g, " ").slice(0, 160);
-    const code =
-      index === 0 && withCode?.block
-        ? {
-            codigo: withCode.block[2],
-            lenguaje: withCode.block[1] || null,
-            origen_codigo: "fuente",
-          }
-        : { codigo: null, lenguaje: null, origen_codigo: null };
-    return {
+    const base = {
       titulo: `Paso simulado ${index + 1}`,
       leccion: `Según la documentación: ${excerpt} [${ref}]`,
       citas: [Number(ref)],
-      ...code,
-      pregunta: code.codigo
+      explicacion: `Lo indica el fragmento [${ref}].`,
+    };
+    const block = withCode?.block;
+    const identifier = block
+      ? /\b[A-Za-z_][A-Za-z0-9_]{3,}\b/.exec(block[2])
+      : null;
+    if (kind === "completar" && block && identifier) {
+      return {
+        ...base,
+        // The lesson must not show the completed line.
+        leccion: `Completa el código según la documentación [${ref}].`,
+        tipo: "completar",
+        codigo: `${block[2].slice(0, identifier.index)}[[hueco]]${block[2].slice(identifier.index + identifier[0].length)}`,
+        lenguaje: block[1] || null,
+        origen_codigo: "fuente",
+        pregunta: `Completa el hueco con el fragmento exacto del fragmento ${ref}.`,
+        opciones: [],
+        correcta: null,
+        respuestas_aceptadas: [identifier[0]],
+      };
+    }
+    const reading = kind === "lectura_codigo" && block;
+    return {
+      ...base,
+      tipo: "opcion_multiple",
+      codigo: reading ? block[2] : null,
+      lenguaje: reading ? block[1] || null : null,
+      origen_codigo: reading ? "fuente" : null,
+      pregunta: reading
         ? `¿Qué hace el código del fragmento ${ref}?`
         : `¿Qué indica el fragmento ${ref}?`,
       opciones: ["Lo que dice la documentación", "Otra cosa", "Nada"],
       correcta: 0,
-      explicacion: `Lo indica el fragmento [${ref}].`,
+      respuestas_aceptadas: null,
     };
   });
   return {

@@ -15,6 +15,8 @@ export const routeLimits = {
   explanationMaxChars: 800,
   codeMaxChars: 3000,
   codeLanguageMaxChars: 30,
+  maxAcceptedAnswers: 5,
+  answerMaxChars: 200,
   candidates: 12,
   fragments: 12,
   fragmentMaxChars: 1500,
@@ -63,16 +65,41 @@ export type StepCode = {
   origin: CodeOrigin;
 };
 
+/**
+ * "opcion_multiple": choose one option. "completar": write the text for the
+ * single `codeHoleMarker` in the step's code; graded by exact comparison
+ * with the accepted answers, ignoring only leading and trailing spaces.
+ */
+export const activityTypes = ["opcion_multiple", "completar"] as const;
+export type ActivityType = (typeof activityTypes)[number];
+export const codeHoleMarker = "[[hueco]]";
+
+/**
+ * Kinds a responsible can request for a generated draft; each one must
+ * appear in at least one step. "lectura_codigo" is a multiple-choice step
+ * with code; "opcion_multiple" is one without code.
+ */
+export const requestedActivityTypes = [
+  "opcion_multiple",
+  "lectura_codigo",
+  "completar",
+] as const;
+export type RequestedActivity = (typeof requestedActivityTypes)[number];
+
 export type RouteStep = {
   id: string;
   position: number;
   title: string;
   lesson: string;
   question: string;
+  activityType: ActivityType;
   code: StepCode | null;
+  /** Empty for "completar". */
   options: string[];
-  /** Null for members: the answer key is not delivered before E5. */
+  /** Null for members and for "completar". */
   correctOption: number | null;
+  /** "completar" only; the first is the main answer. Null for members. */
+  acceptedAnswers: string[] | null;
   explanation: string | null;
   citations: RouteCitation[];
 };
@@ -81,9 +108,12 @@ export type RouteSummary = {
   id: string;
   title: string | null;
   objective: string;
+  requestedActivities: RequestedActivity[];
   status: RouteStatus;
   generationStatus: RouteGenerationStatus;
   generationError: string | null;
+  /** Requested types the draft lacked ("tipos_no_cubiertos"); null if unknown. */
+  missingActivities: RequestedActivity[] | null;
   needsReview: boolean;
   updatedAt: Date;
 };
@@ -91,16 +121,21 @@ export type RouteSummary = {
 export type RouteDetail = RouteSummary & {
   editVersion: number;
   publishedAt: Date | null;
-  sources: { id: string; title: string | null; active: boolean }[];
+  /**
+   * `hasCodeBlock`: the current version has a fenced code block (```), the
+   * only code signal detected; code in PDFs or plain text is not detected.
+   */
+  sources: {
+    id: string;
+    title: string | null;
+    active: boolean;
+    hasCodeBlock: boolean;
+  }[];
   steps: RouteStep[];
 };
 
 /** A step as generated, with citations already resolved from fragments. */
-export type DraftStep = Omit<
-  RouteStep,
-  "id" | "citations" | "correctOption" | "explanation"
-> & {
-  correctOption: number;
+export type DraftStep = Omit<RouteStep, "id" | "citations" | "explanation"> & {
   explanation: string;
   citations: Omit<RouteCitation, "state" | "currentVersionNumber">[];
 };
@@ -109,9 +144,11 @@ export type StepEdit = {
   title: string;
   lesson: string;
   question: string;
+  activityType: ActivityType;
   code: StepCode | null;
   options: string[];
-  correctOption: number;
+  correctOption: number | null;
+  acceptedAnswers: string[] | null;
   explanation: string;
 };
 
@@ -125,7 +162,8 @@ export type RouteMutationResult =
         | "conflict"
         | "invalid"
         | "citas_no_vigentes"
-        | "sin_pasos";
+        | "sin_pasos"
+        | "fuentes_no_disponibles";
     };
 
 export type RequestGenerationResult =
@@ -145,6 +183,7 @@ export type GenerationClaim = {
   routeId: string;
   spaceId: string;
   objective: string;
+  requestedActivities: RequestedActivity[];
   sourceIds: string[];
 };
 
@@ -154,6 +193,7 @@ export interface RouteRepository {
     actorIdentityId: string;
     spaceId: string;
     objective: string;
+    requestedActivities: RequestedActivity[];
     sourceIds: string[];
     token: string;
   }): Promise<RequestGenerationResult>;
@@ -174,10 +214,27 @@ export interface RouteRepository {
     token: string;
     status: "lista" | "insuficiente" | "fallida";
     errorCode?: string;
+    missingActivities?: RequestedActivity[];
     title?: string;
     steps?: DraftStep[];
   }): Promise<boolean>;
   failStaleGenerations(startedBefore: Date): Promise<number>;
+  /**
+   * Changes what the next generation will use (objective, sources, types) of
+   * a draft whose generation failed or lacked evidence. No provider call and
+   * no generation attempt.
+   */
+  updateGenerationRequest(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    routeId: string;
+    editVersion: number;
+    objective: string;
+    requestedActivities: RequestedActivity[];
+    sourceIds: string[];
+  }): Promise<RouteMutationResult>;
+  /** Generation attempts used today (UTC) in the space, queued ones included. */
+  countGenerationsToday(spaceId: string): Promise<number>;
   listRoutes(spaceId: string, onlyPublished: boolean): Promise<RouteSummary[]>;
   findRoute(
     spaceId: string,

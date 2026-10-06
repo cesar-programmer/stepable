@@ -27,10 +27,16 @@ export const routeErrorMessages: Record<string, string> = {
   borrador_no_valido:
     "El modelo devolvió un borrador que no supera la validación (estructura o citas). Puedes regenerar.",
   tiempo_agotado: "La generación no terminó a tiempo. Puedes regenerar.",
+  solucion_visible:
+    "El borrador generado mostraba la solución de un ejercicio de completar en su lección o su pregunta, así que no se aceptó. No se reintentó automáticamente; puedes regenerar (cuenta como un intento).",
+  tipos_no_cubiertos:
+    "El borrador generado no incluyó al menos un paso de cada tipo de actividad solicitado, así que no se aceptó. No se reintentó automáticamente; puedes regenerar (cuenta como un intento) o pedir otros tipos en una ruta nueva.",
 };
 
 export const routeNoticeMessages: Record<string, string> = {
   generation_queued: "Generación en cola. El borrador aparecerá aquí.",
+  request_saved:
+    "Cambios guardados. Todavía no se generó nada: pulsa «Generar con estos cambios» cuando quieras.",
   step_saved: "Paso guardado.",
   step_moved: "Paso movido.",
   step_deleted: "Paso eliminado.",
@@ -41,4 +47,10 @@ export const citationStateLabels: Record<string, string> = {
   vigente: "vigente",
   version_anterior: "versión anterior: la fuente fue reemplazada",
   fuente_eliminada: "fuente eliminada",
+};
+
+export const requestedActivityLabels: Record<string, string> = {
+  opcion_multiple: "Opción múltiple",
+  lectura_codigo: "Lectura de código",
+  completar: "Completar código",
 };

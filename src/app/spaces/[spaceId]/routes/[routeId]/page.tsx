@@ -10,6 +10,7 @@ import { AutoRefresh } from "@/app/components/auto-refresh";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import type { RouteDetail, RouteStep } from "@/modules/routes/contract";
 import { readRoute } from "@/modules/routes/service";
+import { PostgresSourceRepository } from "@/adapters/postgres/source-repository";
 
 import {
   deleteStepAction,
@@ -20,11 +21,14 @@ import {
 } from "../actions";
 import {
   citationStateLabels,
+  requestedActivityLabels,
   routeErrorMessages,
   routeGenerationLabels,
   routeNoticeMessages,
 } from "../messages";
 import { CodeBlock } from "../code-block";
+
+import { GenerationRecovery } from "./generation-recovery";
 
 type RoutePageProps = {
   params: Promise<{ spaceId: string; routeId: string }>;
@@ -90,11 +94,30 @@ function ReadOnlyStep({ spaceId, step }: { spaceId: string; step: RouteStep }) {
       <p>
         <strong>Pregunta:</strong> {step.question}
       </p>
-      <ol type="A">
-        {step.options.map((option, index) => (
-          <li key={index}>{option}</li>
-        ))}
-      </ol>
+      {step.activityType === "completar" ? (
+        <p className="muted">
+          Actividad: completar el hueco del código con un fragmento exacto.
+        </p>
+      ) : (
+        <ol type="A">
+          {step.options.map((option, index) => (
+            <li key={index}>{option}</li>
+          ))}
+        </ol>
+      )}
+      {step.acceptedAnswers ? (
+        <p className="muted">
+          Respuestas aceptadas:{" "}
+          {step.acceptedAnswers.map((answer, index) => (
+            <span key={index}>
+              {index > 0 ? " · " : ""}
+              <code>{answer}</code>
+              {index === 0 ? " (principal)" : ""}
+            </span>
+          ))}{" "}
+          · {step.explanation}
+        </p>
+      ) : null}
       {step.correctOption !== null ? (
         <p className="muted">
           Respuesta correcta: {String.fromCharCode(65 + step.correctOption)} ·{" "}
@@ -139,7 +162,17 @@ function EditableStep({
         </label>
         <Citations spaceId={spaceId} step={step} />
         <label>
-          Código de solo lectura (opcional; vacío para quitarlo)
+          Tipo de actividad
+          <select defaultValue={step.activityType} name="activityType">
+            <option value="opcion_multiple">Opción múltiple</option>
+            <option value="completar">
+              Completar el hueco del código (respuesta escrita)
+            </option>
+          </select>
+        </label>
+        <label>
+          Código de solo lectura (opcional; vacío para quitarlo; para
+          “completar”, obligatorio con un único [[hueco]])
           <textarea
             className="code-input"
             defaultValue={step.code?.content ?? ""}
@@ -183,9 +216,9 @@ function EditableStep({
           </label>
         ))}
         <label>
-          Respuesta correcta
+          Respuesta correcta (solo opción múltiple)
           <select
-            defaultValue={String(step.correctOption)}
+            defaultValue={String(step.correctOption ?? 0)}
             name="correctOption"
           >
             {options.map((_, index) => (
@@ -194,6 +227,18 @@ function EditableStep({
               </option>
             ))}
           </select>
+        </label>
+        <label>
+          Respuestas aceptadas (solo “completar”; una por línea, la primera es
+          la principal; se comparan exactas, ignorando solo espacios al inicio y
+          al final)
+          <textarea
+            className="code-input"
+            defaultValue={(step.acceptedAnswers ?? []).join("\n")}
+            name="acceptedAnswers"
+            rows={3}
+            spellCheck={false}
+          />
         </label>
         <label>
           Explicación
@@ -268,15 +313,27 @@ export default async function RoutePage({
     { identityId: currentIdentity.id, spaceId, routeId },
   );
   if (!result) notFound();
-  const { canManage, route } = result;
+  const { canManage, route, generationsLeftToday } = result;
 
   const query = await searchParams;
   const notice = typeof query.notice === "string" ? query.notice : "";
-  const error =
-    typeof query.error === "string"
-      ? query.error
-      : (route.generationError ?? "");
+  // Only action errors come from the URL; the generation outcome is read
+  // from the route itself, so a stale message never outlives its state.
+  const error = typeof query.error === "string" ? query.error : "";
   const generating = ["en_cola", "generando"].includes(route.generationStatus);
+  const recovering =
+    canManage &&
+    route.status === "borrador" &&
+    ["insuficiente", "fallida"].includes(route.generationStatus);
+  const showNotice =
+    Boolean(routeNoticeMessages[notice]) &&
+    (notice === "generation_queued" ? generating : notice !== "request_saved");
+  const readySources = recovering
+    ? await new PostgresSourceRepository(database, null).listSources(
+        spaceId,
+        true,
+      )
+    : [];
   const editable =
     canManage &&
     route.status === "borrador" &&
@@ -294,7 +351,20 @@ export default async function RoutePage({
       <p>
         <strong>Objetivo:</strong> {route.objective}
       </p>
-      {notice && routeNoticeMessages[notice] ? (
+      {canManage ? (
+        <p className="muted">
+          Tipos de actividad solicitados:{" "}
+          {route.requestedActivities
+            .map((type) => requestedActivityLabels[type])
+            .join(", ")}
+        </p>
+      ) : null}
+      {generating ? (
+        <p className="notice" role="status">
+          Generando el borrador. Puede tardar un minuto; la página se actualiza
+          sola.
+        </p>
+      ) : showNotice ? (
         <p className="notice">{routeNoticeMessages[notice]}</p>
       ) : null}
       {error && routeErrorMessages[error] ? (
@@ -302,11 +372,14 @@ export default async function RoutePage({
           {routeErrorMessages[error]}
         </p>
       ) : null}
-      {route.generationStatus === "insuficiente" ? (
-        <p className="error" role="alert">
-          Las fuentes seleccionadas no contienen evidencia suficiente para este
-          objetivo. No se inventaron pasos.
-        </p>
+      {recovering ? (
+        <GenerationRecovery
+          generationsLeftToday={generationsLeftToday ?? 0}
+          readySources={readySources}
+          route={route}
+          saved={notice === "request_saved"}
+          spaceId={spaceId}
+        />
       ) : null}
       {route.needsReview ? (
         <p className="error" role="alert">
@@ -340,7 +413,10 @@ export default async function RoutePage({
         )}
       </ol>
 
-      {canManage && route.status === "borrador" && !generating ? (
+      {canManage &&
+      route.status === "borrador" &&
+      !generating &&
+      !recovering ? (
         <div className="actions">
           {editable ? (
             <form action={publishRouteAction} className="inline-form">

@@ -1,4 +1,4 @@
-import type { StepCode } from "@/modules/routes/contract";
+import { codeHoleMarker, type StepCode } from "@/modules/routes/contract";
 
 const originLabels: Record<StepCode["origin"], string> = {
   fuente: "Código copiado de la fuente",
@@ -17,7 +17,18 @@ export function CodeBlock({ code }: { code: StepCode }) {
         {code.language ? ` · ${code.language}` : ""}
       </figcaption>
       <pre>
-        <code>{code.content}</code>
+        <code>
+          {code.content.split(codeHoleMarker).map((part, index) => (
+            <span key={index}>
+              {index > 0 ? (
+                <mark aria-label="hueco" className="code-hole">
+                  {codeHoleMarker}
+                </mark>
+              ) : null}
+              {part}
+            </span>
+          ))}
+        </code>
       </pre>
     </figure>
   );

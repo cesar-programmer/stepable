@@ -13,7 +13,9 @@ export type StepLearningState =
 export type AttemptRecord = {
   stepId: string;
   attemptNumber: number;
-  selectedOption: number;
+  /** Exactly one of both: the chosen option or the written answer. */
+  selectedOption: number | null;
+  answerText: string | null;
   correct: boolean;
 };
 
@@ -23,6 +25,7 @@ export type StepProgress = {
   attemptsUsed: number;
   attemptsLeft: number;
   selectedOptions: number[];
+  writtenAnswers: string[];
 };
 
 export type DerivedProgress = {
@@ -65,7 +68,12 @@ export function deriveProgress(
       state,
       attemptsUsed,
       attemptsLeft: isResolved(state) ? 0 : maxAttemptsPerStep - attemptsUsed,
-      selectedOptions: own.map((attempt) => attempt.selectedOption),
+      selectedOptions: own.flatMap((attempt) =>
+        attempt.selectedOption === null ? [] : [attempt.selectedOption],
+      ),
+      writtenAnswers: own.flatMap((attempt) =>
+        attempt.answerText === null ? [] : [attempt.answerText],
+      ),
     };
   });
   const resolvedSteps = steps.filter((step) => isResolved(step.state)).length;
@@ -76,4 +84,14 @@ export function deriveProgress(
     correctSteps: steps.filter((step) => step.state === "acertado").length,
     completed: stepIds.length > 0 && resolvedSteps === stepIds.length,
   };
+}
+
+/**
+ * A written answer is correct only if it equals an accepted answer after
+ * trimming its ends. Case, inner spaces and punctuation are kept: equivalent
+ * programs are not assumed to be equal.
+ */
+export function isAcceptedAnswer(answer: string, accepted: string[]): boolean {
+  const candidate = answer.trim();
+  return accepted.some((item) => item.trim() === candidate);
 }

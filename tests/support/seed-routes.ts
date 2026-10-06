@@ -7,8 +7,11 @@ export type SeedStep = {
   lesson: string;
   question: string;
   options: string[];
-  correct: number;
+  /** Null for "completar". */
+  correct: number | null;
   explanation: string;
+  activityType?: "opcion_multiple" | "completar";
+  acceptedAnswers?: string[];
   code?: { content: string; language: string | null; origin: string };
 };
 
@@ -37,11 +40,13 @@ export async function seedPublishedRoute(
     const [inserted] = await client<{ id: string }[]>`
       insert into public.route_steps
         (route_id, position, title, lesson, question, options, correct_option,
-         explanation, code, code_language, code_origin)
+         explanation, code, code_language, code_origin, activity_type,
+         accepted_answers)
       values (${routeId}, ${index + 1}, ${step.title}, ${step.lesson},
         ${step.question}, ${step.options}, ${step.correct}, ${step.explanation},
         ${step.code?.content ?? null}, ${step.code?.language ?? null},
-        ${step.code?.origin ?? null})
+        ${step.code?.origin ?? null}, ${step.activityType ?? "opcion_multiple"},
+        ${step.acceptedAnswers ?? null})
       returning id
     `;
     await client`

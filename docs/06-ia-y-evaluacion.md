@@ -142,3 +142,43 @@ Pruebas técnicas con modelo falso o simulado:
 Consumo: 1 intento registrado y 1 llamada, con 678 tokens de entrada y 38 de salida. Los datos temporales se eliminaron.
 
 Limitaciones: con el modelo real no se observó ningún paso con código, así que la calidad de esos pasos y el etiquetado del origen no están evaluados con IA real. No se verificó la causa del resultado “insuficiente”; una hipótesis es que el material era escaso para el mínimo de 3 pasos o que el objetivo pedía “escribir” código. No se repitió la generación.
+
+## Evaluación de E5.5 (completar fragmentos)
+
+Pruebas técnicas con modelo falso o simulado:
+- validación del borrador “completar”: hueco único, respuestas no vacías ni duplicadas, sobrantes de opción múltiple ignorados y copia literal verificada con el hueco sustituido;
+- corrección exacta (mayúsculas, espacios internos y signos cuentan; los extremos no);
+- edición y publicación, con la clave oculta a los integrantes;
+- intentos, doble envío y totales del equipo;
+- ayuda sin respuestas aceptadas antes de resolver y con ellas después;
+- compatibilidad con opción múltiple.
+
+**Evaluación con modelo real (2026-10-06):** OpenAI `gpt-4.1-mini`, `pnpm routes:evaluate --completar`, la única generación autorizada (1 llamada, sin embeddings). Se usaron 2 documentos sintéticos: una guía de servicios HTTP (`httpClient` de `@empresa/http`, `Result<T>` sin excepciones, versión en la ruta y un ejemplo en TypeScript) y una guía de pruebas con `mockHttpClient` y un ejemplo.
+
+| Comprobación | Resultado observado |
+| --- | --- |
+| Estado | “lista”: borrador de 3 pasos |
+| ¿Ejercicio de completar? | **No.** Los 3 pasos son de opción múltiple |
+| ¿Código de lectura (E5.4)? | **No.** Ningún paso trae código; las lecciones citan fragmentos de código entre comillas invertidas |
+| Respaldo | Lecciones, respuestas correctas y explicaciones coinciden con las fuentes: manejo de errores con `{ ok: false, error: response.status }`, importación de `httpClient` desde `@empresa/http` y simulación del 404 con `mockHttpClient`. Las citas [1] y [2] apuntan al documento correcto y están vigentes |
+
+Consumo: 1 intento registrado y 1 llamada, con 1032 tokens de entrada y 804 de salida. Los datos temporales se eliminaron.
+
+Análisis, sin repetir llamadas: el prompt presenta el código y el tipo “completar” como opcionales y pide no forzarlos, y el modelo optó por opción múltiple. Con una sola ejecución no se puede saber si es un comportamiento estable ni qué cambio del prompt o del objetivo lo alteraría. **La generación automática de ejercicios de completar y de pasos con código de lectura sigue sin evaluación real exitosa**; ambos solo están probados con modelos simulados y con la edición manual del responsable.
+
+### Segunda evaluación real de E5.5: tipos solicitados
+
+Tras añadir la selección de tipos, el usuario autorizó una única ejecución adicional: `pnpm routes:evaluate --completar` (2026-10-06, OpenAI `gpt-4.1-mini`, 1 llamada, sin embeddings), con los mismos 2 documentos sintéticos y los tipos **lectura de código** y **completar código**.
+
+| Comprobación | Resultado observado |
+| --- | --- |
+| Estado y cobertura | “lista”, con 3 pasos: 2 de lectura de código y 1 de completar. La validación del servidor de tipos solicitados se superó |
+| Lectura de código (pasos 1 y 2) | Código visible (la función `getUser` del documento) y preguntas sobre el cliente y el manejo de errores con respuesta correcta coherente con el código y la fuente [1]. El paso 1 repetía todo el código dentro del texto de la lección, y los dos pasos se solapan |
+| Completar (paso 3) | Hueco en `expect(await [[hueco]]("1"))`, con respuesta aceptada `getUser`. Al completar el hueco, el código coincide literalmente con el documento de pruebas [2], y la explicación es coherente |
+| Problema | **La lección del paso 3 reproducía el bloque de código original con `getUser("1")`, así que la solución era visible en el mismo paso.** Con el prompt anterior, la validación no lo impedía |
+| Origen del código | Los 3 fragmentos quedaron como “ilustrativo”, aunque eran copias literales: el modelo no declaró `fuente`. El etiquetado es conservador, pero inexacto |
+| Citas | [1] y [2] apuntan al documento correcto y están vigentes |
+
+Consumo: 1 intento registrado y 1 llamada, con 1037 tokens de entrada y 1149 de salida. Los datos temporales se eliminaron.
+
+Conclusión: con tipos solicitados, el modelo generó por primera vez lectura de código y completar respaldados por las fuentes. Es una sola ejecución: no demuestra estabilidad, y el ejercicio de completar requería corrección del responsable antes de publicar. **El ajuste posterior, que impide que la lección o la pregunta contengan la solución del hueco, no se evaluó con el modelo real.**

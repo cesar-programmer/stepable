@@ -9,7 +9,10 @@ import { getApplicationDatabase } from "@/adapters/postgres/database";
 import { PostgresRouteRepository } from "@/adapters/postgres/route-repository";
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 import { getServerEnvironment } from "@/lib/env";
-import type { RouteMutationResult } from "@/modules/routes/contract";
+import type {
+  RequestedActivity,
+  RouteMutationResult,
+} from "@/modules/routes/contract";
 import { normalizeCode } from "@/modules/routes/generation";
 import {
   deleteRouteStep,
@@ -18,6 +21,7 @@ import {
   publishRoute,
   requestRouteDraft,
   requestRouteRegeneration,
+  updateRouteRequest,
 } from "@/modules/routes/service";
 
 const routeFormSchema = z.object({
@@ -78,6 +82,10 @@ export async function createRouteAction(formData: FormData) {
     spaceId: spaceId.data,
     objective: String(formData.get("objective") ?? ""),
     sourceIds: formData.getAll("sourceIds").map(String),
+    // Unknown values are rejected by the service schema.
+    activityTypes: formData
+      .getAll("activityTypes")
+      .map(String) as RequestedActivity[],
   });
   if (result.kind === "unauthorized") notFound();
   redirect(
@@ -114,6 +122,7 @@ export async function saveStepAction(formData: FormData) {
     }))
     .filter((entry) => entry.text.length > 0);
   const correct = Number(formData.get("correctOption"));
+  const fillIn = formData.get("activityType") === "completar";
   const result = await editRouteStep(await dependencies(), {
     identityId: await identityId(form.path),
     spaceId: form.spaceId,
@@ -134,8 +143,18 @@ export async function saveStepAction(formData: FormData) {
                 : "ilustrativo",
           }
         : null,
-      options: entries.map((entry) => entry.text),
-      correctOption: entries.findIndex((entry) => entry.index === correct),
+      activityType: fillIn ? "completar" : "opcion_multiple",
+      // Fields of the other activity type are ignored.
+      options: fillIn ? [] : entries.map((entry) => entry.text),
+      correctOption: fillIn
+        ? null
+        : entries.findIndex((entry) => entry.index === correct),
+      acceptedAnswers: fillIn
+        ? String(formData.get("acceptedAnswers") ?? "")
+            .split(/\r?\n/)
+            .map((answer) => answer.trim())
+            .filter((answer) => answer.length > 0)
+        : null,
       explanation: String(formData.get("explanation") ?? ""),
     },
   });
@@ -176,4 +195,56 @@ export async function publishRouteAction(formData: FormData) {
     editVersion: form.editVersion,
   });
   finish(form.path, result, "route_published");
+}
+
+/** Objective, sources and types of a failed or insufficient draft. */
+async function saveRequest(
+  formData: FormData,
+  activityTypes?: RequestedActivity[],
+) {
+  const form = routeForm(formData);
+  const result = await updateRouteRequest(await dependencies(), {
+    identityId: await identityId(form.path),
+    spaceId: form.spaceId,
+    routeId: form.routeId,
+    editVersion: form.editVersion,
+    objective: String(formData.get("objective") ?? ""),
+    sourceIds: formData.getAll("sourceIds").map(String),
+    // Unknown values are rejected by the service schema.
+    activityTypes:
+      activityTypes ??
+      (formData.getAll("activityTypes").map(String) as RequestedActivity[]),
+  });
+  return { form, result };
+}
+
+/** Saves the adjustments only: no model call and no generation attempt. */
+export async function saveRouteRequestAction(formData: FormData) {
+  const { form, result } = await saveRequest(formData);
+  finish(form.path, result, "request_saved");
+}
+
+/** Explicit, user-chosen fallback; it does not generate anything. */
+export async function multipleChoiceOnlyAction(formData: FormData) {
+  const { form, result } = await saveRequest(formData, ["opcion_multiple"]);
+  finish(form.path, result, "request_saved");
+}
+
+/** Saves the adjustments and queues one new generation of the same route. */
+export async function generateWithChangesAction(formData: FormData) {
+  const { form, result } = await saveRequest(formData);
+  if (result.kind !== "ok") return finish(form.path, result, "");
+  const queued = await requestRouteRegeneration(await dependencies(), {
+    identityId: await identityId(form.path),
+    spaceId: form.spaceId,
+    routeId: form.routeId,
+  });
+  if (queued.kind === "unauthorized" || queued.kind === "not_found") {
+    notFound();
+  }
+  redirect(
+    queued.kind === "queued"
+      ? `${form.path}?notice=generation_queued`
+      : `${form.path}?error=${queued.kind}`,
+  );
 }

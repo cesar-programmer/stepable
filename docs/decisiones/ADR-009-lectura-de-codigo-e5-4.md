@@ -34,3 +34,7 @@ Durante su prueba manual de E5.4, el usuario informó el 2026-10-03 que, al preg
 **Causa:** el código sí llegaba al modelo, pero el prompt solo admitía como evidencia citas [n] a fragmentos y `parseModelAnswer` rechaza toda respuesta sin al menos una cita válida. Como ningún fragmento trataba ese código, la explicación no tenía nada que citar y se descartaba.
 
 **Ajuste:** si el paso tiene código, el modelo puede citarlo como `[código]`, que la interfaz muestra como “Código del paso”. Ese marcador solo respalda lo que hace el código visible; las convenciones o prácticas de la empresa siguen exigiendo citas [n] de fragmentos. El validador acepta el marcador solo cuando la ayuda lo habilita para un paso con código, y las citas [n] se validan igual que antes. Con código, la ayuda puede responder aunque no haya fragmentos; sin código, sigue respondiendo “insuficiente” sin llamar al modelo. No cambian los permisos ni las reglas antes y después de resolver.
+
+## Sustitución parcial (2026-10-06)
+
+Con E5.5, el código de lectura ya no se propone de forma opcional. Se genera cuando el responsable solicita el tipo “lectura de código” ([ADR-010](ADR-010-completar-codigo-e5-5.md), RN-37). En la evaluación real de ese día, los pasos de lectura solicitados se generaron con código y preguntas coherentes; es una sola ejecución.

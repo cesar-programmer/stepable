@@ -8,9 +8,11 @@ import type {
 } from "../../modules/learning/contract.ts";
 import {
   deriveProgress,
+  isAcceptedAnswer,
   isResolved,
   type AttemptRecord,
 } from "../../modules/learning/rules.ts";
+import type { ActivityType } from "../../modules/routes/contract.ts";
 
 import type { StepableDatabase } from "./database.ts";
 
@@ -26,7 +28,8 @@ async function rows<T>(executor: Executor, query: SQL): Promise<T[]> {
 type AttemptRow = {
   step_id: string;
   attempt_number: number;
-  selected_option: number;
+  selected_option: number | null;
+  answer_text: string | null;
   correct: boolean;
 };
 
@@ -34,6 +37,7 @@ const toAttempt = (row: AttemptRow): AttemptRecord => ({
   stepId: row.step_id,
   attemptNumber: row.attempt_number,
   selectedOption: row.selected_option,
+  answerText: row.answer_text,
   correct: row.correct,
 });
 
@@ -103,7 +107,7 @@ export class PostgresLearningRepository implements LearningRepository {
     if (!progress) return null;
     const attempts = await rows<AttemptRow>(
       this.database,
-      sql`select step_id, attempt_number, selected_option, correct
+      sql`select step_id, attempt_number, selected_option, answer_text, correct
           from public.route_step_attempts
           where route_id = ${routeId} and profile_id = ${identityId}`,
     );
@@ -145,7 +149,7 @@ export class PostgresLearningRepository implements LearningRepository {
     const attempts = await rows<AttemptRow & { profile_id: string }>(
       this.database,
       sql`select attempt.profile_id, attempt.step_id, attempt.attempt_number,
-            attempt.selected_option, attempt.correct
+            attempt.selected_option, attempt.answer_text, attempt.correct
           from public.route_step_attempts attempt
           join public.route_progress progress
             on progress.route_id = attempt.route_id
@@ -178,7 +182,8 @@ export class PostgresLearningRepository implements LearningRepository {
     spaceId: string;
     routeId: string;
     stepId: string;
-    selectedOption: number;
+    selectedOption: number | null;
+    answerText: string | null;
     submissionId: string;
   }): Promise<AnswerResult> {
     return this.database.transaction(async (transaction) => {
@@ -203,18 +208,21 @@ export class PostgresLearningRepository implements LearningRepository {
 
       const steps = await rows<{
         id: string;
+        activity_type: ActivityType;
         options: string[];
-        correct_option: number;
+        correct_option: number | null;
+        accepted_answers: string[] | null;
       }>(
         transaction,
-        sql`select id, options, correct_option from public.route_steps
+        sql`select id, activity_type, options, correct_option, accepted_answers
+            from public.route_steps
             where route_id = ${input.routeId} order by position`,
       );
       const loadAttempts = async () =>
         (
           await rows<AttemptRow>(
             transaction,
-            sql`select step_id, attempt_number, selected_option, correct
+            sql`select step_id, attempt_number, selected_option, answer_text, correct
                 from public.route_step_attempts
                 where route_id = ${input.routeId}
                   and profile_id = ${input.identityId}`,
@@ -264,7 +272,15 @@ export class PostgresLearningRepository implements LearningRepository {
       }
 
       const step = steps.find((item) => item.id === input.stepId);
-      if (!step || input.selectedOption >= step.options.length) {
+      // The response must match the activity of the step.
+      const fillIn = step?.activity_type === "completar";
+      if (
+        !step ||
+        (fillIn
+          ? input.answerText === null
+          : input.selectedOption === null ||
+            input.selectedOption >= step.options.length)
+      ) {
         return { kind: "invalid" as const };
       }
       const attempts = await loadAttempts();
@@ -280,14 +296,18 @@ export class PostgresLearningRepository implements LearningRepository {
         return { kind: "not_current" as const };
       }
 
-      const correct = input.selectedOption === step.correct_option;
+      const answerText = fillIn ? (input.answerText ?? "").trim() : null;
+      const selectedOption = fillIn ? null : input.selectedOption;
+      const correct = fillIn
+        ? isAcceptedAnswer(answerText ?? "", step.accepted_answers ?? [])
+        : selectedOption === step.correct_option;
       await transaction.execute(
         sql`insert into public.route_step_attempts
               (route_id, profile_id, step_id, attempt_number, selected_option,
-               correct, submission_id)
+               answer_text, correct, submission_id)
             values (${input.routeId}, ${input.identityId}, ${step.id},
-              ${current.attemptsUsed + 1}, ${input.selectedOption}, ${correct},
-              ${input.submissionId})`,
+              ${current.attemptsUsed + 1}, ${selectedOption}, ${answerText},
+              ${correct}, ${input.submissionId})`,
       );
       const updated = await loadAttempts();
       const result = summarize(updated, correct, false);

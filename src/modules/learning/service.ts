@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { authorizeSpaceAction } from "../access/authorization.ts";
 import type { AccessRepository } from "../access/contract.ts";
-import type { RouteRepository } from "../routes/contract.ts";
+import { routeLimits, type RouteRepository } from "../routes/contract.ts";
 
 import type {
   AnswerResult,
@@ -92,23 +92,37 @@ export async function readLearnerView(
         attemptsUsed: state?.attemptsUsed ?? 0,
         attemptsLeft: state?.attemptsLeft ?? 0,
         selectedOptions: state?.selectedOptions ?? [],
+        writtenAnswers: state?.writtenAnswers ?? [],
         lesson: visible ? step.lesson : null,
         question: visible ? step.question : null,
+        activityType: step.activityType,
         code: visible ? step.code : null,
         options: visible ? step.options : null,
         citations: visible ? step.citations : [],
         correctOption: resolved ? step.correctOption : null,
+        acceptedAnswers: resolved ? step.acceptedAnswers : null,
         explanation: resolved ? step.explanation : null,
       };
     }),
   };
 }
 
-const answerSchema = z.object({
-  stepId: z.uuid(),
-  selectedOption: z.number().int().min(0).max(3),
-  submissionId: z.uuid(),
-});
+// Exactly one response: an option for multiple choice or a written answer.
+const answerSchema = z
+  .object({
+    stepId: z.uuid(),
+    selectedOption: z.number().int().min(0).max(3).nullable(),
+    answerText: z
+      .string()
+      .trim()
+      .min(1)
+      .max(routeLimits.answerMaxChars)
+      .nullable(),
+    submissionId: z.uuid(),
+  })
+  .refine(
+    (input) => (input.selectedOption === null) !== (input.answerText === null),
+  );
 
 /** Graded on the server; a repeated submission returns the stored result. */
 export async function answerStep(
@@ -118,15 +132,25 @@ export async function answerStep(
     spaceId: string;
     routeId: string;
     stepId: string;
-    selectedOption: number;
+    selectedOption?: number | null;
+    answerText?: string | null;
     submissionId: string;
   },
 ): Promise<AnswerResult> {
-  if (!answerSchema.safeParse(input).success) return { kind: "invalid" };
+  const parsed = answerSchema.safeParse({
+    ...input,
+    selectedOption: input.selectedOption ?? null,
+    answerText: input.answerText ?? null,
+  });
+  if (!parsed.success) return { kind: "invalid" };
   if (!(await canRead(dependencies, input.identityId, input.spaceId))) {
     return { kind: "unauthorized" };
   }
-  return dependencies.learningRepository.recordAnswer(input);
+  return dependencies.learningRepository.recordAnswer({
+    ...input,
+    selectedOption: parsed.data.selectedOption,
+    answerText: parsed.data.answerText,
+  });
 }
 
 /**

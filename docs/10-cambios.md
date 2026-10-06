@@ -1,5 +1,36 @@
 # Historial de cambios
 
+## 2026-10-06 · 4.1 · Cierre de E5.5
+
+- El usuario confirmó la comprobación manual de E5.5 (completar código, selección de actividades y recuperación de generaciones fallidas) y aceptó la entrega; no se le atribuyen escenarios adicionales.
+- Se reutilizó la verificación técnica aprobada (después solo cambió documentación); sin llamadas reales. ADR-010 aceptado.
+- Limitaciones conservadas: corrección textual, evaluación real pequeña y validación de solución visible sin reevaluar con el modelo real. La V0 sigue incompleta (RF-10 y piloto).
+
+## 2026-10-06 · 4.0 · Recuperación de generaciones (E5.5)
+
+- Una ruta con evidencia insuficiente, actividades no cubiertas o fallo técnico explica el caso sin códigos internos. Permite ajustar en la misma ruta el objetivo, las fuentes y las actividades (o usar solo opción múltiple) sin llamadas ni intentos, y generar después de forma explícita, con el consumo y la cuota indicados (RN-38).
+- Verificado con modelo simulado: 78 unitarias, 67 de integración y 27 de navegador; se corrigió un estado obsoleto de las casillas tras guardar. Sin llamadas reales, commit ni push.
+
+## 2026-10-06 · 3.9 · Mensajes de generación fallida (E5.5)
+
+- El aviso “Generación en cola” solo se muestra mientras la generación está pendiente.
+- `tipos_no_cubiertos` muestra los tipos solicitados y los que faltaron (columna nueva, nula en fallos anteriores). La vista indica si las fuentes seleccionadas tienen bloques de código; en la ruta fallida revisada, no tenían código.
+- Verificado con modelo simulado; sin llamadas reales, commit ni push. E5.5 sigue pendiente de validación.
+
+## 2026-10-06 · 3.8 · Tipos de actividad solicitados (E5.5)
+
+- Al generar, el responsable elige los tipos solicitados: opción múltiple (predeterminado), lectura de código o completar código. El borrador debe incluir al menos un paso de cada uno. El servidor rechaza con `tipos_no_cubiertos`, sin reintentar, y sin evidencia el borrador queda como insuficiente (RN-37). Migración aditiva; las rutas existentes conservan solo opción múltiple.
+- Evaluación real (1 llamada, 1037/1149 tokens): 2 pasos de lectura y 1 de completar, con solución y citas coherentes, pero la lección del paso de completar mostraba la solución. Se añadió una validación para impedirlo, no evaluada con el modelo real.
+- Pruebas técnicas: 78 unitarias, 66 de integración y 26 de navegador.
+- Sin comprobación manual atribuida, commit ni push.
+
+## 2026-10-06 · 3.7 · Implementación de E5.5
+
+- Añadida la actividad “completar”: código con un único hueco, respuesta escrita y corrección exacta en el servidor (solo se ignoran los espacios de los extremos), con respuesta principal y variantes configuradas por el responsable. Se reutilizan intentos, progreso, doble envío, totales y ayuda sin revelar la solución antes de resolver (RN-36, ADR-010 propuesto). Migración aditiva; la opción múltiple no cambia.
+- Pruebas técnicas: 76 unitarias, 65 de integración y 26 de navegador.
+- Evaluación real (1 llamada, 1032/804 tokens): 3 pasos de opción múltiple respaldados por las fuentes, sin “completar” ni código. La generación automática de ejercicios con código (E5.4 y E5.5) sigue sin evaluación real exitosa.
+- Sin comprobación manual atribuida, commit ni push.
+
 ## 2026-10-03 · 3.6 · Cierre de E5.4
 
 - El usuario confirmó la corrección de la ayuda sobre “Código del paso” y la prueba manual de E5.4, y aceptó la entrega; no se le atribuyen pruebas adicionales.

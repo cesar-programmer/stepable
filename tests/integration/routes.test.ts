@@ -7,6 +7,7 @@ import { createPostgresDatabase } from "../../src/adapters/postgres/database.ts"
 import { PostgresKnowledgeRepository } from "../../src/adapters/postgres/knowledge-repository.ts";
 import { PostgresRouteRepository } from "../../src/adapters/postgres/route-repository.ts";
 import { bootstrapSpace } from "../../src/modules/access/bootstrap-space.ts";
+import { SimulatedChatModel } from "../../src/adapters/ai/simulated.ts";
 import type { ChatModel } from "../../src/modules/knowledge/contract.ts";
 import type { RouteStep } from "../../src/modules/routes/contract.ts";
 import {
@@ -19,6 +20,7 @@ import {
   readRoute,
   requestRouteDraft,
   requestRouteRegeneration,
+  updateRouteRequest,
 } from "../../src/modules/routes/service.ts";
 import {
   createAdminClient,
@@ -136,9 +138,17 @@ const stepEdit = (step: RouteStep, changes: Partial<RouteStep> = {}) => ({
   title: changes.title ?? step.title,
   lesson: changes.lesson ?? step.lesson,
   question: changes.question ?? step.question,
+  activityType: changes.activityType ?? step.activityType,
   code: changes.code !== undefined ? changes.code : step.code,
   options: changes.options ?? step.options,
-  correctOption: changes.correctOption ?? step.correctOption ?? 0,
+  correctOption:
+    changes.correctOption !== undefined
+      ? changes.correctOption
+      : (step.correctOption ?? 0),
+  acceptedAnswers:
+    changes.acceptedAnswers !== undefined
+      ? changes.acceptedAnswers
+      : step.acceptedAnswers,
   explanation: changes.explanation ?? step.explanation ?? "",
 });
 
@@ -476,6 +486,42 @@ describe("E4.1 AI-drafted onboarding routes", () => {
       route = await editable(queued.routeId);
       expect(route.steps[1].code).toEqual(code);
     }
+    // The responsible turns that step into a fill-in with one hole.
+    const fillIn = {
+      activityType: "completar" as const,
+      code: {
+        content: "publicar([[hueco]]);",
+        language: "ts",
+        origin: "ilustrativo" as const,
+      },
+      options: [],
+      correctOption: null,
+      acceptedAnswers: ['"/v2"', "'/v2'"],
+    };
+    for (const invalid of [
+      { ...fillIn, code: { ...fillIn.code, content: "publicar();" } },
+      { ...fillIn, acceptedAnswers: [] },
+      { ...fillIn, acceptedAnswers: ["a\nb"] },
+    ]) {
+      await expect(
+        editRouteStep(dependencies, {
+          ...base,
+          editVersion: route.editVersion,
+          stepId: second.id,
+          edit: stepEdit(route.steps[1], invalid),
+        }),
+      ).resolves.toEqual({ kind: "invalid" });
+    }
+    await expect(
+      editRouteStep(dependencies, {
+        ...base,
+        editVersion: route.editVersion,
+        stepId: second.id,
+        edit: stepEdit(route.steps[1], fillIn),
+      }),
+    ).resolves.toEqual({ kind: "ok" });
+    route = await editable(queued.routeId);
+    expect(route.steps[1]).toMatchObject(fillIn);
 
     await expect(
       publishRoute(dependencies, {
@@ -499,6 +545,11 @@ describe("E4.1 AI-drafted onboarding routes", () => {
         origin: "fuente",
       },
       correctOption: null,
+      explanation: null,
+    });
+    expect(published?.route.steps[1]).toMatchObject({
+      activityType: "completar",
+      acceptedAnswers: null,
       explanation: null,
     });
     const after = await editable(queued.routeId);
@@ -587,5 +638,192 @@ describe("E4.1 AI-drafted onboarding routes", () => {
         editVersion: draft.editVersion,
       }),
     ).resolves.toEqual({ kind: "citas_no_vigentes" });
+  });
+
+  it("requires a step of every requested activity type, checked on the server", async () => {
+    // This case needs fresh room under the daily generation limit.
+    await connection.client`
+      delete from public.route_generation_attempts where space_id = ${spaceId}
+    `;
+    const codeSource = await seedReadySource(connection.client, {
+      spaceId,
+      creatorId: owner.id,
+      title: "Servicios HTTP",
+      sections: [
+        "Toda llamada usa httpClient.\n```ts\nconst user = await httpClient.get(`/v2/users/${id}`);\n```",
+      ],
+    });
+    const objective = "Aprender a leer y completar llamadas HTTP de servicios";
+    const types = ["lectura_codigo", "completar"] as const;
+    const ask = (sourceIds: string[], activityTypes: string[] = [...types]) =>
+      requestRouteDraft(dependencies, {
+        identityId: owner.id,
+        spaceId,
+        objective,
+        sourceIds,
+        activityTypes: activityTypes as (typeof types)[number][],
+      });
+    await expect(ask([codeSource.sourceId], ["ejecutar"])).resolves.toEqual({
+      kind: "invalid",
+    });
+    await expect(ask([codeSource.sourceId], [])).resolves.toEqual({
+      kind: "invalid",
+    });
+
+    // The model ignores the request and returns plain questions only.
+    const plain = await ask([codeSource.sourceId]);
+    if (plain.kind !== "queued") throw new Error(plain.kind);
+    const { model, calls } = routeModel((user) => {
+      const ref = /<fragmento id="(\d+)"/.exec(user)?.[1] ?? "1";
+      return JSON.stringify({
+        estado: "generado",
+        titulo: "Solo preguntas",
+        pasos: [1, 2, 3].map((n) => ({
+          titulo: `Paso ${n}`,
+          leccion: `Contenido [${ref}]`,
+          citas: [Number(ref)],
+          pregunta: `Pregunta ${n}`,
+          opciones: ["A", "B", "C"],
+          correcta: 0,
+          explicacion: "Según la fuente.",
+        })),
+      });
+    });
+    await expect(generate(plain.routeId, model)).resolves.toBe("fallida");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("httpClient");
+    expect(await editable(plain.routeId)).toMatchObject({
+      generationError: "tipos_no_cubiertos",
+      requestedActivities: ["lectura_codigo", "completar"],
+      missingActivities: ["lectura_codigo", "completar"],
+      sources: [{ title: "Servicios HTTP", hasCodeBlock: true }],
+      steps: [],
+    });
+
+    // Without code in the sources the simulated model reports insufficiency.
+    const noCode = await ask([apiSource.sourceId]);
+    if (noCode.kind !== "queued") throw new Error(noCode.kind);
+    await expect(
+      generate(noCode.routeId, new SimulatedChatModel()),
+    ).resolves.toBe("insuficiente");
+    expect(await editable(noCode.routeId)).toMatchObject({
+      missingActivities: null,
+      sources: [{ hasCodeBlock: false }],
+    });
+
+    // With code, every requested type appears and nothing else.
+    const covered = await ask([codeSource.sourceId]);
+    if (covered.kind !== "queued") throw new Error(covered.kind);
+    await expect(
+      generate(covered.routeId, new SimulatedChatModel()),
+    ).resolves.toBe("lista");
+    const route = await editable(covered.routeId);
+    expect(
+      route.steps.map((step) => [step.activityType, step.code !== null]),
+    ).toEqual([
+      ["opcion_multiple", true],
+      ["completar", true],
+      ["opcion_multiple", true],
+    ]);
+    expect(route.steps[1]).toMatchObject({
+      acceptedAnswers: ["const"],
+      code: { origin: "fuente" },
+    });
+  });
+
+  it("recovers a failed or insufficient draft in place: adjusting is free, generating is explicit", async () => {
+    await connection.client`
+      delete from public.route_generation_attempts where space_id = ${spaceId}
+    `;
+    const codeSource = await seedReadySource(connection.client, {
+      spaceId,
+      creatorId: owner.id,
+      title: "Servicios con código",
+      sections: [
+        "Toda llamada usa httpClient.\n```ts\nconst user = await httpClient.get(`/v2/users/${id}`);\n```",
+      ],
+    });
+    const objective = "Aprender a leer y completar llamadas HTTP de servicios";
+    // Insufficient: code types requested from a source without code.
+    const queued = await requestRouteDraft(dependencies, {
+      identityId: owner.id,
+      spaceId,
+      objective,
+      sourceIds: [apiSource.sourceId],
+      activityTypes: ["lectura_codigo", "completar"],
+    });
+    if (queued.kind !== "queued") throw new Error(queued.kind);
+    const model = new SimulatedChatModel();
+    await expect(generate(queued.routeId, model)).resolves.toBe("insuficiente");
+
+    const attempts = async () =>
+      (
+        await connection.client`
+          select count(*)::int as count from public.route_generation_attempts
+          where space_id = ${spaceId}
+        `
+      )[0].count as number;
+    const before = { attempts: await attempts(), jobs: jobs.length };
+    let route = await editable(queued.routeId);
+    const adjust = (
+      changes: Partial<Parameters<typeof updateRouteRequest>[1]>,
+    ) =>
+      updateRouteRequest(dependencies, {
+        identityId: owner.id,
+        spaceId,
+        routeId: queued.routeId,
+        editVersion: route.editVersion,
+        objective,
+        sourceIds: [apiSource.sourceId],
+        activityTypes: ["lectura_codigo", "completar"],
+        ...changes,
+      });
+    await expect(adjust({ identityId: member.id })).resolves.toEqual({
+      kind: "unauthorized",
+    });
+    await expect(adjust({ sourceIds: [foreignSourceId] })).resolves.toEqual({
+      kind: "fuentes_no_disponibles",
+    });
+    await expect(adjust({ activityTypes: [] })).resolves.toEqual({
+      kind: "invalid",
+    });
+    // Adjusting keeps the same route and its failed state.
+    await expect(
+      adjust({
+        objective: `${objective} del equipo`,
+        sourceIds: [codeSource.sourceId],
+      }),
+    ).resolves.toEqual({ kind: "ok" });
+    await expect(adjust({})).resolves.toEqual({ kind: "conflict" });
+    route = await editable(queued.routeId);
+    expect(route).toMatchObject({
+      generationStatus: "insuficiente",
+      objective: `${objective} del equipo`,
+      requestedActivities: ["lectura_codigo", "completar"],
+      sources: [{ id: codeSource.sourceId, hasCodeBlock: true }],
+    });
+    expect({ attempts: await attempts(), jobs: jobs.length }).toEqual(before);
+
+    // Generating again is explicit and reuses the route.
+    await expect(
+      requestRouteRegeneration(dependencies, {
+        identityId: owner.id,
+        spaceId,
+        routeId: queued.routeId,
+      }),
+    ).resolves.toEqual({ kind: "queued", routeId: queued.routeId });
+    await expect(generate(queued.routeId, model)).resolves.toBe("lista");
+    route = await editable(queued.routeId);
+    expect(route.steps.map((step) => step.activityType)).toContain("completar");
+    expect(await attempts()).toBe(before.attempts + 1);
+
+    // A ready draft is no longer adjustable this way.
+    await expect(adjust({})).resolves.toEqual({ kind: "not_editable" });
+    const result = await readRoute(dependencies, {
+      identityId: owner.id,
+      spaceId,
+      routeId: queued.routeId,
+    });
+    expect(result?.generationsLeftToday).toBe(5 - (before.attempts + 1));
   });
 });

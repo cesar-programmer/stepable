@@ -475,3 +475,9 @@ textarea {
   border-radius: 0.5rem;
   padding: 0.75rem;
 }
+
+.code-hole {
+  background: #fde68a;
+  border-radius: 0.25rem;
+  padding: 0 0.15rem;
+}

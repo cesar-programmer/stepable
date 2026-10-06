@@ -471,3 +471,39 @@ Estado: cerrada para el prototipo local el 2026-10-03 ([ADR-009](decisiones/ADR-
 - **Interfaz:** `routes/code-block.tsx` (`<pre><code>` con texto escapado y etiqueta de origen) en la vista de la ruta y en `/learn`. El editor añade código, lenguaje y origen, y el código vacío lo quita.
 - **Ayuda:** `buildStepHelpPrompt` incluye el código con su origen dentro de la etiqueta `<paso>` neutralizada, identificado como “Código del paso [código]”. `parseModelAnswer` admite un marcador local opcional (`localEvidence`): solo la ayuda lo habilita, y solo para pasos con código. El resultado indica `citesStepCode` y las citas [n] se validan igual que antes.
 - **Modelo simulado:** propone un paso de lectura de código solo si un fragmento contiene un bloque de código delimitado.
+
+## 26. Completar fragmentos de código (E5.5)
+
+Estado: cerrada para el prototipo local el 2026-10-06 ([ADR-010](decisiones/ADR-010-completar-codigo-e5-5.md)). Regla: RN-36.
+
+- **Datos:** migración `20261003000000_e5_5_fill_in_code.sql`.
+  - `route_steps.activity_type` (predeterminado `opcion_multiple`) y `accepted_answers`. Una restricción por tipo exige opciones y respuesta correcta en opción múltiple, y en “completar” exige un único `[[hueco]]`, sin opciones, con 1 a 5 respuestas.
+  - `route_step_attempts.answer_text`, con `selected_option` opcional; una restricción exige exactamente uno de los dos.
+  - Los pasos y los intentos existentes no se reescriben.
+- **Validación:** `stepEditSchema` aplica reglas por tipo y es común a la edición y la generación. `countHoles` comprueba el hueco.
+- **Corrección:** `isAcceptedAnswer` (recorta solo los extremos) dentro de la transacción de `recordAnswer`, que también rechaza respuestas que no corresponden al tipo del paso.
+- **Vistas:** `LearnerStep.acceptedAnswers` y `writtenAnswers`; la clave solo se entrega al resolver. `readRoute` oculta `acceptedAnswers` a los integrantes. `CodeBlock` resalta el hueco como texto.
+- **Ayuda:** en modo explicación, `StepHelpContext` incluye `acceptedAnswers` y `writtenAnswers`; en modo pistas el tipo no los admite.
+- **Evaluación:** `pnpm routes:evaluate --completar` (1 generación, sin embeddings) y `--simulado` para el ensayo gratuito.
+
+### Tipos de actividad solicitados (ajuste de E5.5)
+
+- **Datos:** migración `20261006000000_e5_5_requested_activities.sql`: `routes.requested_activities` (de 1 a 3 valores; predeterminado `{opcion_multiple}`, también para las rutas existentes). La regeneración conserva los tipos de la ruta.
+- **Solicitud:** casillas en el formulario de generación; `requestRouteDraft` valida los valores y los guarda en orden fijo.
+- **Prompt:** `buildRoutePrompt(objective, fragments, requested)` incluye la línea `TIPOS_SOLICITADOS:` y la definición solo de los tipos pedidos, con la instrucción de usar “insuficiente” en lugar de sustituirlos.
+- **Servidor:** `missingRequestedActivities` clasifica cada paso con `activityKind` (completar; opción múltiple con código = lectura de código; sin código = opción múltiple). Si falta algún tipo, `generateRouteDraft` termina en `fallida` con `tipos_no_cubiertos`, sin reintentar. El log registra los tipos pedidos y los que faltan.
+- **Solución visible:** `revealsFillInSolution` rechaza (`solucion_visible`, sin reintento) un paso “completar” generado cuya lección o pregunta contiene la línea del hueco ya completada con una respuesta aceptada. Solo aplica a la generación; el editor del responsable no lo impide.
+- **Modelo simulado:** usa solo los tipos pedidos y responde “insuficiente” si se piden tipos de código y ningún fragmento contiene un bloque de código.
+
+### Mensajes de generación fallida (corrección de E5.5)
+
+- El aviso “Generación en cola” llega en la URL (`?notice=generation_queued`) y ahora solo se muestra mientras el borrador está `en_cola` o `generando`.
+- Migración `20261006010000_e5_5_missing_activities.sql`: `routes.generation_missing_activities` guarda los tipos que faltaron con `tipos_no_cubiertos`. Se anula al regenerar y es nulo en los fallos anteriores, donde la vista indica que no se registró.
+- `findRoute` añade `hasCodeBlock` a cada fuente: si su versión vigente contiene un bloque delimitado con tres comillas invertidas. Es la única señal detectada; el código sin ese formato, por ejemplo en un PDF, no se detecta. Si se pidieron tipos de código y la ruta falló o quedó insuficiente, la vista indica qué fuentes tienen bloques de código o que ninguna los tiene.
+
+### Recuperación de una generación fallida (E5.5, RN-38)
+
+- `updateRouteRequest` (servicio) y `updateGenerationRequest` (repositorio) cambian el objetivo, las fuentes y los tipos de un borrador `insuficiente` o `fallida`, en una transacción que revalida al responsable, la versión de edición y la disponibilidad de las fuentes. No encolan trabajos ni registran intentos. “Generar con estos cambios” guarda y después usa `requestRouteRegeneration` sobre la misma ruta.
+- `readRoute` devuelve `generationsLeftToday` (responsables), calculado con `countGenerationsToday`, el mismo cómputo que el límite diario.
+- Interfaz: `generation-recovery.tsx` distingue evidencia insuficiente, actividades no cubiertas y fallo técnico, y ofrece “Cambiar actividades”, “Cambiar fuentes” (con enlace a cargar documentos), “Editar objetivo” y “Usar solo opción múltiple”. El formulario se vuelve a montar con cada versión de edición para mostrar los valores guardados.
+- La página toma el resultado de la generación del estado de la ruta, no de la URL. Durante el procesamiento solo muestra “Generando el borrador”, y el aviso de cola o de guardado nunca convive con un error de generación.

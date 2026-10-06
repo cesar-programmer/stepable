@@ -15,7 +15,9 @@ import type {
 import { mergeCandidates, prepareFragments } from "../knowledge/retrieval.ts";
 
 import {
+  requestedActivityTypes,
   routeLimits,
+  type RequestedActivity,
   type DraftStep,
   type RequestGenerationResult,
   type RouteDetail,
@@ -26,6 +28,7 @@ import {
 import {
   buildRoutePrompt,
   parseGeneratedRoute,
+  missingRequestedActivities,
   stepEditSchema,
 } from "./generation.ts";
 
@@ -45,6 +48,12 @@ const requestSchema = z.object({
     .min(1)
     .max(routeLimits.maxSources)
     .refine((ids) => new Set(ids).size === ids.length),
+  // Multiple choice alone keeps the previous behavior.
+  activityTypes: z
+    .array(z.enum(requestedActivityTypes))
+    .min(1)
+    .refine((types) => new Set(types).size === types.length)
+    .default(["opcion_multiple"]),
 });
 
 async function canManage(
@@ -70,6 +79,7 @@ export async function requestRouteDraft(
     spaceId: string;
     objective: string;
     sourceIds: string[];
+    activityTypes?: RequestedActivity[];
   },
 ): Promise<RequestGenerationResult> {
   const parsed = requestSchema.safeParse(input);
@@ -82,8 +92,47 @@ export async function requestRouteDraft(
     actorIdentityId: input.identityId,
     spaceId: input.spaceId,
     objective: parsed.data.objective,
+    // Stored in a fixed order so the prompt does not depend on the form.
+    requestedActivities: requestedActivityTypes.filter((type) =>
+      parsed.data.activityTypes.includes(type),
+    ),
     sourceIds: parsed.data.sourceIds,
     token: randomUUID(),
+  });
+}
+
+/**
+ * Saves a new objective, sources and activity types for a draft whose
+ * generation failed or lacked evidence. It never calls the model nor uses a
+ * generation attempt; generating again is a separate, explicit request.
+ */
+export async function updateRouteRequest(
+  dependencies: Dependencies,
+  input: {
+    identityId: string;
+    spaceId: string;
+    routeId: string;
+    editVersion: number;
+    objective: string;
+    sourceIds: string[];
+    activityTypes: RequestedActivity[];
+  },
+): Promise<RouteMutationResult> {
+  const parsed = requestSchema.safeParse(input);
+  if (!parsed.success) return { kind: "invalid" };
+  if (!(await canManage(dependencies, input.identityId, input.spaceId))) {
+    return { kind: "unauthorized" };
+  }
+  return dependencies.routeRepository.updateGenerationRequest({
+    actorIdentityId: input.identityId,
+    spaceId: input.spaceId,
+    routeId: input.routeId,
+    editVersion: input.editVersion,
+    objective: parsed.data.objective,
+    requestedActivities: requestedActivityTypes.filter((type) =>
+      parsed.data.activityTypes.includes(type),
+    ),
+    sourceIds: parsed.data.sourceIds,
   });
 }
 
@@ -125,7 +174,12 @@ export async function generateRouteDraft(
   if (!claim) return "omitida";
   const finish = async (
     status: "lista" | "insuficiente" | "fallida",
-    extra: { errorCode?: string; title?: string; steps?: DraftStep[] } = {},
+    extra: {
+      errorCode?: string;
+      missingActivities?: RequestedActivity[];
+      title?: string;
+      steps?: DraftStep[];
+    } = {},
   ): Promise<GenerationOutcome> =>
     (await repository.finishGeneration({
       routeId: input.routeId,
@@ -174,25 +228,45 @@ export async function generateRouteDraft(
   const startedAt = Date.now();
   try {
     completion = await dependencies.chatModel.complete({
-      ...buildRoutePrompt(claim.objective, fragments),
+      ...buildRoutePrompt(
+        claim.objective,
+        fragments,
+        claim.requestedActivities,
+      ),
       maxOutputTokens: routeLimits.maxOutputTokens,
     });
   } catch {
     return finish("fallida", { errorCode: "modelo_no_disponible" });
   }
   const parsed = parseGeneratedRoute(completion.text, fragments);
+  // The prompt asks for every requested type; the server checks it and
+  // never retries on its own.
+  const missing =
+    parsed.kind === "generated"
+      ? missingRequestedActivities(parsed.steps, claim.requestedActivities)
+      : [];
   dependencies.log?.({
     event: "route_generation",
     routeId: claim.routeId,
     spaceId: claim.spaceId,
     outcome: parsed.kind,
+    requested: claim.requestedActivities,
+    missing,
     fragments: fragments.length,
     usage: completion.usage,
     durationMs: Date.now() - startedAt,
   });
   if (parsed.kind === "insufficient") return finish("insuficiente");
   if (parsed.kind === "invalid") {
-    return finish("fallida", { errorCode: "borrador_no_valido" });
+    return finish("fallida", {
+      errorCode: parsed.reason ?? "borrador_no_valido",
+    });
+  }
+  if (missing.length > 0) {
+    return finish("fallida", {
+      errorCode: "tipos_no_cubiertos",
+      missingActivities: missing,
+    });
   }
   return finish("lista", { title: parsed.title, steps: parsed.steps });
 }
@@ -223,7 +297,12 @@ export async function listSpaceRoutes(
 export async function readRoute(
   dependencies: Dependencies,
   input: { identityId: string; spaceId: string; routeId: string },
-): Promise<{ canManage: boolean; route: RouteDetail } | null> {
+): Promise<{
+  canManage: boolean;
+  route: RouteDetail;
+  /** Responsibles only: generations left today (UTC) in the space. */
+  generationsLeftToday: number | null;
+} | null> {
   const space = await authorizeSpaceAction(
     dependencies.accessRepository,
     input.identityId,
@@ -238,8 +317,18 @@ export async function readRoute(
     !manage,
   );
   if (!route) return null;
+  const generationsLeftToday = manage
+    ? Math.max(
+        0,
+        routeLimits.dailyGenerationAttempts -
+          (await dependencies.routeRepository.countGenerationsToday(
+            input.spaceId,
+          )),
+      )
+    : null;
   return {
     canManage: manage,
+    generationsLeftToday,
     route: manage
       ? route
       : {
@@ -247,6 +336,7 @@ export async function readRoute(
           steps: route.steps.map((step) => ({
             ...step,
             correctOption: null,
+            acceptedAnswers: null,
             explanation: null,
           })),
         },
