@@ -6,6 +6,7 @@ Un ADR conserva contexto, decisión, alternativas y consecuencias. No sustituye 
 | --- | --- | --- |
 | [ADR-001](ADR-001-enfoque-y-v0.md) | Aceptado como base de planificación | Software primero, dos usos y V0 delimitada |
 | [ADR-002](ADR-002-organizacion-modular.md) | Aceptado | Backend modular, web/API juntas y worker desde E2 |
+| [ADR-011](ADR-011-control-de-consumo-rf-10.md) | Aceptado | Control de consumo de IA (RF-10): registro mínimo, tarifas verificadas, reserva atómica y límites global, por espacio y por usuario |
 | [ADR-010](ADR-010-completar-codigo-e5-5.md) | Aceptado | Completar fragmentos (E5.5): hueco único, respuestas exactas, actividades solicitadas y recuperación de generaciones |
 | [ADR-009](ADR-009-lectura-de-codigo-e5-4.md) | Aceptado | Lectura de código (E5.4): fragmento opcional de solo lectura, origen fuente o ilustrativo y presentación como texto |
 | [ADR-008](ADR-008-ayuda-contextual-e5-3.md) | Aceptado | Ayuda contextual en lecciones (E5.3): ayuda sin clave antes de resolver, explicación después y búsqueda prioritaria en las fuentes del paso |

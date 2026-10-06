@@ -60,6 +60,11 @@ export function GenerationRecovery({
 }) {
   const missingTypes = route.generationError === "tipos_no_cubiertos";
   const insufficient = route.generationStatus === "insuficiente";
+  const budgetBlocked = [
+    "limite_consumo_espacio",
+    "limite_consumo_global",
+    "tarifa_no_configurada",
+  ].includes(route.generationError ?? "");
   const codeRequested = route.requestedActivities.some(
     (type) => type !== "opcion_multiple",
   );
@@ -72,7 +77,9 @@ export function GenerationRecovery({
     ? "No hay evidencia suficiente"
     : missingTypes
       ? "Faltaron actividades solicitadas"
-      : "La generación falló por un problema técnico";
+      : budgetBlocked
+        ? "No se generó por el límite de consumo de IA"
+        : "La generación falló por un problema técnico";
   const explanation = insufficient
     ? "Las fuentes seleccionadas no tienen información suficiente para este objetivo y estas actividades. No se inventaron pasos ni se cambiaron las actividades."
     : missingTypes

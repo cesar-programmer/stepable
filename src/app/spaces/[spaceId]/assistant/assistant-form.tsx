@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
+import { budgetMessages } from "@/app/ai-budget-messages";
+
 import { askAssistantAction, type AssistantState } from "./actions";
 
 const messages: Record<string, string> = {
@@ -63,6 +65,10 @@ export function AssistantForm({ spaceId }: { spaceId: string }) {
             ))}
           </ol>
         </section>
+      ) : state.kind === "budget_exceeded" ? (
+        <p className="error" role="status">
+          {budgetMessages[state.limit]}
+        </p>
       ) : state.kind !== "idle" && messages[state.kind] ? (
         <p
           className={state.kind === "retrieval_only" ? "notice" : "error"}

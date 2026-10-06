@@ -19,6 +19,7 @@ const permissions: Record<SpaceRole, readonly SpaceAction[]> = {
     "consultar_rutas",
     "gestionar_rutas",
     "consultar_progreso_equipo",
+    "consultar_consumo_ia",
   ],
   integrante: [
     "consultar_espacio",

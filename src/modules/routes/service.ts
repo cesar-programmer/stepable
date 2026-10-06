@@ -13,6 +13,8 @@ import type {
   TextEmbedder,
 } from "../knowledge/contract.ts";
 import { mergeCandidates, prepareFragments } from "../knowledge/retrieval.ts";
+import { AiBudgetExceededError, type BudgetLimit } from "../usage/contract.ts";
+import type { AiMeter } from "../usage/meter.ts";
 
 import {
   requestedActivityTypes,
@@ -151,6 +153,14 @@ export async function requestRouteRegeneration(
   });
 }
 
+const budgetErrorCodes: Record<BudgetLimit, string> = {
+  global: "limite_consumo_global",
+  espacio: "limite_consumo_espacio",
+  // Generation has no user limit; kept for completeness.
+  usuario: "limite_consumo_usuario",
+  sin_tarifa: "tarifa_no_configurada",
+};
+
 export type GenerationOutcome =
   "omitida" | "lista" | "insuficiente" | "fallida";
 
@@ -165,6 +175,8 @@ export async function generateRouteDraft(
     knowledgeRepository: KnowledgeRepository;
     chatModel: ChatModel | null;
     embedder: TextEmbedder | null;
+    /** RF-10: reserves estimated consumption before each real call. */
+    meter?: AiMeter;
     log?: (entry: Record<string, unknown>) => void;
   },
   input: { routeId: string; token: string },
@@ -196,13 +208,22 @@ export async function generateRouteDraft(
     routeLimits.candidates,
     claim.sourceIds,
   );
+  const usage = {
+    feature: "generacion" as const,
+    spaceId: claim.spaceId,
+    profileId: null,
+  };
+  const embedder =
+    dependencies.embedder && dependencies.meter
+      ? dependencies.meter.embedder(dependencies.embedder, usage)
+      : dependencies.embedder;
   let semantic: typeof lexical = [];
-  if (dependencies.embedder) {
+  if (embedder) {
     try {
-      const [values] = await dependencies.embedder.embed([claim.objective]);
+      const [values] = await embedder.embed([claim.objective]);
       semantic = await dependencies.knowledgeRepository.searchSemantic(
         claim.spaceId,
-        { model: dependencies.embedder.model, values },
+        { model: embedder.model, values },
         routeLimits.candidates,
         claim.sourceIds,
       );
@@ -218,23 +239,41 @@ export async function generateRouteDraft(
   if (!dependencies.chatModel) {
     return finish("fallida", { errorCode: "modelo_no_configurado" });
   }
+  const prompt = {
+    ...buildRoutePrompt(claim.objective, fragments, claim.requestedActivities),
+    maxOutputTokens: routeLimits.maxOutputTokens,
+  };
+  // The consumption reservation comes first, so a reached budget never uses
+  // one of the daily generation attempts.
+  let lease;
+  try {
+    lease = dependencies.meter
+      ? await dependencies.meter.reserveChat(
+          dependencies.chatModel,
+          usage,
+          prompt,
+        )
+      : {
+          complete: () => dependencies.chatModel!.complete(prompt),
+          release: async () => {},
+        };
+  } catch (error) {
+    if (error instanceof AiBudgetExceededError) {
+      return finish("fallida", { errorCode: budgetErrorCodes[error.limit] });
+    }
+    throw error;
+  }
   if (
     !(await repository.reserveGenerationAttempt(claim.spaceId, claim.routeId))
   ) {
+    await lease.release();
     return finish("fallida", { errorCode: "limite_diario" });
   }
 
   let completion;
   const startedAt = Date.now();
   try {
-    completion = await dependencies.chatModel.complete({
-      ...buildRoutePrompt(
-        claim.objective,
-        fragments,
-        claim.requestedActivities,
-      ),
-      maxOutputTokens: routeLimits.maxOutputTokens,
-    });
+    completion = await lease.complete();
   } catch {
     return finish("fallida", { errorCode: "modelo_no_disponible" });
   }

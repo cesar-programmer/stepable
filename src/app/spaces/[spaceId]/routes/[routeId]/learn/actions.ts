@@ -3,6 +3,7 @@
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
+import { configuredMeter } from "@/adapters/ai/metering";
 import { configuredModels } from "@/adapters/ai/models";
 import { PostgresAccessRepository } from "@/adapters/postgres/access-repository";
 import { getApplicationDatabase } from "@/adapters/postgres/database";
@@ -97,6 +98,7 @@ export async function askStepHelpAction(
       knowledgeRepository: new PostgresKnowledgeRepository(database),
       chatModel: models.chatModel,
       embedder: models.embedder,
+      meter: configuredMeter(database, process.env),
       log: (entry) => console.log(JSON.stringify(entry)),
     },
     {

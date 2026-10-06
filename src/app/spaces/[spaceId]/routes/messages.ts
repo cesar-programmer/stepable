@@ -27,6 +27,12 @@ export const routeErrorMessages: Record<string, string> = {
   borrador_no_valido:
     "El modelo devolvió un borrador que no supera la validación (estructura o citas). Puedes regenerar.",
   tiempo_agotado: "La generación no terminó a tiempo. Puedes regenerar.",
+  limite_consumo_espacio:
+    "Se alcanzó el límite diario de consumo estimado de IA de este espacio, así que no se llamó al modelo ni se gastó un intento de generación. Se restablece a las 00:00 UTC.",
+  limite_consumo_global:
+    "Se agotó el presupuesto total de IA configurado para este prototipo, así que no se llamó al modelo ni se gastó un intento. No se restablece solo: el operador debe ampliarlo.",
+  tarifa_no_configurada:
+    "El modelo de IA configurado no tiene una tarifa registrada, así que no se llamó. El operador debe configurarla.",
   solucion_visible:
     "El borrador generado mostraba la solución de un ejercicio de completar en su lección o su pregunta, así que no se aceptó. No se reintentó automáticamente; puedes regenerar (cuenta como un intento).",
   tipos_no_cubiertos:

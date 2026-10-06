@@ -507,3 +507,20 @@ Estado: cerrada para el prototipo local el 2026-10-06 ([ADR-010](decisiones/ADR-
 - `readRoute` devuelve `generationsLeftToday` (responsables), calculado con `countGenerationsToday`, el mismo cómputo que el límite diario.
 - Interfaz: `generation-recovery.tsx` distingue evidencia insuficiente, actividades no cubiertas y fallo técnico, y ofrece “Cambiar actividades”, “Cambiar fuentes” (con enlace a cargar documentos), “Editar objetivo” y “Usar solo opción múltiple”. El formulario se vuelve a montar con cada versión de edición para mostrar los valores guardados.
 - La página toma el resultado de la generación del estado de la ruta, no de la URL. Durante el procesamiento solo muestra “Generando el borrador”, y el aviso de cola o de guardado nunca convive con un error de generación.
+
+## 27. Control de consumo de IA (RF-10)
+
+Estado: cerrado para el prototipo local el 2026-10-06 ([ADR-011](decisiones/ADR-011-control-de-consumo-rf-10.md)). Regla: RN-39.
+
+- **Datos:** migración `20261006020000_ai_usage.sql` con `ai_budgets` (namespace y fecha de inicio; `local` se crea en la migración) y `ai_usage` (una fila por llamada, sin contenido, con RLS y sin acceso desde el navegador).
+- **Módulo `usage`:**
+  - `AiMeter` (`meter.ts`): `chat()` y `embedder()` envuelven los modelos; `reserveChat()` separa la reserva de la llamada para la generación.
+  - `ProviderCallError` clasifica los fallos del adaptador como rechazados o inciertos.
+  - `readUsageSummary` da el resumen a los responsables.
+- **Repositorio:** `PostgresUsageRepository.reserve` hace `pg_advisory_xact_lock` por namespace y comprueba los totales global, diario del espacio y consultas del usuario en la misma transacción que inserta la reserva. `settle` solo actúa sobre reservas pendientes.
+- **Configuración:** las tarifas están en `src/lib/ai-pricing.ts` (fecha y fuente) y los límites en `src/lib/ai-budget-config.ts` (`STEPABLE_AI_BUDGET_GLOBAL_USD`, `STEPABLE_AI_BUDGET_SPACE_DAILY_USD`, `STEPABLE_AI_USER_DAILY_QUERIES`). `configuredMeter` usa el namespace de trabajos, así que las pruebas (`pruebas`) quedan separadas del prototipo (`local`).
+- **Integración:**
+  - `askAssistant` y `askStepHelp` devuelven `budget_exceeded` con los fragmentos;
+  - `generateRouteDraft` reserva antes del intento diario y termina con `limite_consumo_espacio`, `limite_consumo_global` o `tarifa_no_configurada`;
+  - `indexPendingEmbeddings` agrupa por espacio y el worker pausa la indexación sin reintentos al proveedor;
+  - los scripts de evaluación también registran su consumo y se niegan a empezar si falta alguna tarifa.

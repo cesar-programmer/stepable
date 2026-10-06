@@ -19,6 +19,7 @@ import {
  */
 export class SimulatedChatModel implements ChatModel {
   readonly label = "simulado";
+  readonly pricingKey = "simulado";
 
   async complete(input: {
     system: string;

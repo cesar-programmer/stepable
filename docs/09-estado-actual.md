@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-06 · Fase: E5.5 cerrada para el prototipo local · Versión documental: 4.1.
+Actualizado: 2026-10-06 · Fase: control de consumo de IA (RF-10) cerrado para el prototipo local · Versión documental: 4.3.
 
 ## Hechos acordados
 
@@ -38,9 +38,11 @@ Actualizado: 2026-10-06 · Fase: E5.5 cerrada para el prototipo local · Versió
 
 - E5.5 autorizada el 2026-10-03: actividad “completar” con un único hueco, respuesta escrita y corrección exacta en el servidor (solo se ignoran los espacios de los extremos), respuestas aceptadas configuradas por el responsable y reutilización de las reglas de E5.1 a E5.3. Las llamadas reales requieren presentar antes el caso (RN-36, ADR-010 propuesto).
 
+- RF-10 autorizado el 2026-10-06: 1 USD estimado acumulado para el prototipo, 0,20 USD por espacio y día, 40 consultas por usuario y día (asistente y ayuda) y las 5 generaciones diarias. Los diarios se reinician a las 00:00 UTC y el acumulado no se amplía solo. El acumulado empieza en 0 al activar la entrega. Los 5 USD cargados en OpenAI son saldo inicial, no presupuesto (ADR-011 propuesto, RN-39).
+
 ## Actualización más reciente
 
-2026-10-06: el usuario confirmó la comprobación manual de E5.5 y la recuperación de rutas fallidas, y aceptó la entrega. E5.5 se cierra en un commit local, sin push, reutilizando la verificación técnica (después solo cambió documentación). La V0 sigue incompleta: falta el control de consumo de RF-10 y el piloto.
+2026-10-06: el usuario confirmó la comprobación manual del control de consumo y aceptó RF-10 para el prototipo local. Se cierra en un commit local, sin push, reutilizando la verificación técnica (después solo cambió documentación); sin llamadas de pago.
 
 ## Realizado
 
@@ -184,13 +186,18 @@ Actualizado: 2026-10-06 · Fase: E5.5 cerrada para el prototipo local · Versió
   - Comprobación manual del usuario del 2026-10-06: confirmó que la comprobación manual de E5.5 y la recuperación de rutas fallidas funcionan correctamente, y aceptó la entrega. No se le atribuyen escenarios adicionales.
   - Limitaciones que se conservan: la corrección es solo una comparación textual (no reconoce soluciones equivalentes); la evaluación real fue pequeña (2 generaciones, una sin código y otra con la solución visible en la lección); y la validación de solución visible no se reevaluó con el modelo real.
 
+- RF-10, 2026-10-06:
+  - pruebas técnicas: 83 unitarias, `pnpm test:integration:usage` 8/8 (proveedores falsos), integración 75/75, navegador 28/28, `pnpm verify` y `git diff --check`. Sin procesos de desarrollo en marcha; ningún registro de uso en el prototipo (`local` en 0), y los datos y las rutas se conservan;
+  - evaluación con modelo real: no aplica (sin llamadas de pago);
+  - Comprobación manual del usuario del 2026-10-06: confirmó que su comprobación manual del control de consumo funcionó correctamente y aceptó RF-10 para el prototipo local. No se le atribuyen escenarios adicionales.
+
 ## No realizado
 
 No se implementaron ejecución de código, comparación semántica de respuestas, expresiones regulares configurables, filtro posterior de respuestas que revelen la opción, detalle por paso o por respuesta en el progreso del equipo, rankings, gráficos, exportación, reinicio de rutas, ejercicios de código, gamificación, versiones nuevas de rutas, historial de conversaciones, límites acumulados de gasto, umbral de similitud, OCR, papelera, descarga de originales, panel de auditoría, despliegue ni proveedor alojado.
 
 ## Próxima tarea concreta
 
-Acordar con el usuario el control de consumo de RF-10 (propuesta presentada el 2026-10-06, pendiente de aprobación) sin implementarlo antes de su autorización.
+Preparar la demostración completa con documentos sintéticos (guion y fuente de demostración) y acordar la siguiente entrega pequeña; sin piloto, despliegue ni servicios contratados.
 
 ## Decisiones que requieren aprobación
 
@@ -207,7 +214,7 @@ No están resueltos. No afectan al comportamiento y no implican un rediseño de 
 
 ## Estado de Git y operación
 
-E5.1 está cerrada en `68d3163`, E5.2 en `e9169d9` y E5.3 en `afd8cb5`, todos sin push. E5.4 está cerrada en `183502a`, sin push. E5.5 está cerrada en el commit local siguiente, sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
+E5.1 está cerrada en `68d3163`, E5.2 en `e9169d9` y E5.3 en `afd8cb5`, todos sin push. E5.4 está cerrada en `183502a`, sin push. E5.5 está cerrada en `35dfd36`, sin push. RF-10 está cerrado en el commit local siguiente, sin push. `.env.local`, `.env.development.local`, secretos, dependencias, build y resultados de prueba permanecen ignorados. Las pruebas usan el namespace `pruebas` y no reutilizan un `pnpm dev` en marcha.
 
 ## Formato para futuras sesiones
 

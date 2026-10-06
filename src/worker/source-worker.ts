@@ -21,6 +21,8 @@ import {
 import type { ChatModel, TextEmbedder } from "../modules/knowledge/contract.ts";
 import { generateRouteDraft } from "../modules/routes/service.ts";
 import { indexPendingEmbeddings } from "../modules/knowledge/service.ts";
+import { AiBudgetExceededError } from "../modules/usage/contract.ts";
+import { configuredMeter, unpricedModels } from "../adapters/ai/metering.ts";
 import { processSourceVersion } from "../modules/sources/processing.ts";
 import { purgeDeletedSource } from "../modules/sources/purge.ts";
 
@@ -31,6 +33,15 @@ const staleProcessingMilliseconds = 15 * 60 * 1000;
 // worker waits before trying again instead of retrying every minute.
 const embeddingSegmentsPerPass = 64;
 const embeddingBackoffMilliseconds = 10 * 60 * 1000;
+const budgetRecheckMilliseconds = 60 * 60 * 1000;
+const nextUtcMidnight = () => {
+  const now = new Date();
+  return Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+  );
+};
 // Longer than the 120 s generation call and the 180 s job expiration.
 const staleGenerationMilliseconds = 5 * 60 * 1000;
 
@@ -81,6 +92,15 @@ export async function startSourceWorker(options: {
     options.routeModel === undefined
       ? configuredModels(process.env, { chatTimeoutMs: 120_000 }).chatModel
       : options.routeModel;
+  const meter = configuredMeter(connection.database, {
+    ...process.env,
+    STEPABLE_JOB_NAMESPACE: jobNamespace,
+  });
+  const unpriced = unpricedModels(routeModel ?? null, embedder ?? null);
+  if (unpriced.length > 0) {
+    // Real calls to these models are refused until a rate is configured.
+    log({ event: "ai_models_without_rate", models: unpriced });
+  }
   let embeddingsBlockedUntil = 0;
   let indexing: Promise<void> | null = null;
   const indexEmbeddings = (versionIds?: string[]) => {
@@ -89,7 +109,7 @@ export async function startSourceWorker(options: {
     }
     const startedAt = Date.now();
     indexing = indexPendingEmbeddings(
-      { knowledgeRepository, embedder },
+      { knowledgeRepository, embedder, meter },
       { maxSegments: embeddingSegmentsPerPass, versionIds },
     )
       .then((saved) => {
@@ -102,7 +122,22 @@ export async function startSourceWorker(options: {
           });
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error instanceof AiBudgetExceededError) {
+          // Segments stay pending. A daily limit is checked again after
+          // 00:00 UTC; the global budget or a missing rate needs the
+          // operator, so it is only rechecked hourly (no provider call).
+          embeddingsBlockedUntil =
+            error.limit === "espacio" || error.limit === "usuario"
+              ? nextUtcMidnight()
+              : Date.now() + budgetRecheckMilliseconds;
+          log({
+            event: "segment_embeddings_paused_by_budget",
+            limit: error.limit,
+            until: new Date(embeddingsBlockedUntil).toISOString(),
+          });
+          return;
+        }
         embeddingsBlockedUntil = Date.now() + embeddingBackoffMilliseconds;
         log({ event: "segment_embeddings_failed", model: embedder.model });
       })
@@ -205,6 +240,7 @@ export async function startSourceWorker(options: {
             knowledgeRepository,
             chatModel: routeModel,
             embedder,
+            meter,
             log,
           },
           job.data,

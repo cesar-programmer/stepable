@@ -1,5 +1,16 @@
 # Historial de cambios
 
+## 2026-10-06 · 4.3 · Cierre de RF-10
+
+- El usuario confirmó su comprobación manual del control de consumo y aceptó RF-10 para el prototipo local; no se le atribuyen escenarios adicionales.
+- Se reutilizó la verificación técnica aprobada (después solo cambió documentación); sin llamadas de pago. ADR-011 aceptado. Cerrado en un commit local, sin push.
+
+## 2026-10-06 · 4.2 · Control de consumo de IA (RF-10)
+
+- Registro mínimo de llamadas y tokens, sin contenido, en el asistente, la ayuda, la generación y la indexación. El costo se estima con tarifas oficiales verificadas el 2026-10-06.
+- Reserva atómica conservadora antes de cada llamada real. Límites configurables: 1 USD acumulado, 0,20 USD por espacio y día y 40 consultas por usuario y día. Hay mensajes por tipo de límite y un resumen para responsables (RN-39, ADR-011 propuesto).
+- Verificado solo con proveedores falsos: 83 unitarias, 75 de integración y 28 de navegador. Sin llamadas reales, commit ni push. Es una entrega transversal previa al piloto, no el piloto.
+
 ## 2026-10-06 · 4.1 · Cierre de E5.5
 
 - El usuario confirmó la comprobación manual de E5.5 (completar código, selección de actividades y recuperación de generaciones fallidas) y aceptó la entrega; no se le atribuyen escenarios adicionales.

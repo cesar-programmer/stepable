@@ -1,5 +1,6 @@
 "use server";
 
+import { configuredMeter } from "@/adapters/ai/metering";
 import { configuredModels } from "@/adapters/ai/models";
 import { PostgresAccessRepository } from "@/adapters/postgres/access-repository";
 import { getApplicationDatabase } from "@/adapters/postgres/database";
@@ -37,6 +38,7 @@ export async function askAssistantAction(
       knowledgeRepository: new PostgresKnowledgeRepository(database),
       chatModel: models.chatModel,
       embedder: models.embedder,
+      meter: configuredMeter(database, process.env),
       log: (entry) => console.log(JSON.stringify(entry)),
     },
     { identityId: identity.id, spaceId: spaceId.data, question },

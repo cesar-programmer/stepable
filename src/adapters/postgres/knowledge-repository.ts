@@ -156,7 +156,8 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
           )})`
         : sql``;
     const rows = (await this.database.execute(sql`
-      select segment.version_id, segment.ordinal, segment.content
+      select segment.version_id, segment.ordinal, segment.content,
+        source.space_id
       ${eligibleSegments}
       left join public.source_segment_embeddings vector_row
         on vector_row.version_id = segment.version_id
@@ -179,11 +180,13 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
       version_id: string;
       ordinal: number;
       content: string;
+      space_id: string;
     }[];
     return rows.map((row) => ({
       versionId: row.version_id,
       ordinal: row.ordinal,
       content: row.content,
+      spaceId: row.space_id,
     }));
   }
 

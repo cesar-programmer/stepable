@@ -182,3 +182,9 @@ Tras añadir la selección de tipos, el usuario autorizó una única ejecución 
 Consumo: 1 intento registrado y 1 llamada, con 1037 tokens de entrada y 1149 de salida. Los datos temporales se eliminaron.
 
 Conclusión: con tipos solicitados, el modelo generó por primera vez lectura de código y completar respaldados por las fuentes. Es una sola ejecución: no demuestra estabilidad, y el ejercicio de completar requería corrección del responsable antes de publicar. **El ajuste posterior, que impide que la lección o la pregunta contengan la solución del hueco, no se evaluó con el modelo real.**
+
+## Control de consumo (RF-10)
+
+Tarifas verificadas el 2026-10-06 en https://developers.openai.com/api/docs/pricing (nivel Standard): `gpt-4.1-mini` a 0,40 USD por millón de tokens de entrada y 1,60 USD por millón de salida, y `text-embedding-3-small` a 0,02 USD por millón. Con ellas, la segunda evaluación de E5.5 (1037/1149 tokens) se estimaría en unos 0,0023 USD.
+
+Pruebas técnicas solo con proveedores falsos y tarifas falsas: registro y ajuste, bloqueo antes de llamar (global, espacio, usuario y falta de tarifa), 12 solicitudes simultáneas sin superar las reservas permitidas, restablecimiento diario con el acumulado intacto, fallos rechazados frente a inciertos sin cargos duplicados, generación sin gastar intento e indexación pendiente. **No se hicieron llamadas reales para probar este control.**

@@ -22,6 +22,8 @@ describe("space authorization policy", () => {
     ["integrante", "gestionar_rutas", false],
     ["responsable", "consultar_progreso_equipo", true],
     ["integrante", "consultar_progreso_equipo", false],
+    ["responsable", "consultar_consumo_ia", true],
+    ["integrante", "consultar_consumo_ia", false],
   ] as const)("evaluates %s and %s as %s", (role, action, expected) => {
     expect(allowsSpaceAction("activa", role, action)).toBe(expected);
   });

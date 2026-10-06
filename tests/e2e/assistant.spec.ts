@@ -137,6 +137,27 @@ test.describe.serial("E3 assistant in the browser", () => {
     await expect(page).toHaveURL(new RegExp(`/sources/${sourceId}$`));
   });
 
+  test("only responsibles see the space's estimated AI consumption", async ({
+    page,
+    browser,
+  }) => {
+    await login(page, owner);
+    await page.goto(`/spaces/${spaceId}`);
+    const summary = page.getByTestId("ai-usage");
+    await expect(summary).toContainText("Consumo de IA registrado desde");
+    await expect(summary).toContainText(
+      "no es la factura ni el saldo de OpenAI",
+    );
+    await expect(summary).toContainText("de 0,2000 USD");
+
+    const context = await browser.newContext();
+    const memberPage = await context.newPage();
+    await login(memberPage, member);
+    await memberPage.goto(`/spaces/${spaceId}`);
+    await expect(memberPage.getByTestId("ai-usage")).toHaveCount(0);
+    await context.close();
+  });
+
   test("a user from another space cannot open the assistant", async ({
     page,
   }) => {

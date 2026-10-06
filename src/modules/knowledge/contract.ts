@@ -1,4 +1,5 @@
 import type { SourceFormat } from "../sources/contract.ts";
+import type { BudgetLimit } from "../usage/contract.ts";
 
 /** Per-query bounds: one model call, bounded context and output. */
 export const assistantLimits = {
@@ -59,6 +60,13 @@ export type AssistantResult =
       fragments: RetrievedFragment[];
       retrieval: RetrievalDiagnostics;
     }
+  | {
+      /** The model was not called: a consumption limit applies (RF-10). */
+      kind: "budget_exceeded";
+      limit: BudgetLimit;
+      fragments: RetrievedFragment[];
+      retrieval: RetrievalDiagnostics;
+    }
   | { kind: "unauthorized" | "invalid_question" };
 
 export type EmbeddingVector = { model: string; values: number[] };
@@ -81,7 +89,9 @@ export interface KnowledgeRepository {
     model: string,
     limit: number,
     versionIds?: string[],
-  ): Promise<{ versionId: string; ordinal: number; content: string }[]>;
+  ): Promise<
+    { versionId: string; ordinal: number; content: string; spaceId: string }[]
+  >;
   saveEmbeddings(
     model: string,
     rows: { versionId: string; ordinal: number; values: number[] }[],
@@ -96,6 +106,8 @@ export type ChatCompletion = {
 /** One request to a conversation model; no retries inside. */
 export interface ChatModel {
   readonly label: string;
+  /** "provider:model" used to look up the estimated rate (RF-10). */
+  readonly pricingKey?: string;
   complete(input: {
     system: string;
     user: string;
@@ -105,6 +117,11 @@ export interface ChatModel {
 
 /** Embeddings are configured separately from the conversation model. */
 export interface TextEmbedder {
+  /** Also the pricing key ("provider:model") for real embedders. */
   readonly model: string;
   embed(texts: string[]): Promise<number[][]>;
+  /** Same request, also returning the input tokens the provider reported. */
+  embedWithUsage?(
+    texts: string[],
+  ): Promise<{ vectors: number[][]; inputTokens: number | null }>;
 }

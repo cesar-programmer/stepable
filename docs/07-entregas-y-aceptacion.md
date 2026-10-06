@@ -16,7 +16,7 @@ Arquitectura modular, stack y ciclo local de acceso están aceptados en ADR-003.
 | E5 Aprendizaje | RF-06, RF-07, RF-09 | CA-05: actividad evaluada con criterios revisados, progreso retomable y seguimiento autorizado. E5.1 y E5.2 cerradas para opción múltiple; lectura de código en E5.4; completar fragmentos en E5.5 |
 | E6 Piloto | Recorrido completo | CA-06: prueba documentada con usuarios invitados, incidencias y consumo registrado |
 
-RF-10 es transversal: errores y límites deben incorporarse en las entregas que consumen recursos. El chat contextual de lecciones se integra en E5; E3 entrega el chat general.
+RF-10 es transversal: errores y límites deben incorporarse en las entregas que consumen recursos. Su control de consumo acumulado se implementa como entrega transversal previa al piloto, “RF-10 · Control de consumo de IA”, sin número E propio (el plan no define una E7) y sin formar parte de E6. El chat contextual de lecciones se integra en E5; E3 entrega el chat general.
 
 ## Regla de cierre
 
@@ -499,3 +499,33 @@ Estado: **cerrada para el prototipo local** el 2026-10-06 ([ADR-010](decisiones/
 5. Opcional: comprueba que un paso de opción múltiple sigue funcionando igual en la misma ruta o en una anterior.
 6. Al generar una ruta nueva, comprueba que **Opción múltiple** viene marcada por defecto y que se pueden marcar **Lectura de código** y **Completar código**. Con el modelo simulado y una fuente con un bloque de código, el borrador incluye ambos tipos; con una fuente sin código, queda como evidencia insuficiente. Con la IA real, cada generación es una llamada de pago.
 7. En una ruta fallida o insuficiente, comprueba el mensaje y las acciones. **Usar solo opción múltiple** o **Guardar cambios** no deben generar nada ni gastar intentos. **Generar con estos cambios** indica los intentos que quedan y, con el modelo simulado, deja un borrador listo en la misma ruta. Con la IA real es una llamada de pago.
+
+## RF-10 · Control de consumo de IA (entrega transversal previa a E6)
+
+Estado: **cerrada para el prototipo local** el 2026-10-06 ([ADR-011](decisiones/ADR-011-control-de-consumo-rf-10.md), RN-39). No es el piloto (E6), que sigue pendiente.
+
+**Entregado:**
+- registro mínimo de llamadas y tokens de conversación y embeddings en el asistente, la ayuda, la generación y la indexación;
+- costo estimado con tarifas oficiales verificadas;
+- reserva atómica conservadora antes de llamar, con ajuste según el uso informado;
+- límites configurables: 1 USD acumulado, 0,20 USD por espacio y día, y 40 consultas por usuario y día;
+- mensajes por tipo de límite;
+- resumen del consumo del espacio para responsables, “registrado desde” la activación.
+
+- **Pruebas técnicas:**
+  - 83 unitarias (estimaciones, tarifas, límites y matriz de permisos);
+  - `pnpm test:integration:usage` 8/8, con proveedores falsos y un namespace propio por ejecución;
+  - integración 75/75;
+  - navegador 28/28 (resumen visible solo para responsables);
+  - `pnpm verify` y `git diff --check`.
+- **Evaluación con modelo real:** no aplica; no se hicieron llamadas de pago. Se comprobó sin llamadas que la configuración real local (`openai:gpt-4.1-mini` y `openai:text-embedding-3-small`) tiene tarifa.
+- **Comprobación manual:** Comprobación manual del usuario del 2026-10-06: confirmó que su comprobación manual del control de consumo funcionó correctamente y aceptó RF-10 para el prototipo local. No se le atribuyen escenarios adicionales.
+
+### RF-10 · Prueba manual (sin gastar presupuesto)
+
+Un límite en 0 bloquea antes de llamar, así que no hay gasto.
+
+1. Como responsable, con `pnpm dev`, abre el espacio. Debe aparecer “Consumo de IA registrado desde …”, la aclaración de que no es la factura ni el saldo de OpenAI, el consumo de hoy frente a 0,2000 USD y el estado del presupuesto global. Como integrante, el resumen no aparece.
+2. Detén `pnpm dev` y arráncalo con un límite en 0: `env STEPABLE_AI_BUDGET_SPACE_DAILY_USD=0 pnpm dev`. Pregunta al asistente: debe aparecer el mensaje del límite diario del espacio y los fragmentos encontrados, sin llamada al modelo.
+3. Repite con `env STEPABLE_AI_BUDGET_GLOBAL_USD=0 pnpm dev`: el mensaje debe decir que el operador debe ampliar el presupuesto, sin prometer un restablecimiento. Con `env STEPABLE_AI_USER_DAILY_QUERIES=0 pnpm dev`, “Pedir ayuda” debe mostrar el límite del usuario.
+4. Vuelve a arrancar `pnpm dev` sin variables. El resumen del espacio debe seguir en 0,0000 USD si no hiciste consultas reales.

@@ -1,4 +1,6 @@
 import { authorizeSpaceAction } from "../access/authorization.ts";
+import { AiBudgetExceededError } from "../usage/contract.ts";
+import type { AiMeter } from "../usage/meter.ts";
 import type { AccessRepository } from "../access/contract.ts";
 
 import { parseModelAnswer } from "./answer.ts";
@@ -23,6 +25,8 @@ export type AssistantDependencies = {
   knowledgeRepository: KnowledgeRepository;
   chatModel: ChatModel | null;
   embedder: TextEmbedder | null;
+  /** RF-10: reserves estimated consumption before each real call. */
+  meter?: AiMeter;
   log?: (entry: Record<string, unknown>) => void;
 };
 
@@ -69,6 +73,19 @@ export async function askAssistant(
     return { kind: "unauthorized" };
   }
 
+  const usage = {
+    feature: "asistente" as const,
+    spaceId: input.spaceId,
+    profileId: input.identityId,
+  };
+  const embedder =
+    dependencies.embedder && dependencies.meter
+      ? dependencies.meter.embedder(dependencies.embedder, usage)
+      : dependencies.embedder;
+  const chatModel =
+    dependencies.chatModel && dependencies.meter
+      ? dependencies.meter.chat(dependencies.chatModel, usage)
+      : dependencies.chatModel;
   const startedAt = Date.now();
   const lexical = await dependencies.knowledgeRepository.searchLexical(
     input.spaceId,
@@ -76,12 +93,13 @@ export async function askAssistant(
     assistantLimits.lexicalCandidates,
   );
   let semantic: typeof lexical | null = null;
-  if (dependencies.embedder) {
+  if (embedder) {
     try {
-      const [values] = await dependencies.embedder.embed([question]);
+      // A blocked embedding (limit reached) only skips the semantic search.
+      const [values] = await embedder.embed([question]);
       semantic = await dependencies.knowledgeRepository.searchSemantic(
         input.spaceId,
-        { model: dependencies.embedder.model, values },
+        { model: embedder.model, values },
         assistantLimits.semanticCandidates,
       );
     } catch {
@@ -111,17 +129,25 @@ export async function askAssistant(
   if (fragments.length === 0) {
     return finish({ kind: "insufficient", fragments, retrieval });
   }
-  if (!dependencies.chatModel) {
+  if (!chatModel) {
     return finish({ kind: "retrieval_only", fragments, retrieval });
   }
 
   let completion;
   try {
-    completion = await dependencies.chatModel.complete({
+    completion = await chatModel.complete({
       ...buildAssistantPrompt(question, fragments),
       maxOutputTokens: assistantLimits.maxOutputTokens,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AiBudgetExceededError) {
+      return finish({
+        kind: "budget_exceeded",
+        limit: error.limit,
+        fragments,
+        retrieval,
+      });
+    }
     return finish({ kind: "model_error", fragments, retrieval });
   }
 
@@ -151,10 +177,17 @@ export async function askAssistant(
  * Embeds segments of current versions that have no vector for the configured
  * model yet. Bounded per call so a sweep cannot run up unbounded requests.
  */
+/**
+ * Embeds segments of current versions that have no vector for the configured
+ * model yet. Bounded per call so a sweep cannot run up unbounded requests.
+ * Batches never mix spaces, so each one is charged to its space; a reached
+ * limit stops the pass with AiBudgetExceededError and leaves the rest pending.
+ */
 export async function indexPendingEmbeddings(
   dependencies: {
     knowledgeRepository: KnowledgeRepository;
     embedder: TextEmbedder;
+    meter?: AiMeter;
   },
   options: { maxSegments: number; versionIds?: string[] },
 ): Promise<number> {
@@ -164,29 +197,45 @@ export async function indexPendingEmbeddings(
       options.maxSegments,
       options.versionIds,
     );
+  const bySpace = new Map<string, typeof pending>();
+  for (const segment of pending) {
+    bySpace.set(segment.spaceId, [
+      ...(bySpace.get(segment.spaceId) ?? []),
+      segment,
+    ]);
+  }
   let saved = 0;
-  for (
-    let start = 0;
-    start < pending.length;
-    start += assistantLimits.embeddingBatchSize
-  ) {
-    const batch = pending.slice(
-      start,
-      start + assistantLimits.embeddingBatchSize,
-    );
-    const vectors = await dependencies.embedder.embed(
-      batch.map((segment) =>
-        segment.content.slice(0, assistantLimits.embeddingInputMaxChars),
-      ),
-    );
-    saved += await dependencies.knowledgeRepository.saveEmbeddings(
-      dependencies.embedder.model,
-      batch.map((segment, index) => ({
-        versionId: segment.versionId,
-        ordinal: segment.ordinal,
-        values: vectors[index],
-      })),
-    );
+  for (const [spaceId, segments] of bySpace) {
+    const embedder = dependencies.meter
+      ? dependencies.meter.embedder(dependencies.embedder, {
+          feature: "indexacion",
+          spaceId,
+          profileId: null,
+        })
+      : dependencies.embedder;
+    for (
+      let start = 0;
+      start < segments.length;
+      start += assistantLimits.embeddingBatchSize
+    ) {
+      const batch = segments.slice(
+        start,
+        start + assistantLimits.embeddingBatchSize,
+      );
+      const vectors = await embedder.embed(
+        batch.map((segment) =>
+          segment.content.slice(0, assistantLimits.embeddingInputMaxChars),
+        ),
+      );
+      saved += await dependencies.knowledgeRepository.saveEmbeddings(
+        dependencies.embedder.model,
+        batch.map((segment, index) => ({
+          versionId: segment.versionId,
+          ordinal: segment.ordinal,
+          values: vectors[index],
+        })),
+      );
+    }
   }
   return saved;
 }

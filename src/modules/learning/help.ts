@@ -15,6 +15,8 @@ import {
 import { mergeCandidates, prepareFragments } from "../knowledge/retrieval.ts";
 import { toCitations } from "../knowledge/service.ts";
 import type { RouteRepository } from "../routes/contract.ts";
+import { AiBudgetExceededError, type BudgetLimit } from "../usage/contract.ts";
+import type { AiMeter } from "../usage/meter.ts";
 
 import type { LearningRepository } from "./contract.ts";
 import {
@@ -32,6 +34,8 @@ export type StepHelpDependencies = {
   knowledgeRepository: KnowledgeRepository;
   chatModel: ChatModel | null;
   embedder: TextEmbedder | null;
+  /** RF-10: reserves estimated consumption before each real call. */
+  meter?: AiMeter;
   log?: (entry: Record<string, unknown>) => void;
 };
 
@@ -50,6 +54,14 @@ export type StepHelpResult =
     }
   | {
       kind: "insufficient" | "retrieval_only" | "unverifiable" | "model_error";
+      mode: StepHelpMode;
+      sourcesChanged: boolean;
+      fragments: RetrievedFragment[];
+    }
+  | {
+      /** The model was not called: a consumption limit applies (RF-10). */
+      kind: "budget_exceeded";
+      limit: BudgetLimit;
       mode: StepHelpMode;
       sourcesChanged: boolean;
       fragments: RetrievedFragment[];
@@ -193,9 +205,22 @@ export async function askStepHelp(
   );
   const startedAt = Date.now();
   let vector: number[] | null = null;
-  if (dependencies.embedder) {
+  const usage = {
+    feature: "ayuda" as const,
+    spaceId: input.spaceId,
+    profileId: input.identityId,
+  };
+  const embedder =
+    dependencies.embedder && dependencies.meter
+      ? dependencies.meter.embedder(dependencies.embedder, usage)
+      : dependencies.embedder;
+  const chatModel =
+    dependencies.chatModel && dependencies.meter
+      ? dependencies.meter.chat(dependencies.chatModel, usage)
+      : dependencies.chatModel;
+  if (embedder) {
     try {
-      [vector] = await dependencies.embedder.embed([searchText]);
+      [vector] = await embedder.embed([searchText]);
     } catch {
       vector = null;
     }
@@ -248,16 +273,23 @@ export async function askStepHelp(
   if (fragments.length === 0 && !step.code) {
     return finish({ kind: "insufficient", ...shared });
   }
-  if (!dependencies.chatModel) {
+  if (!chatModel) {
     return finish({ kind: "retrieval_only", ...shared });
   }
   let completion;
   try {
-    completion = await dependencies.chatModel.complete({
+    completion = await chatModel.complete({
       ...buildStepHelpPrompt(context, question, fragments),
       maxOutputTokens: assistantLimits.maxOutputTokens,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AiBudgetExceededError) {
+      return finish({
+        kind: "budget_exceeded",
+        limit: error.limit,
+        ...shared,
+      });
+    }
     return finish({ kind: "model_error", ...shared });
   }
   const parsed = parseModelAnswer(

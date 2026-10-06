@@ -7,8 +7,24 @@ import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gate
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { authorizeSpaceAction } from "@/modules/access/authorization";
 import { spaceIdSchema } from "@/modules/access/input";
+import { readUsageSummary } from "@/modules/usage/service";
+import { PostgresUsageRepository } from "@/adapters/postgres/usage-repository";
+import { parseUsageLimits } from "@/lib/ai-budget-config";
+import { parseJobNamespace } from "@/lib/job-namespace";
 
 import { leaveSpaceAction } from "./actions";
+
+const usd = (microUsd: number) =>
+  `${(microUsd / 1_000_000).toLocaleString("es", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })} USD`;
+const formatDay = (value: Date) =>
+  new Intl.DateTimeFormat("es", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(value) + " UTC";
 
 type SpacePageProps = {
   params: Promise<{ spaceId: string }>;
@@ -37,7 +53,8 @@ export default async function SpacePage({
     notFound();
   }
 
-  const repository = new PostgresAccessRepository(getApplicationDatabase());
+  const database = getApplicationDatabase();
+  const repository = new PostgresAccessRepository(database);
   const space = await authorizeSpaceAction(
     repository,
     currentIdentity.id,
@@ -49,6 +66,18 @@ export default async function SpacePage({
     notFound();
   }
 
+  const usage = await readUsageSummary(
+    {
+      accessRepository: repository,
+      usageRepository: new PostgresUsageRepository(database),
+    },
+    {
+      identityId: currentIdentity.id,
+      spaceId: space.id,
+      namespace: parseJobNamespace(process.env),
+      limits: parseUsageLimits(process.env),
+    },
+  );
   const parameters = await searchParams;
   const notice = typeof parameters.notice === "string" ? parameters.notice : "";
   const error = typeof parameters.error === "string" ? parameters.error : "";
@@ -75,6 +104,17 @@ export default async function SpacePage({
           <dd>{space.role}</dd>
         </div>
       </dl>
+      {usage ? (
+        <p className="muted" data-testid="ai-usage">
+          Consumo de IA registrado desde {formatDay(usage.since)} (estimación de
+          Stepable; no es la factura ni el saldo de OpenAI): hoy en este espacio{" "}
+          {usd(usage.spaceTodayMicroUsd)} de {usd(usage.spaceDailyMicroUsd)} (se
+          restablece a las 00:00 UTC).{" "}
+          {usage.globalExhausted
+            ? "El presupuesto total de IA del prototipo está agotado: el operador debe ampliarlo."
+            : "El presupuesto total de IA del prototipo está disponible."}
+        </p>
+      ) : null}
       <div className="actions">
         {space.role === "responsable" ? (
           <>

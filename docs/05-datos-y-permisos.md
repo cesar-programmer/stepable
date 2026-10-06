@@ -228,3 +228,7 @@ Ambos roles activos (`consultar_rutas`) pueden recorrer rutas publicadas. Cada u
 ## Ayuda contextual (E5.3)
 
 Requiere `consultar_rutas` y `consultar_fuentes` (ambos roles activos), sobre el propio progreso y en un paso visible. Al proveedor se envían la duda, el texto visible del paso (lección, pregunta, opciones y, desde E5.4, su código de solo lectura) y hasta 6 fragmentos vigentes del espacio. La respuesta correcta (o las respuestas aceptadas de un paso “completar”, desde E5.5) y la explicación solo se envían cuando el paso ya está resuelto. No se guardan dudas ni respuestas, y no se escribe progreso ([ADR-008](decisiones/ADR-008-ayuda-contextual-e5-3.md)).
+
+## Consumo de IA (RF-10)
+
+`ai_usage` guarda por llamada la función, el tipo (conversación o embeddings), el espacio, el usuario (si existe), la clave de tarifa, el estado, los tokens y el costo estimado. No guarda preguntas, respuestas, documentos ni claves. No tiene claves foráneas para que el acumulado global se conserve aunque se eliminen espacios o perfiles; su retención para datos reales queda en PEN-06. `consultar_consumo_ia` (solo responsables activos) muestra el consumo del propio espacio y si el presupuesto global está agotado, sin cifras de otros espacios ([ADR-011](decisiones/ADR-011-control-de-consumo-rf-10.md)).

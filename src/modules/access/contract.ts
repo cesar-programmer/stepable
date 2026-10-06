@@ -10,6 +10,7 @@ export const spaceActions = [
   "consultar_rutas",
   "gestionar_rutas",
   "consultar_progreso_equipo",
+  "consultar_consumo_ia",
 ] as const;
 
 export type SpaceRole = (typeof spaceRoles)[number];

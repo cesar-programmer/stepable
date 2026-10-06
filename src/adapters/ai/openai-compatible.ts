@@ -1,4 +1,5 @@
 import type { RealModelConfig } from "../../lib/ai-config.ts";
+import { ProviderCallError } from "../../modules/usage/meter.ts";
 import type {
   ChatCompletion,
   ChatModel,
@@ -8,7 +9,9 @@ import type {
 /**
  * Minimal client for OpenAI-compatible HTTP APIs (chat completions and
  * embeddings). One request per call, a fixed timeout and no retries; error
- * messages carry the HTTP status only, never keys or request bodies.
+ * messages carry the HTTP status only, never keys or request bodies. A client
+ * error (4xx except 408) means the request was not processed; other failures
+ * are uncertain for consumption purposes.
  */
 async function postJson(
   config: RealModelConfig,
@@ -16,19 +19,39 @@ async function postJson(
   body: unknown,
   timeoutMs: number,
 ): Promise<unknown> {
-  const response = await fetch(`${config.baseUrl}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!response.ok) {
-    throw new Error(`El proveedor respondió ${response.status}.`);
+  let response: Response;
+  try {
+    response = await fetch(`${config.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    throw new ProviderCallError(
+      "No se obtuvo respuesta del proveedor.",
+      "incierta",
+    );
   }
-  return response.json();
+  if (!response.ok) {
+    throw new ProviderCallError(
+      `El proveedor respondió ${response.status}.`,
+      response.status >= 400 && response.status < 500 && response.status !== 408
+        ? "rechazada"
+        : "incierta",
+    );
+  }
+  try {
+    return await response.json();
+  } catch {
+    throw new ProviderCallError(
+      "Respuesta del proveedor no válida.",
+      "incierta",
+    );
+  }
 }
 
 type ChatResponse = {
@@ -38,12 +61,14 @@ type ChatResponse = {
 
 export class OpenAiCompatibleChatModel implements ChatModel {
   readonly label: string;
+  readonly pricingKey: string;
   private readonly config: RealModelConfig;
   private readonly timeoutMs: number;
 
   constructor(config: RealModelConfig, options: { timeoutMs?: number } = {}) {
     this.config = config;
     this.label = `${config.provider} · ${config.model}`;
+    this.pricingKey = `${config.provider}:${config.model}`;
     this.timeoutMs = options.timeoutMs ?? 30_000;
   }
 
@@ -72,21 +97,27 @@ export class OpenAiCompatibleChatModel implements ChatModel {
       },
       this.timeoutMs,
     )) as ChatResponse;
+    const usage = payload.usage && {
+      inputTokens: payload.usage.prompt_tokens ?? 0,
+      outputTokens: payload.usage.completion_tokens ?? 0,
+    };
     const text = payload.choices?.[0]?.message?.content;
     if (typeof text !== "string") {
-      throw new Error("El proveedor no devolvió contenido.");
+      // Processed (and billed) even without usable content.
+      throw new ProviderCallError(
+        "El proveedor no devolvió contenido.",
+        "incierta",
+        usage,
+      );
     }
-    return {
-      text,
-      usage: payload.usage && {
-        inputTokens: payload.usage.prompt_tokens ?? 0,
-        outputTokens: payload.usage.completion_tokens ?? 0,
-      },
-    };
+    return { text, usage };
   }
 }
 
-type EmbeddingsResponse = { data?: { index: number; embedding: number[] }[] };
+type EmbeddingsResponse = {
+  data?: { index: number; embedding: number[] }[];
+  usage?: { prompt_tokens?: number };
+};
 
 export class OpenAiCompatibleEmbedder implements TextEmbedder {
   readonly model: string;
@@ -100,6 +131,12 @@ export class OpenAiCompatibleEmbedder implements TextEmbedder {
   }
 
   async embed(texts: string[]): Promise<number[][]> {
+    return (await this.embedWithUsage(texts)).vectors;
+  }
+
+  async embedWithUsage(
+    texts: string[],
+  ): Promise<{ vectors: number[][]; inputTokens: number | null }> {
     const payload = (await postJson(
       this.config,
       "/embeddings",
@@ -109,9 +146,14 @@ export class OpenAiCompatibleEmbedder implements TextEmbedder {
     const vectors = [...(payload.data ?? [])]
       .sort((left, right) => left.index - right.index)
       .map((item) => item.embedding);
+    const inputTokens = payload.usage?.prompt_tokens ?? null;
     if (vectors.length !== texts.length) {
-      throw new Error("El proveedor devolvió un número distinto de vectores.");
+      throw new ProviderCallError(
+        "El proveedor devolvió un número distinto de vectores.",
+        "incierta",
+        inputTokens === null ? undefined : { inputTokens, outputTokens: 0 },
+      );
     }
-    return vectors;
+    return { vectors, inputTokens };
   }
 }

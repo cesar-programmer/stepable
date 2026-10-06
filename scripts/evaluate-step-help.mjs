@@ -3,6 +3,10 @@ import process from "node:process";
 
 import { createClient } from "@supabase/supabase-js";
 
+import {
+  configuredMeter,
+  unpricedModels,
+} from "../src/adapters/ai/metering.ts";
 import { configuredModels } from "../src/adapters/ai/models.ts";
 import { PostgresAccessRepository } from "../src/adapters/postgres/access-repository.ts";
 import { createPostgresDatabase } from "../src/adapters/postgres/database.ts";
@@ -33,6 +37,12 @@ const admin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } },
 );
 const connection = createPostgresDatabase(process.env.DATABASE_URL);
+// Real calls count against the prototype's consumption budget (RF-10).
+const unpriced = unpricedModels(models.chatModel, models.embedder);
+if (unpriced.length > 0) {
+  throw new Error(`Sin tarifa configurada para: ${unpriced.join(", ")}.`);
+}
+const meter = configuredMeter(connection.database, process.env);
 const accessRepository = new PostgresAccessRepository(connection.database);
 const learning = {
   accessRepository,
@@ -106,6 +116,7 @@ try {
           connection.database,
         ),
         chatModel: models.chatModel,
+        meter,
         embedder: null,
         log: (entry) => entry.usage && usage.push(entry.usage),
       },
