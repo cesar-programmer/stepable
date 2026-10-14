@@ -15,6 +15,7 @@ Estado: vigente · Actualizado: 2026-10-01.
 | [09-estado-actual](09-estado-actual.md) | Punto de reanudación | Al iniciar y cerrar una sesión |
 | [10-cambios](10-cambios.md) | Historial documental breve | Para conocer qué cambió |
 | [11-interfaz](11-interfaz.md) | Criterios visuales y vistas pendientes del rediseño | Antes de cambiar la interfaz |
+| [12-desarrollo-local](12-desarrollo-local.md) | Instalación, ejecución, configuración de IA y pruebas en local | Al preparar el entorno o ejecutar pruebas |
 | [Decisiones](decisiones/README.md) | Motivos e historial de decisiones significativas | Cuando cambie una decisión |
 | [Referencias](referencias/README.md) | Procedencia y límites de los PDF históricos | Para investigar antecedentes |
 

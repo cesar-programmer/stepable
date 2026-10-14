@@ -2,7 +2,8 @@
 
 ## 2026-10-13 · 5.3 · README público
 
-- README reescrito para GitHub: qué hace Stepable, tecnologías, arquitectura, ejecución local, pruebas, documentación y estado. Se quitaron instrucciones obsoletas (remoto inexistente, `/protected`, comprobaciones manuales de E1 con la interfaz anterior); las pruebas manuales vigentes siguen en el documento 07.
+- README corto y visual para GitHub: insignias, cinco capturas de la aplicación en `docs/assets/` (datos de demostración temporales y modelo simulado, indicado en los pies), funciones, stack y arranque rápido.
+- Las instrucciones detalladas pasan a la nueva guía `docs/12-desarrollo-local.md`. Se quitaron las obsoletas (remoto inexistente, `/protected`, comprobaciones de E1 con la interfaz anterior); las pruebas manuales vigentes siguen en el documento 07.
 
 ## 2026-10-13 · 5.2 · Modo oscuro, confirmaciones y borrado de borradores
 
