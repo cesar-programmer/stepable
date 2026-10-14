@@ -1,150 +1,188 @@
-# Stepable · Base documental V0
+# Stepable
 
-Versión documental: 4.5 · Fecha: 2026-10-06 · Estado: E1, E2, E3, E4.1 y E5.1–E5.5 cerradas localmente (prototipo con documentos sintéticos); control de consumo de IA (RF-10) cerrado; la V0 sigue incompleta (piloto E6 pendiente); la generación automática de pasos con código no tiene todavía una evaluación real exitosa.
+**Onboarding interactivo para equipos de software, construido a partir de su propia documentación.**
 
-Este repositorio contiene la base documental y la aplicación local de Stepable. E1 implementa identidad, espacios, invitaciones, membresías, autorización vigente y auditoría mínima de mutaciones de acceso. El piloto y los proveedores siguen pendientes.
+Stepable convierte la documentación interna de un equipo (guías, convenciones, procesos) en rutas de aprendizaje con lecciones y ejercicios. Además ofrece un asistente que responde preguntas citando las fuentes. Una persona responsable revisa todo lo que genera la IA antes de publicarlo.
 
-## Cómo comenzar
+> **Estado:** prototipo funcional que se ejecuta en local con documentos sintéticos. No está desplegado ni se ha validado con usuarios reales. Es un producto propio en desarrollo y forma parte de mi portafolio.
 
-1. Colocar el contenido de esta carpeta en la raíz del repositorio de Stepable. Si ya existen archivos con el mismo nombre, comparar y combinar; no sobrescribir instrucciones existentes sin revisarlas.
-2. Leer [AGENTS.md](AGENTS.md) y [el índice](docs/00-indice.md).
-3. Retomar desde [el estado actual](docs/09-estado-actual.md).
-4. El repositorio Git es local y no tiene remoto. No hacer `push` ni configurar uno por inferencia.
+---
 
-## Operación local reproducible
+## Qué hace
 
-Requisitos: Node.js 24, Corepack/`pnpm` 11, un runtime compatible con Docker y espacio para las imágenes locales de Supabase. Las versiones de dependencias quedan fijadas en `pnpm-lock.yaml`.
+### Espacios, roles e invitaciones
+- Cada equipo trabaja en un **espacio** con dos roles: *responsable* (prepara el contenido y gestiona el equipo) e *integrante* (aprende y consulta).
+- Invitaciones por correo con enlaces de un solo uso que caducan a los siete días, cambio de rol, retirada de acceso y protección del último responsable.
+- La autorización se comprueba en el servidor en cada solicitud y las acciones de acceso quedan auditadas.
 
-Instalación y primer arranque:
+### Fuentes de conocimiento
+- Carga de **Markdown** y **PDF con texto**, procesados en segundo plano por un worker.
+- Versiones: al reemplazar un archivo, la versión vigente sigue disponible hasta que la nueva esté lista. Los fallos se pueden reintentar y las fuentes eliminadas se purgan.
+
+### Rutas de onboarding generadas con IA
+- La persona responsable indica un **objetivo de aprendizaje**, elige hasta 5 fuentes y los tipos de actividad. La IA redacta un **borrador** usando solo fragmentos de esas fuentes y citándolos.
+- Tres tipos de actividad: **opción múltiple**, **lectura de código** y **completar código**, este último con un hueco que se corrige en el servidor por coincidencia exacta.
+- Editor por pasos con vista previa, aviso de cambios sin guardar y publicación explícita: la versión publicada ya no cambia.
+- Sin evidencia suficiente, el borrador lo indica en lugar de inventar contenido. Si una fuente citada cambia, la ruta queda marcada para revisión.
+
+### Aprendizaje
+- Un paso a la vez, con 3 intentos por pregunta, retroalimentación inmediata y desbloqueo progresivo.
+- Progreso privado de cada persona y vista de progreso del equipo para los responsables.
+- **Ayuda contextual** en cada paso: antes de resolverlo orienta sin dar la respuesta; después explica la solución.
+
+### Asistente con citas
+- Responde **solo con las fuentes vigentes del espacio**, con búsqueda híbrida (texto completo y embeddings con pgvector).
+- Cada cita se comprueba contra los fragmentos realmente recuperados. Una respuesta con citas inventadas no se muestra.
+- Disponible como página y como **panel flotante** desde cualquier vista del espacio.
+- Cada consulta es independiente: no guarda historial.
+
+### Control de consumo de IA
+- Antes de cada llamada se reserva un costo estimado: hay un límite acumulado del prototipo, otro diario por espacio y otro de consultas diarias por persona.
+- Las llamadas que superarían el límite no se hacen.
+
+### Interfaz
+- Diseño propio con tokens, **modo claro y oscuro**, sistema de movimiento compartido que respeta `prefers-reduced-motion` y foco visible.
+- Navegación por teclado y diseño adaptado a móvil.
+
+---
+
+## Tecnologías
+
+| Área | Tecnología |
+| --- | --- |
+| Aplicación web | [Next.js 16](https://nextjs.org/) (App Router, Server Actions), React 19, TypeScript |
+| Datos | PostgreSQL con [Drizzle ORM](https://orm.drizzle.team/) y `postgres.js`, extensión `pgvector` |
+| Autenticación y archivos | [Supabase](https://supabase.com/) (Auth y Storage) en local con Supabase CLI |
+| Trabajos en segundo plano | [pg-boss](https://github.com/timgit/pg-boss) (procesamiento de fuentes y generación de rutas) |
+| PDF | `pdfjs-dist` |
+| IA | OpenAI (`gpt-4.1-mini` y `text-embedding-3-small`) mediante adaptadores; modo simulado para pruebas |
+| Validación | Zod |
+| Animación | [Motion](https://motion.dev/) y CSS |
+| Pruebas | Vitest (unitarias e integración) y Playwright (extremo a extremo) |
+
+## Arquitectura
+
+Es un monolito modular: la web y su API viven juntas, y un worker aparte procesa los trabajos largos.
+
+```
+src/
+├── app/        # Interfaz (Next.js App Router), acciones de servidor y componentes
+├── modules/    # Casos de uso y reglas de negocio, sin dependencias de infraestructura
+│               # access · identity · invitations · memberships · sources
+│               # knowledge (asistente) · routes · learning · usage (consumo de IA)
+├── adapters/   # Implementaciones: PostgreSQL, Supabase, IA, pg-boss, PDF, Mailpit
+├── worker/     # Proceso de trabajos en segundo plano
+└── lib/        # Utilidades de configuración
+supabase/migrations/   # Esquema SQL versionado
+tests/                 # Integración (Vitest) y extremo a extremo (Playwright)
+docs/                  # Especificación, reglas, decisiones (ADR) y estado
+```
+
+Los módulos definen contratos (repositorios, modelos de IA) y los adaptadores los implementan. Así, las reglas se prueban sin infraestructura y los proveedores de IA se pueden sustituir.
+
+---
+
+## Ejecutar en local
+
+### Requisitos
+
+- Node.js 24 y pnpm 11 (vía Corepack)
+- Docker o un runtime compatible, para la pila local de Supabase
+- [Supabase CLI](https://supabase.com/docs/guides/cli)
+
+### Primer arranque
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm env:start
-pnpm env:status
-pnpm db:migrate
-pnpm dev        # terminal 1: aplicación web
-pnpm worker     # terminal 2: procesamiento de fuentes (pg-boss)
+pnpm env:start      # levanta PostgreSQL, Auth, Storage y Mailpit, y genera .env.local
+pnpm db:migrate     # aplica las migraciones pendientes (no borra datos)
+
+pnpm dev            # terminal 1: aplicación en http://127.0.0.1:3000
+pnpm worker         # terminal 2: procesamiento de fuentes y generación de rutas
 ```
 
-`env:start` crea o reutiliza una sola pila local de PostgreSQL/Auth/Mailpit y sincroniza `.env.local`; el archivo está ignorado por Git. Supabase CLI puede mostrar claves locales en esa terminal: no copiarlas a reportes ni compartirlas. `db:migrate` aplica solo migraciones pendientes y no reinicia la base. La aplicación abre en `http://127.0.0.1:3000`, Supabase Studio en `http://127.0.0.1:54323` y Mailpit en `http://127.0.0.1:54324`.
+Además de la aplicación:
+- Supabase Studio: `http://127.0.0.1:54323`
+- Mailpit, donde llegan los correos de invitación y recuperación: `http://127.0.0.1:54324`
 
-Preparación opcional de datos locales:
+Todos los servicios escuchan solo en `127.0.0.1`.
+
+### Crear un usuario y un espacio
+
+No hay registro público: los espacios se aprovisionan desde la terminal.
 
 ```bash
-pnpm auth:create-local-user
-pnpm access:bootstrap-space
+pnpm auth:create-local-user    # pide correo y contraseña (no la muestra ni la guarda)
+pnpm access:bootstrap-space    # crea un espacio y te asigna como responsable
 ```
 
-Comprobación completa:
+Para probar con contenido hay una fuente sintética de ejemplo en `samples/demo/`.
+
+### Configurar la IA (opcional)
+
+Sin configuración, el asistente funciona en modo desactivado y muestra solo los fragmentos encontrados.
+
+Para activar un modelo:
+1. Copia las variables comentadas de `.env.example` en **`.env.development.local`**. Git ignora ese archivo y `env:start` no lo sobrescribe.
+2. Rellena allí las variables y la clave de API. Nunca las pongas en el código ni en archivos versionados.
+3. Reinicia `pnpm dev` y `pnpm worker`.
+
+Los límites de consumo (`STEPABLE_AI_BUDGET_*`) también están en `.env.example`.
+
+### Detener y reanudar
 
 ```bash
-pnpm verify             # formato, lint, tipos, unidades, higiene y build
-pnpm test:integration   # Auth, PostgreSQL y Mailpit locales reales
-pnpm test:e2e           # recorridos web; requiere Chromium de Playwright
-pnpm security:check     # archivos versionables, secretos y correos no reservados
+pnpm env:stop                         # detiene la pila local y conserva los datos
+pnpm env:start && pnpm db:migrate     # reanuda
 ```
 
-Comandos focalizados disponibles: `test:integration:auth`, `test:integration:access`, `test:integration:invitations`, `test:integration:memberships`, `test:integration:audit`, `test:e2e:auth`, `test:e2e:access`, `test:integration:sources`, `test:e2e:invitations`, `test:e2e:memberships` y `test:e2e:sources`. Las pruebas de fuentes arrancan su propio worker.
+> `pnpm db:reset` reconstruye la base desde cero y **borra todos los datos locales**. No forma parte del uso diario.
 
-Detención y reanudación:
+---
+
+## Pruebas
 
 ```bash
-# detener pnpm dev y pnpm worker con Ctrl+C
-pnpm env:stop
-
-# reanudar sin borrar datos
-pnpm env:start
-pnpm db:migrate
-pnpm dev
+pnpm verify             # formato, lint, tipos, pruebas unitarias, revisión de secretos y build
+pnpm test:integration   # contra Auth, PostgreSQL y Mailpit locales reales
+pnpm test:e2e           # recorridos en el navegador (requiere Chromium de Playwright)
 ```
 
-`pnpm db:reset` es destructivo y no forma parte de la operación diaria: reconstruye una base descartable desde las migraciones y solo debe usarse con autorización expresa. Para actualizar la base existente se usa `pnpm db:migrate`.
+- **IA sin coste:** las pruebas fuerzan el modo de IA *simulado* y un espacio de trabajos aislado, así que nunca llaman a un proveedor de pago ni comparten trabajos con un `pnpm worker` en marcha.
+- **Datos temporales:** las pruebas crean identidades y espacios desechables y los eliminan al terminar.
+- **Pruebas por área:** hay comandos para cada una, como `test:e2e:routes`, `test:e2e:assistant` o `test:integration:sources`; consulta `package.json`.
+- **Llamadas reales:** `pnpm assistant:evaluate`, `pnpm routes:evaluate` y `pnpm help:evaluate` sí usan el proveedor real; ejecútalos solo de forma consciente.
 
-`pnpm auth:create-local-user` solicita correo y contraseña de forma interactiva, no muestra la contraseña y no guarda credenciales. Crea solo una identidad confirmada en Supabase Auth local; no crea administrador de Stepable, espacio, membresía ni rol.
+---
 
-`pnpm access:bootstrap-space` solicita el correo de una identidad local existente, un `slug` estable y el nombre visible. Crea transaccionalmente el perfil, espacio y primera membresía `responsable`. Repetir los mismos datos es idempotente; un nombre o responsable inicial diferente produce conflicto. No crea identidades ni modifica contraseñas y no existe una ruta web para aprovisionar espacios.
+## Documentación
 
-### Comprobación manual de E1.2
+La carpeta [`docs/`](docs/00-indice.md) es la fuente canónica del producto:
 
-1. Crear el usuario con `pnpm auth:create-local-user` y arrancar la aplicación con `pnpm dev`.
-2. Abrir `http://127.0.0.1:3000/login`, iniciar sesión y comprobar `/protected`.
-3. Recargar `/protected`, cerrar sesión y comprobar que volver a esa ruta redirige al login.
-4. En `/recover`, solicitar recuperación para el mismo correo.
-5. Abrir `http://127.0.0.1:54324`, entrar al mensaje más reciente y seguir el enlace para establecer una contraseña nueva.
-6. Comprobar que el enlace usado se rechaza y que solo la contraseña nueva permite iniciar sesión.
+- [Producto](docs/01-producto.md) y [alcance de la V0](docs/02-alcance-v0.md)
+- [Flujos y reglas de negocio](docs/03-flujos-y-reglas.md) (identificadores RN-xx)
+- [Arquitectura](docs/04-arquitectura.md), [datos y permisos](docs/05-datos-y-permisos.md) e [IA y evaluación](docs/06-ia-y-evaluacion.md)
+- [Entregas y pruebas manuales](docs/07-entregas-y-aceptacion.md) y [pendientes](docs/08-pendientes.md)
+- [Estado actual](docs/09-estado-actual.md), [historial](docs/10-cambios.md) y [criterios de interfaz](docs/11-interfaz.md)
+- [Registro de decisiones (ADR)](docs/decisiones/README.md)
 
-### Comprobación manual de E1.3
+## Estado y próximos pasos
 
-1. Con la identidad local ya creada, ejecutar `pnpm access:bootstrap-space` y completar correo, `slug` y nombre.
-2. Arrancar la aplicación con `pnpm dev` e iniciar sesión.
-3. Abrir `http://127.0.0.1:3000/spaces` y comprobar el nombre y el rol `responsable`.
-4. Abrir el espacio desde la lista y confirmar que muestra el mismo nombre, `slug` y rol.
-5. Repetir el comando con los mismos datos y confirmar que informa que el espacio ya estaba aprovisionado sin duplicarlo.
+**Implementado y verificado en local:**
+- identidad, espacios e invitaciones;
+- fuentes Markdown y PDF;
+- asistente con citas verificadas;
+- generación, edición y publicación de rutas;
+- recorrido de aprendizaje con ayuda contextual;
+- control de consumo de IA;
+- rediseño de la interfaz con modo oscuro.
 
-### Comprobación local de E1.4
+**Pendiente:**
+- rediseño de la gestión de fuentes;
+- algunas acciones de gestión, como archivar rutas publicadas o editar su título (ver [pendientes](docs/08-pendientes.md));
+- evaluación de la calidad de la IA con documentación real;
+- piloto con un equipo.
 
-No existe todavía una interfaz para cambiar roles o revocar membresías. Esos comportamientos se comprueban sin editar datos manualmente mediante fixtures efímeros que se eliminan al terminar:
+## Autor
 
-```bash
-pnpm db:migrate
-pnpm test:integration:access
-pnpm test:e2e:access
-```
-
-La integración ejercita la matriz de acciones, ausencia/revocación, cambio de rol, último responsable activo y bootstrap. El recorrido de navegador mantiene una sesión abierta, revoca solo un espacio de prueba y confirma 404 para ese espacio, sesión global vigente y acceso conservado a otro espacio. Los comandos no modifican el espacio aprovisionado manualmente.
-
-### Comprobación manual de E1.5
-
-1. Iniciar sesión como `responsable`, abrir el espacio y elegir **Gestionar invitaciones**.
-2. Indicar el correo invitado. Dejar `integrante` o seleccionar `responsable` de forma explícita y enviar.
-3. Abrir Mailpit en `http://127.0.0.1:54324`, localizar el mensaje **Invitación a…** y abrir su enlace en un segundo perfil o contexto de navegador. Abrirlo solo muestra la invitación; no crea membresía.
-4. Si la identidad ya existe, iniciar sesión en ese segundo contexto. Si es nueva, usar **Configurar cuenta nueva**, abrir el correo separado de Auth en Mailpit, establecer la contraseña y volver a la pestaña de aceptación ya autenticada.
-5. Pulsar **Aceptar invitación** y comprobar que el espacio aparece con el rol elegido.
-6. Para comprobar rotación, crear otra invitación, conservar el primer mensaje, usar **Reenviar** y confirmar que el primer enlace falla y el nuevo funciona. Para cancelación, usar **Cancelar** y comprobar que el enlace ya no permite aceptar.
-
-No copiar tokens a la terminal. La interfaz no los muestra y el servidor guarda solo su hash.
-
-### Comprobación manual de E1.6
-
-Usar dos identidades con membresía activa en el mismo espacio, una `responsable` y otra `integrante`, en dos perfiles o contextos de navegador separados:
-
-1. Como responsable, abrir **Gestionar miembros** y promover al integrante a `responsable`; confirmar en la segunda sesión que el nuevo rol y el acceso a administración aparecen al recargar.
-2. Como responsable original, cambiar el propio rol a `integrante`; debe salir de administración y permanecer en el detalle. El segundo responsable conserva el control.
-3. Desde la segunda sesión, devolver al usuario original el rol `responsable` para asegurar que siempre quede al menos uno.
-4. En la segunda sesión, usar **Abandonar espacio**. Debe volver a la lista de espacios; la sesión global sigue abierta y otros espacios no cambian.
-5. Como responsable restante, comprobar en **Gestionar miembros** que la membresía aparece `revocada` y no ofrece cambio de rol ni reactivación directa.
-
-No intentar retirar o degradar simultáneamente a ambos responsables durante la comprobación manual; las carreras y la protección del último responsable se cubren con fixtures automatizados.
-
-### Comprobación manual de E2.1
-
-Usar solo documentos sintéticos. Seguir la [prueba manual de E2.1](docs/07-entregas-y-aceptacion.md#e21--prueba-manual). Sin `pnpm worker` en marcha, las fuentes quedan “En cola”.
-
-### Comprobación manual de E2.2
-
-`pnpm sources:sample-pdfs` escribe PDF sintéticos de ejemplo (con texto, corto, escaneado, cifrado, dañado y de 201 páginas) en la carpeta temporal del sistema. Seguir la [prueba manual de E2.2](docs/07-entregas-y-aceptacion.md#e22--prueba-manual).
-
-### Comprobación manual de E2.3
-
-Seguir la [prueba manual de E2.3](docs/07-entregas-y-aceptacion.md#e23--prueba-manual).
-
-### Comprobación manual de E2.4
-
-Usar una fuente desechable y seguir la [prueba manual de E2.4](docs/07-entregas-y-aceptacion.md#e24--prueba-manual). La eliminación es irreversible.
-
-### Asistente (E3): configuración local de IA
-
-El asistente funciona sin IA y muestra solo fragmentos hasta configurarla. Las claves van únicamente en `.env.development.local`, que Git ignora y que `pnpm env:start` no sobrescribe (a diferencia de `.env.local`), nunca en el código ni en el chat; los nombres de las variables están en `.env.example`. Tras configurarlas, reiniciar `pnpm dev` y `pnpm worker`. Las pruebas automáticas fuerzan el modo `simulado` y el namespace de trabajos `pruebas`, de modo que un `pnpm worker` real nunca toma sus trabajos. Las de navegador no reutilizan un `pnpm dev` arrancado: si el puerto 3000 está ocupado, fallan sin enviar nada y hay que detenerlo. `pnpm assistant:evaluate`, `pnpm routes:evaluate` y `pnpm help:evaluate` hacen llamadas reales y solo deben ejecutarse con autorización expresa.
-
-`env:start` crea o reutiliza la red Docker `stepable-local` y publica los puertos solo en `127.0.0.1`. Supabase CLI puede mostrar el aviso genérico `All services bind to 0.0.0.0`; la comprobación válida es el enlace efectivo de Docker. Con esta red, `docker inspect` debe mostrar `127.0.0.1` —no `0.0.0.0` ni `::`— para los puertos publicados.
-
-Los documentos son memoria explícita: solo sirven a Codex si están disponibles en su entorno y se consultan. No implican recuerdo automático entre conversaciones.
-
-## Convenciones
-
-- Acordado: dirección expresada por el usuario o alcance aceptado para planificar.
-- Propuesto: detalle añadido para concretar el diseño; puede cambiar durante la planificación.
-- Pendiente: decisión aún sin respuesta. No equivale a autorización para inventar una especificación.
-- Implementado/verificado: requiere evidencia real. E1.1–E1.7 están cerradas con evidencia automatizada y comprobaciones manuales delimitadas en el estado actual.
-
-La aceptación de la V0 como base de planificación no significa que todos los detalles técnicos estén cerrados. Las instrucciones posteriores del usuario prevalecen; actualizar los documentos afectados para mantener coherencia.
+Desarrollado por [César Córdova](https://github.com/cesar-programmer), con apoyo de asistentes de IA para programar.

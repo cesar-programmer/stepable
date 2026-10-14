@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-13 · Fase: control de consumo de IA (RF-10) cerrado para el prototipo local · Versión documental: 5.2.
+Actualizado: 2026-10-13 · Fase: control de consumo de IA (RF-10) cerrado para el prototipo local · Versión documental: 5.3.
 
 ## Hechos acordados
 
@@ -49,6 +49,8 @@ Actualizado: 2026-10-13 · Fase: control de consumo de IA (RF-10) cerrado para e
 2026-10-13 (más tarde): asistente flotante en las vistas del espacio (panel lateral o hoja móvil). Comparte formulario y sesión en memoria con la página Asistente, y la ayuda de cada paso se abre en el mismo panel (documento 11). Se corrige también la comprobación de higiene, que fallaba con archivos versionados borrados. Evidencia: `pnpm verify` (88 unitarias), navegador 30/30 (prueba nueva del panel; recorrido adaptado) y vídeos con datos sintéticos y modelo simulado. Pendiente de la revisión visual del usuario; sin commit. Siguiente: Fuentes.
 
 2026-10-13 (final): modo oscuro con selector “Sistema · Claro · Oscuro” y confirmaciones en un diálogo propio en lugar de `window.confirm`. También eliminación de borradores desde Inicio, Rutas y el borrador (RN-40, ADR-013 propuesto), con la migración `20261013000000_route_draft_deletion.sql` aplicada con `migration up`; los datos se conservaron (3 cuentas, 9 rutas, 10 intentos y 9 eventos de auditoría antes y después). Carencias de gestión anotadas como PEN-13, sin decidir. Evidencia: `pnpm verify` (88 unitarias), navegador 32/32 (pruebas nuevas de tema y de borrado; confirmaciones adaptadas) y capturas en oscuro de todas las vistas. Pendiente de la revisión visual del usuario; sin commit.
+
+2026-10-13: repositorio publicado en GitHub (`origin`, rama `main`) a petición del usuario, con el trabajo acumulado en el commit `d83cf84`; README público reescrito. La revisión visual del usuario sigue pendiente.
 
 ## Realizado
 
