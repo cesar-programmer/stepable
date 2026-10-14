@@ -189,6 +189,11 @@ export interface SourceRepository {
   completePurge(sourceId: string): Promise<boolean>;
   claimStalePurges(requestedBefore: Date): Promise<string[]>;
   listSources(spaceId: string, onlyReady: boolean): Promise<SourceSummary[]>;
+  /**
+   * Active sources whose current version has a fenced code block (```).
+   * Only an orientation: code in other formats (PDF) is not detected.
+   */
+  listSourceIdsWithCodeBlocks(spaceId: string): Promise<string[]>;
   findSource(
     spaceId: string,
     sourceId: string,

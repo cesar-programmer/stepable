@@ -1,2 +1,9 @@
 allowBuilds:
   unrs-resolver: true
+
+# Keep Motion's internal packages on the same 13.4 release as `motion`
+# (its ^ ranges would otherwise pull the 13.5 series).
+overrides:
+  framer-motion: 13.4.6
+  motion-dom: 13.4.5
+  motion-utils: 13.3.0

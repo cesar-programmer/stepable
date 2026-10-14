@@ -217,7 +217,7 @@ Restricción aceptada: durante esta etapa solo se cargan documentos sintéticos,
 ## Rutas (E4.1)
 
 - **`consultar_rutas`** (ambos roles activos): los integrantes ven solo las rutas publicadas, sin respuesta correcta ni explicación hasta E5.
-- **`gestionar_rutas`** (responsables activos): solicitar, editar, regenerar y publicar borradores.
+- **`gestionar_rutas`** (responsables activos): solicitar, editar, regenerar, publicar y eliminar borradores (RN-40; las rutas publicadas no se eliminan).
 - Toda mutación revalida al actor en su transacción. Una ruta de otro espacio responde 404.
 - **Contenido derivado:** las rutas conservan su propio texto y una instantánea de cada cita (título de la fuente, versión y ubicación) aunque la fuente se reemplace o se elimine y purgue. Su retención para datos reales sigue en PEN-06 ([ADR-006](decisiones/ADR-006-rutas-e4-1.md)).
 

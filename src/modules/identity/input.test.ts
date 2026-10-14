@@ -26,7 +26,7 @@ describe("identity input", () => {
 
   it("accepts only internal redirect paths", () => {
     expect(safeInternalPath("/protected")).toBe("/protected");
-    expect(safeInternalPath("https://example.test")).toBe("/protected");
-    expect(safeInternalPath("//example.test")).toBe("/protected");
+    expect(safeInternalPath("https://example.test")).toBe("/spaces");
+    expect(safeInternalPath("//example.test")).toBe("/spaces");
   });
 });

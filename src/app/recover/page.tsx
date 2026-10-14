@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import { AuthLayout, AuthMessage } from "@/app/components/auth-layout";
+import { Icon } from "@/app/components/icons";
+import { SubmitButton } from "@/app/components/submit-button";
+
 import { requestPasswordRecoveryAction } from "../auth/actions";
 
 type RecoverPageProps = {
@@ -10,29 +14,39 @@ export default async function RecoverPage({ searchParams }: RecoverPageProps) {
   const parameters = await searchParams;
 
   return (
-    <main>
-      <p className="eyebrow">Identidad local</p>
-      <h1>Recuperar contraseña</h1>
-      <p>El mensaje se captura en Mailpit y no se envía a Internet.</p>
-
+    <AuthLayout
+      description="Escribe el correo de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva."
+      footer={
+        <Link className="back-link" href="/login">
+          <Icon className="flip" name="chevronRight" size={16} />
+          Volver a iniciar sesión
+        </Link>
+      }
+      title="Recupera tu contraseña"
+    >
       {parameters.notice === "requested" ? (
-        <p className="notice">
-          Si el correo corresponde a un usuario local, encontrarás un enlace en
-          Mailpit.
-        </p>
+        <AuthMessage tone="notice">
+          Si el correo corresponde a una cuenta, recibirás un enlace en unos
+          minutos. En este entorno local, encontrarás un enlace en Mailpit.
+        </AuthMessage>
       ) : null}
 
-      <form action={requestPasswordRecoveryAction}>
-        <label>
-          Correo
-          <input autoComplete="email" name="email" required type="email" />
-        </label>
-        <button type="submit">Enviar enlace local</button>
+      <form action={requestPasswordRecoveryAction} className="auth-form">
+        <div className="field">
+          <label htmlFor="email">Correo</label>
+          <input
+            autoComplete="email"
+            autoFocus
+            id="email"
+            name="email"
+            required
+            type="email"
+          />
+        </div>
+        <SubmitButton className="auth-submit" pendingLabel="Enviando…">
+          Enviar enlace
+        </SubmitButton>
       </form>
-
-      <p className="muted">
-        <Link href="/login">Volver al inicio de sesión</Link>
-      </p>
-    </main>
+    </AuthLayout>
   );
 }

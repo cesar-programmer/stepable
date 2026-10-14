@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { AnimatedItem, AnimatedList } from "@/app/components/motion";
 import { PostgresAccessRepository } from "@/adapters/postgres/access-repository";
 import { getApplicationDatabase } from "@/adapters/postgres/database";
 import { PostgresInvitationRepository } from "@/adapters/postgres/invitation-repository";
@@ -98,9 +99,9 @@ export default async function InvitationsPage({
       {invitations.length === 0 ? (
         <p className="empty-state">Aún no hay invitaciones.</p>
       ) : (
-        <ul className="invitation-list">
+        <AnimatedList className="invitation-list">
           {invitations.map((invitation) => (
-            <li key={invitation.id}>
+            <AnimatedItem key={invitation.id}>
               <div>
                 <strong>{invitation.email}</strong>
                 <span>
@@ -141,9 +142,9 @@ export default async function InvitationsPage({
                   </form>
                 </div>
               )}
-            </li>
+            </AnimatedItem>
           ))}
-        </ul>
+        </AnimatedList>
       )}
 
       <div className="actions">

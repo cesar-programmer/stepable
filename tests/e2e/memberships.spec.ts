@@ -33,7 +33,7 @@ async function login(page: Page, identity: LocalTestIdentity) {
   await page.getByLabel("Correo").fill(identity.email);
   await page.getByLabel("Contraseña").fill(identity.password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/protected$/);
+  await expect(page).toHaveURL(/\/spaces$/);
 }
 
 async function addMember(
@@ -54,8 +54,9 @@ async function addMember(
 }
 
 async function confirmClick(page: Page, buttonName: string) {
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: buttonName }).click();
+  // The app asks in its own dialog; the first button confirms.
+  await page.getByRole("dialog").getByRole("button").first().click();
 }
 
 test.describe.serial("membership administration browser flows", () => {
@@ -148,29 +149,39 @@ test.describe.serial("membership administration browser flows", () => {
       .getByRole("listitem")
       .filter({ hasText: member.email });
     await memberRow.getByRole("combobox").selectOption("responsable");
-    page.once("dialog", (dialog) => dialog.accept());
     await memberRow.getByRole("button", { name: "Guardar rol" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Cambiar rol" })
+      .click();
     await expect(page.getByText("Rol actualizado.")).toBeVisible();
 
     const memberContext = await browser.newContext();
     const memberPage = await memberContext.newPage();
     await login(memberPage, member);
     await memberPage.goto(`/spaces/${managementSpaceId}`);
-    await expect(memberPage.getByText("responsable")).toBeVisible();
+    await expect(memberPage.getByText("Inicio · Responsable")).toBeVisible();
     await expect(
-      memberPage.getByRole("link", { name: "Gestionar miembros" }),
+      memberPage
+        .getByRole("navigation", { name: "Espacio" })
+        .getByRole("link", { name: "Miembros" }),
     ).toBeVisible();
 
     const ownerRow = page
       .getByRole("listitem")
       .filter({ hasText: owner.email });
     await ownerRow.getByRole("combobox").selectOption("integrante");
-    page.once("dialog", (dialog) => dialog.accept());
     await ownerRow.getByRole("button", { name: "Guardar rol" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Cambiar rol" })
+      .click();
     await expect(page).toHaveURL(new RegExp(`/spaces/${managementSpaceId}`));
     await expect(page.getByText("Tu rol ahora es integrante.")).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Gestionar miembros" }),
+      page
+        .getByRole("navigation", { name: "Espacio" })
+        .getByRole("link", { name: "Miembros" }),
     ).toHaveCount(0);
 
     await memberPage.goto(`/spaces/${managementSpaceId}/members`);
@@ -178,14 +189,20 @@ test.describe.serial("membership administration browser flows", () => {
       .getByRole("listitem")
       .filter({ hasText: owner.email });
     await demotedOwnerRow.getByRole("combobox").selectOption("responsable");
-    memberPage.once("dialog", (dialog) => dialog.accept());
     await demotedOwnerRow.getByRole("button", { name: "Guardar rol" }).click();
+    await memberPage
+      .getByRole("dialog")
+      .getByRole("button", { name: "Cambiar rol" })
+      .click();
     await expect(memberPage.getByText("Rol actualizado.")).toBeVisible();
 
     await page.goto(`/spaces/${managementSpaceId}/members`);
     memberRow = page.getByRole("listitem").filter({ hasText: member.email });
-    page.once("dialog", (dialog) => dialog.accept());
     await memberRow.getByRole("button", { name: "Retirar acceso" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Retirar acceso" })
+      .click();
     await expect(page.getByText("Acceso retirado.")).toBeVisible();
     await expect(
       page
@@ -196,9 +213,9 @@ test.describe.serial("membership administration browser flows", () => {
 
     const denied = await memberPage.goto(`/spaces/${managementSpaceId}`);
     expect(denied?.status()).toBe(404);
-    await memberPage.goto("/protected");
+    await memberPage.goto("/spaces");
     await expect(
-      memberPage.getByRole("heading", { name: "Sesión validada" }),
+      memberPage.getByRole("heading", { name: "Tus espacios" }),
     ).toBeVisible();
     await memberPage.goto(`/spaces/${retainedSpaceId}`);
     await expect(
@@ -214,7 +231,7 @@ test.describe.serial("membership administration browser flows", () => {
     const memberContext = await browser.newContext();
     const memberPage = await memberContext.newPage();
     await login(memberPage, leavingMember);
-    await memberPage.goto(`/spaces/${leaveSpaceId}`);
+    await memberPage.goto(`/spaces/${leaveSpaceId}/settings`);
     await confirmClick(memberPage, "Abandonar espacio");
     await expect(memberPage).toHaveURL(/\/spaces\?notice=left-space$/);
     await expect(
@@ -230,7 +247,7 @@ test.describe.serial("membership administration browser flows", () => {
         .filter({ hasText: leavingMember.email })
         .getByText("revocada"),
     ).toBeVisible();
-    await page.goto(`/spaces/${leaveSpaceId}`);
+    await page.goto(`/spaces/${leaveSpaceId}/settings`);
     await confirmClick(page, "Abandonar espacio");
     await expect(
       page.getByText(

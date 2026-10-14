@@ -1,6 +1,6 @@
 # Estado actual y reanudación
 
-Actualizado: 2026-10-06 · Fase: control de consumo de IA (RF-10) cerrado para el prototipo local · Versión documental: 4.5.
+Actualizado: 2026-10-13 · Fase: control de consumo de IA (RF-10) cerrado para el prototipo local · Versión documental: 5.2.
 
 ## Hechos acordados
 
@@ -42,7 +42,13 @@ Actualizado: 2026-10-06 · Fase: control de consumo de IA (RF-10) cerrado para e
 
 ## Actualización más reciente
 
-2026-10-06: preparación de la demostración completada y verificada (textos, contraseña mínima de 8, diagnóstico de validación visible y saneado, fuente sintética y guion). Registro de autorización: el mensaje del usuario del 2026-10-06 incluía, en el texto pegado, “No ejecutes generaciones reales ni modifiques mis rutas para preparar el guion” y, añadida después por el usuario, la línea “puedes usar llamdas de pago pero que no sean muy caras o extensas y limitate a 5 pruebas a llamdas reales de pagi”. Las 2 llamadas se hicieron con esa línea, sin señalar antes la contradicción. Al pedirse la aclaración, el usuario confirmó (“si permito las llamadas de opago”) y pidió no hacer más llamadas de pago. Sin más llamadas de pago.
+2026-10-13: rediseño del asistente (consulta independiente, ejemplos que solo rellenan, campo con envío protegido, respuesta con citas enlazadas, copiar y editar la pregunta, estados claros, Markdown seguro reutilizado en la ayuda) y ajustes del recorrido (“No consume intentos de respuesta”; índice oculto comprobado fuera del teclado y del árbol de accesibilidad). Evidencia: `pnpm verify` (88 unitarias), navegador del asistente 3/3 y del recorrido 4/4, capturas sin desbordamiento. Todas las entregas de interfaz siguen pendientes de la revisión visual del usuario; sin commit desde `b04033c`. Siguiente: Fuentes (documento 11).
+
+2026-10-13 (después): sistema de movimiento común en toda la aplicación (documento 11, ADR-012 propuesto). Usa Motion 13.4.6, fijado, para los cambios de estado y CSS para los efectos sencillos. Corrige además el botón “Cerrar menú” en móvil. Evidencia: `pnpm verify` (88 unitarias), navegador 29/29, y vídeos de escritorio y móvil grabados con datos sintéticos y modelo simulado. Las comprobaciones durante la grabación confirmaron que se conservan el texto escrito y el foco, y que con movimiento reducido no queda contenido en salida. Pendiente de la revisión visual del usuario (también las entregas anteriores); sin commit. Siguiente: Fuentes.
+
+2026-10-13 (más tarde): asistente flotante en las vistas del espacio (panel lateral o hoja móvil). Comparte formulario y sesión en memoria con la página Asistente, y la ayuda de cada paso se abre en el mismo panel (documento 11). Se corrige también la comprobación de higiene, que fallaba con archivos versionados borrados. Evidencia: `pnpm verify` (88 unitarias), navegador 30/30 (prueba nueva del panel; recorrido adaptado) y vídeos con datos sintéticos y modelo simulado. Pendiente de la revisión visual del usuario; sin commit. Siguiente: Fuentes.
+
+2026-10-13 (final): modo oscuro con selector “Sistema · Claro · Oscuro” y confirmaciones en un diálogo propio en lugar de `window.confirm`. También eliminación de borradores desde Inicio, Rutas y el borrador (RN-40, ADR-013 propuesto), con la migración `20261013000000_route_draft_deletion.sql` aplicada con `migration up`; los datos se conservaron (3 cuentas, 9 rutas, 10 intentos y 9 eventos de auditoría antes y después). Carencias de gestión anotadas como PEN-13, sin decidir. Evidencia: `pnpm verify` (88 unitarias), navegador 32/32 (pruebas nuevas de tema y de borrado; confirmaciones adaptadas) y capturas en oscuro de todas las vistas. Pendiente de la revisión visual del usuario; sin commit.
 
 ## Realizado
 
@@ -197,7 +203,7 @@ No se implementaron ejecución de código, comparación semántica de respuestas
 
 ## Próxima tarea concreta
 
-Ejecutar el guion de demostración del documento 07 cuando el usuario lo decida. Siguen pendientes el piloto (E6), los casos 2, 4, 6 y 7 del conjunto de evaluación, la estabilidad de la generación con código (1 de 2 ejecuciones reales falló) y los requisitos previos al despliegue (PEN-01, PEN-02, PEN-06, PEN-07, PEN-09 y PEN-12).
+Que el usuario revise visualmente las entregas del rediseño (documento 11). Si las aprueba, hacer un commit local y seguir con las lecciones y el asistente.
 
 ## Decisiones que requieren aprobación
 

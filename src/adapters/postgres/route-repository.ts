@@ -21,6 +21,7 @@ import {
   stepEditSchema,
 } from "../../modules/routes/generation.ts";
 
+import { recordAccessAuditEvent } from "./access-audit.ts";
 import type { StepableDatabase } from "./database.ts";
 
 type Transaction = Parameters<
@@ -809,6 +810,47 @@ export class PostgresRouteRepository implements RouteRepository {
         sql`update public.route_steps set position = position - 1
             where route_id = ${input.routeId} and position > ${deleted.position}`,
       );
+      return { kind: "ok" };
+    });
+  }
+
+  deleteDraft(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    routeId: string;
+  }): Promise<RouteMutationResult> {
+    return this.database.transaction(async (transaction) => {
+      if (
+        !(await lockAndAuthorize(
+          transaction,
+          input.spaceId,
+          input.actorIdentityId,
+        ))
+      ) {
+        return { kind: "unauthorized" };
+      }
+      // Same row lock as the worker's claim: a queued draft is deleted
+      // before it is claimed (no call is made), a running one is refused.
+      const [route] = await rows<{ status: string; generation_status: string }>(
+        transaction,
+        sql`select status, generation_status from public.routes
+            where id = ${input.routeId} and space_id = ${input.spaceId}
+            for update`,
+      );
+      if (!route) return { kind: "not_found" };
+      if (route.status !== "borrador") return { kind: "publicada" };
+      if (route.generation_status === "generando") return { kind: "generando" };
+      // Steps, citations and sources go with it; attempts keep counting.
+      await transaction.execute(
+        sql`delete from public.routes where id = ${input.routeId}`,
+      );
+      await recordAccessAuditEvent(transaction, {
+        action: "borrador_eliminado",
+        actor: { type: "identidad", profileId: input.actorIdentityId },
+        spaceId: input.spaceId,
+        targetType: "ruta",
+        targetId: input.routeId,
+      });
       return { kind: "ok" };
     });
   }

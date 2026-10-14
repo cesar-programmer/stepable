@@ -1,5 +1,52 @@
 # Historial de cambios
 
+## 2026-10-13 · 5.2 · Modo oscuro, confirmaciones y borrado de borradores
+
+- Tema oscuro con los mismos tokens, selector “Sistema · Claro · Oscuro” y preferencia en una cookie que el servidor lee para pintar sin destello. Colores fijos sustituidos por tokens semánticos.
+- `ConfirmSubmitButton` con un diálogo propio en lugar de `window.confirm`, con verbos concretos en cada confirmación.
+- RN-40 y ADR-013 (propuesto): eliminar borradores desde Inicio, Rutas y el borrador. La migración conserva los intentos de generación al borrar y audita la eliminación.
+- PEN-13: carencias de gestión detectadas, con propuesta y sin decidir.
+- Verificación: `pnpm verify`, navegador 32/32 y capturas en oscuro. Sin llamadas de pago, commit ni push.
+
+## 2026-10-13 · 5.1 · Asistente flotante
+
+- Botón “Preguntar” en las vistas del espacio: abre un panel lateral en escritorio o una hoja en móvil, con cierre, Escape y foco gestionados.
+- Formulario y sesión compartidos con la página Asistente (`ConsultForm`, `AssistantProvider`). La pregunta y el último resultado se guardan solo en memoria y se borran al cambiar de espacio o al cerrar sesión.
+- “Pedir ayuda” abre el panel en “Ayuda de este paso”, con la acción y las reglas existentes. Cada respuesta queda ligada a su paso.
+- La comprobación de higiene ya no falla con archivos versionados borrados en el directorio de trabajo.
+- Verificación: `pnpm verify`, navegador 30/30 y vídeos con modelo simulado. Sin llamadas de pago, commit ni push.
+
+## 2026-10-13 · 5.0 · Sistema de movimiento
+
+- Motion 13.4.6 fijado, con sus paquetes internos fijados por `overrides` (ADR-012 propuesto), y tokens comunes en CSS y TypeScript.
+- Componentes compartidos: `Presence`, `SwapTransition`, `AnimatedList` y `LinkPending`. Se aplican en navegación, Rutas, “Crear ruta”, editor, recorrido, asistente, Fuentes, Miembros e Invitaciones. CSS anima acordeones, diálogos, cajón, pulsación y progreso.
+- Corregido el botón “Cerrar menú” en móvil, que quedaba tapado por el fondo.
+- Verificación: `pnpm verify` (88 unitarias), navegador 29/29 (la prueba de Rutas espera a que terminen las transiciones) y vídeos con datos sintéticos y modelo simulado. Sin llamadas de pago, commit ni push.
+
+## 2026-10-13 · 4.9 · Rediseño del asistente
+
+- Asistente: ejemplos que solo rellenan el campo, campo que crece con envío protegido, respuesta con citas enlazadas y fuentes, copiar y editar la pregunta, estados para falta de fuentes, falta de evidencia, error y límite, y detalles técnicos plegados. Consultas independientes y sin historial, como antes.
+- Markdown seguro propio, sin dependencias, reutilizado en la ayuda de las lecciones. Recorrido: “No consume intentos de respuesta” y comprobación del índice oculto.
+- Verificación: `pnpm verify` (88 unitarias), navegador del asistente 3/3 y del recorrido 4/4, capturas con datos sintéticos y modelo simulado. Sin backend nuevo salvo leer las fuentes listas; sin llamadas de pago, commit ni push.
+
+## 2026-10-13 · 4.8 · Rediseño del recorrido de una ruta
+
+- Diagnóstico de cinco problemas con pantallas reales (documento 11). Se resuelven los dos del recorrido: un paso a la vez con índice de estados, progreso por pasos, opciones táctiles, resultado con siguiente acción, ayuda plegada, pantallas de inicio y final, y desbordamiento en móvil corregido.
+- Verificación: navegador del recorrido 4/4 (pruebas adaptadas) y `pnpm verify`; capturas en escritorio y móvil sin desbordamientos. Sin cambios de backend ni llamadas de pago, commit o push.
+
+## 2026-10-13 · 4.7 · Rediseño de Rutas y acceso
+
+- Rutas: listado con filtros y estados legibles, “Crear ruta” en su propia página con tres secciones y resumen, y editor por pasos con campos según la actividad, cambios sin guardar, diálogo al cambiar de paso y vista previa sin respuestas.
+- Acceso: marco compartido con panel de marca, contraseña con Mostrar/Ocultar, mensajes claros y destino “Tus espacios” tras entrar (`/protected` redirige allí).
+- Verificación: `pnpm verify` y navegador 28/28, con las pruebas actualizadas a los nuevos flujos; capturas en escritorio y móvil sin desbordamientos. Sin backend nuevo salvo lecturas (intentos restantes y fuentes con código); sin llamadas de pago, commit ni push.
+
+## 2026-10-06 · 4.6 · Rediseño de interfaz (primera entrega)
+
+- Base visual (tokens, botones, formularios, tarjetas, insignias, avisos, tablas, foco, movimiento reducido) e iconos propios.
+- Marco de espacio: barra lateral o cajón móvil, cambio de espacio, navegación por rol con administración agrupada y Configuración con “Abandonar espacio”.
+- Listado de espacios e inicio del espacio rediseñados con datos reales: continuar aprendiendo para integrantes; contenido, borradores y progreso del equipo para responsables; consumo de IA compacto.
+- Verificación: `pnpm verify` y navegador 29/29 (pruebas actualizadas a la nueva navegación), y capturas en escritorio y móvil sin desbordamientos. Sin commit hasta la revisión visual.
+
 ## 2026-10-06 · 4.5 · Preparación de la demostración
 
 - Textos útiles en la portada y en `/spaces`; contraseña mínima local de Supabase en 8 caracteres, con los datos conservados y comprobado con un cambio de contraseña.

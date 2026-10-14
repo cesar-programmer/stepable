@@ -165,7 +165,9 @@ export type RouteMutationResult =
         | "invalid"
         | "citas_no_vigentes"
         | "sin_pasos"
-        | "fuentes_no_disponibles";
+        | "fuentes_no_disponibles"
+        | "publicada"
+        | "generando";
     };
 
 export type RequestGenerationResult =
@@ -273,10 +275,18 @@ export interface RouteRepository {
     routeId: string;
     editVersion: number;
   }): Promise<RouteMutationResult>;
+  /** RN-40: drafts only, not while generating; audited. */
+  deleteDraft(input: {
+    actorIdentityId: string;
+    spaceId: string;
+    routeId: string;
+  }): Promise<RouteMutationResult>;
 }
 
 export type RouteListing = {
   role: SpaceRole;
   canManage: boolean;
   routes: RouteSummary[];
+  /** Responsibles only: generations left today (UTC) in the space. */
+  generationsLeftToday: number | null;
 };

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
+import { AuthLayout, AuthMessage } from "@/app/components/auth-layout";
+import { PasswordInput } from "@/app/components/password-input";
+import { SubmitButton } from "@/app/components/submit-button";
 import { safeInternalPath } from "@/modules/identity/input";
 
 import { loginAction } from "../auth/actions";
@@ -22,51 +25,68 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   return (
-    <main>
-      <p className="eyebrow">Identidad local</p>
-      <h1>Iniciar sesión</h1>
-      <p>Usa un usuario creado mediante el procedimiento local.</p>
-
-      {parameters.error === "invalid" ? (
-        <p className="error" role="alert">
-          Correo o contraseña incorrectos.
+    <AuthLayout
+      description="Entra para continuar con las rutas y las fuentes de tu equipo."
+      footer={
+        <p className="muted">
+          ¿No tienes cuenta? El acceso es por invitación de una persona
+          responsable de tu equipo.
         </p>
+      }
+      title="Inicia sesión"
+    >
+      {parameters.error === "invalid" ? (
+        <AuthMessage tone="error">
+          Correo o contraseña incorrectos. Revisa los datos e inténtalo de
+          nuevo.
+        </AuthMessage>
       ) : null}
       {parameters.error === "invalid-link" ? (
-        <p className="error" role="alert">
-          El enlace no es válido o ya fue utilizado.
-        </p>
+        <AuthMessage tone="error">
+          El enlace no es válido o ya fue utilizado. Pide uno nuevo desde
+          «¿Olvidaste tu contraseña?».
+        </AuthMessage>
       ) : null}
       {parameters.notice === "signed-out" ? (
-        <p className="notice">La sesión se cerró correctamente.</p>
+        <AuthMessage tone="notice">Cerraste la sesión.</AuthMessage>
       ) : null}
       {parameters.notice === "password-updated" ? (
-        <p className="notice">
-          La contraseña se actualizó. Inicia sesión nuevamente.
-        </p>
+        <AuthMessage tone="notice">
+          Tu contraseña se actualizó. Inicia sesión con la nueva.
+        </AuthMessage>
       ) : null}
 
-      <form action={loginAction}>
+      <form action={loginAction} className="auth-form">
         <input name="next" type="hidden" value={next} />
-        <label>
-          Correo
-          <input autoComplete="email" name="email" required type="email" />
-        </label>
-        <label>
-          Contraseña
+        <div className="field">
+          <label htmlFor="email">Correo</label>
           <input
+            autoComplete="email"
+            autoFocus
+            id="email"
+            name="email"
+            required
+            type="email"
+          />
+        </div>
+        <div className="field">
+          <div className="field-label-row">
+            <label htmlFor="password">Contraseña</label>
+            <Link className="field-link" href="/recover">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+          <PasswordInput
             autoComplete="current-password"
+            id="password"
             name="password"
             required
-            type="password"
           />
-        </label>
-        <button type="submit">Entrar</button>
+        </div>
+        <SubmitButton className="auth-submit" pendingLabel="Entrando…">
+          Entrar
+        </SubmitButton>
       </form>
-
-      <p className="muted">
-        <Link href="/recover">¿Olvidaste tu contraseña?</Link>
-      </p>
-    </main>
+    </AuthLayout>
   );
 }

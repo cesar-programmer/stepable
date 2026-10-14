@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getApplicationDatabase } from "@/adapters/postgres/database";
@@ -27,6 +28,10 @@ async function currentIdentityId(spaceId: string) {
   return currentIdentity.id;
 }
 
+function refreshSpaceFrame(spaceId: string) {
+  revalidatePath(`/spaces/${spaceId}`, "layout");
+}
+
 export async function changeMemberRoleAction(formData: FormData) {
   const input = memberRoleChangeInputSchema.safeParse({
     spaceId: formData.get("spaceId"),
@@ -40,6 +45,8 @@ export async function changeMemberRoleAction(formData: FormData) {
     new PostgresMembershipRepository(getApplicationDatabase()),
     { identityId, ...input.data },
   );
+  // The space frame (navigation by role) is a shared layout: refresh it.
+  refreshSpaceFrame(input.data.spaceId);
   if (
     result.kind === "updated" &&
     identityId === input.data.targetProfileId &&
@@ -70,6 +77,7 @@ export async function revokeMemberAction(formData: FormData) {
     new PostgresMembershipRepository(getApplicationDatabase()),
     { identityId, ...input.data },
   );
+  refreshSpaceFrame(input.data.spaceId);
   if (result.kind === "revoked" && identityId === input.data.targetProfileId) {
     redirect("/spaces?notice=left-space");
   }

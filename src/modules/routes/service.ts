@@ -332,6 +332,15 @@ export async function listSpaceRoutes(
       input.spaceId,
       !manage,
     ),
+    generationsLeftToday: manage
+      ? Math.max(
+          0,
+          routeLimits.dailyGenerationAttempts -
+            (await dependencies.routeRepository.countGenerationsToday(
+              input.spaceId,
+            )),
+        )
+      : null,
   };
 }
 
@@ -438,6 +447,25 @@ export async function deleteRouteStep(
   return dependencies.routeRepository.deleteStep({
     actorIdentityId: input.identityId,
     ...input,
+  });
+}
+
+/**
+ * RN-40: deletes a draft for good (no trash). Published routes keep the
+ * learners' progress and are never deleted here; a running generation must
+ * finish first. Generation attempts already used still count.
+ */
+export async function deleteRouteDraft(
+  dependencies: Dependencies,
+  input: { identityId: string; spaceId: string; routeId: string },
+): Promise<RouteMutationResult> {
+  if (!(await canManage(dependencies, input.identityId, input.spaceId))) {
+    return { kind: "unauthorized" };
+  }
+  return dependencies.routeRepository.deleteDraft({
+    actorIdentityId: input.identityId,
+    spaceId: input.spaceId,
+    routeId: input.routeId,
   });
 }
 

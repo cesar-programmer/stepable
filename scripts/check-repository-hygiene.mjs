@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const files = execFileSync(
   "git",
@@ -39,6 +39,8 @@ const emailPattern = /[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})/gi;
 const contentProblems = [];
 
 for (const file of files) {
+  // Tracked files deleted in the working tree have nothing left to check.
+  if (!existsSync(file)) continue;
   const contents = readFileSync(file);
   if (contents.includes(0)) continue;
 

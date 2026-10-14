@@ -34,14 +34,20 @@ async function login(page: Page, identity: LocalTestIdentity) {
   await page.getByLabel("Correo").fill(identity.email);
   await page.getByLabel("Contraseña").fill(identity.password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/protected$/);
+  await expect(page).toHaveURL(/\/spaces$/);
 }
 
-async function respond(page: Page, stepPosition: number, option: string) {
+async function respond(page: Page, option: string) {
   await page.getByLabel(option, { exact: false }).check();
-  await page
-    .getByRole("button", { name: `Responder paso ${stepPosition}` })
-    .click();
+  await page.getByRole("button", { name: "Comprobar respuesta" }).click();
+}
+
+/** "Pedir ayuda" opens the shared assistant panel for this step. */
+async function askHelp(page: Page) {
+  await page.getByRole("button", { name: "Pedir ayuda" }).click();
+  const panel = page.getByRole("dialog", { name: "Ayuda de este paso" });
+  await panel.getByRole("button", { name: "Preguntar" }).click();
+  return panel.getByRole("region", { name: "Respuesta" });
 }
 
 test.describe.serial("E5.1 learner flow in the browser", () => {
@@ -163,22 +169,24 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
       page.getByText("Ejemplo ilustrativo: no es código real de la empresa"),
     ).toBeVisible();
 
+    // One step at a time: the second one is locked and not shown.
+    await expect(page.getByText("Paso 1 de 2")).toBeVisible();
+    await expect(
+      page.locator(".learn-nav-desktop").getByText("Bloqueado"),
+    ).toBeVisible();
+
     // Help before resolving gives hints and does not use an attempt.
-    const firstStep = page.locator(".route-steps > li").first();
-    await firstStep.getByRole("button", { name: "Pedir ayuda" }).click();
-    const hints = firstStep.getByRole("region", {
-      name: "Respuesta del asistente",
-    });
+    const hints = await askHelp(page);
     await expect(hints).toContainText("Ayuda para comprender");
     await expect(hints).toContainText("Pista simulada");
     await expect(hints.getByRole("link", { name: "Contratos" })).toBeVisible();
     await page.reload();
-    await expect(firstStep.getByText("Intento 1 de 3")).toBeVisible();
+    await expect(page.getByText("Intento 1 de 3")).toBeVisible();
 
-    await respond(page, 1, "B. Una versión menor");
+    await respond(page, "B. Una versión menor");
     await expect(page.getByText("Te quedan 2 intentos.")).toBeVisible();
     await expect(page.getByText("Respuesta correcta:")).toHaveCount(0);
-    await respond(page, 1, "A. Una versión mayor");
+    await respond(page, "A. Una versión mayor");
     await expect(
       page.getByText("Respuesta correcta.", { exact: true }),
     ).toBeVisible();
@@ -187,10 +195,25 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
     ).toBeVisible();
 
     // Once resolved, help explains the answer.
-    await firstStep.getByRole("button", { name: "Pedir ayuda" }).click();
+    await expect(await askHelp(page)).toContainText("Explicación simulada");
     await expect(
-      firstStep.getByRole("region", { name: "Respuesta del asistente" }),
-    ).toContainText("Explicación simulada");
+      page.getByRole("link", { name: "Siguiente paso" }),
+    ).toBeVisible();
+
+    // On the next step the panel follows it and never shows the answer
+    // given for the previous one.
+    await page.getByRole("link", { name: "Siguiente paso" }).click();
+    const helpPanel = page.getByRole("dialog", { name: "Ayuda de este paso" });
+    await expect(helpPanel).toContainText("Paso 2:");
+    await expect(
+      helpPanel.getByRole("region", { name: "Respuesta" }),
+    ).toHaveCount(0);
+    await expect(helpPanel).not.toContainText("Explicación simulada");
+    await helpPanel.getByRole("button", { name: "Cerrar asistente" }).click();
+    await expect(helpPanel).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Pedir ayuda" }),
+    ).toBeFocused();
 
     // Returning later keeps the stored progress.
     await page.goto(learnUrl);
@@ -200,15 +223,22 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
 
     // Each answer waits for its feedback: resubmitting a stale form would
     // reuse its submission id and, by design, not count as a new attempt.
-    await respond(page, 2, "B. Nadie");
+    await respond(page, "B. Nadie");
     await expect(page.getByText("Te quedan 2 intentos.")).toBeVisible();
-    await respond(page, 2, "B. Nadie");
+    await respond(page, "B. Nadie");
     await expect(page.getByText("Te queda 1 intento.")).toBeVisible();
-    await respond(page, 2, "B. Nadie");
+    await respond(page, "B. Nadie");
     await expect(page.getByText("Se agotaron los intentos.")).toBeVisible();
     await expect(page.getByTestId("learning-summary")).toContainText(
-      "Ruta completada · pasos resueltos 2 de 2 · acertados 1 de 2. Completar la ruta no implica dominio del contenido.",
+      "Ruta completada · pasos resueltos 2 de 2 · acertados 1 de 2",
     );
+    await page.getByRole("link", { name: "Ver el resumen de la ruta" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Ruta completada" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Completar la ruta no implica dominio del contenido."),
+    ).toBeVisible();
   });
 
   test("the responsible sees team totals; members cannot open them", async ({
@@ -251,14 +281,14 @@ test.describe.serial("E5.1 learner flow in the browser", () => {
     ).toBeVisible();
     await expect(page.getByText("Solución:")).toHaveCount(0);
 
-    const field = page.getByLabel("Texto para el hueco del paso 1");
+    const field = page.getByLabel("Texto para el hueco");
     await field.fill("/v2");
-    await page.getByRole("button", { name: "Responder paso 1" }).click();
+    await page.getByRole("button", { name: "Comprobar respuesta" }).click();
     await expect(page.getByText("Te quedan 2 intentos.")).toBeVisible();
     await expect(page.getByText("Solución:")).toHaveCount(0);
 
     await field.fill("  '/v2'  ");
-    await page.getByRole("button", { name: "Responder paso 1" }).click();
+    await page.getByRole("button", { name: "Comprobar respuesta" }).click();
     await expect(
       page.getByText("Respuesta correcta.", { exact: true }),
     ).toBeVisible();

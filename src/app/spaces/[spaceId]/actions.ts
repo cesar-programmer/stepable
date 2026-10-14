@@ -30,7 +30,7 @@ export async function leaveSpaceAction(formData: FormData) {
     redirect("/spaces?notice=left-space");
   }
   if (result.kind === "last_responsible") {
-    redirect(`/spaces/${input.data.spaceId}?error=last-responsible`);
+    redirect(`/spaces/${input.data.spaceId}/settings?error=last-responsible`);
   }
   redirect("/spaces");
 }

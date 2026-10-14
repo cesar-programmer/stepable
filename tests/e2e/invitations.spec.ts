@@ -31,7 +31,7 @@ async function login(page: Page, identity: LocalTestIdentity) {
   await page.getByLabel("Correo").fill(identity.email);
   await page.getByLabel("Contraseña").fill(identity.password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/protected$/);
+  await expect(page).toHaveURL(/\/spaces$/);
 }
 
 async function createInvitation(
@@ -118,7 +118,7 @@ test.describe.serial("space invitation browser flows", () => {
       .getByRole("button", { name: "Aceptar invitación" })
       .click();
     await expect(inviteePage).toHaveURL(new RegExp(`/spaces/${spaceId}$`));
-    await expect(inviteePage.getByText("responsable")).toBeVisible();
+    await expect(inviteePage.getByText("Inicio · Responsable")).toBeVisible();
     await context.close();
   });
 
@@ -159,7 +159,7 @@ test.describe.serial("space invitation browser flows", () => {
     const accountLink = await waitForAccountSetupLink(config.mailpitUrl, email);
     await inviteePage.goto(accountLink);
     await expect(
-      inviteePage.getByRole("heading", { name: "Establecer contraseña" }),
+      inviteePage.getByRole("heading", { name: "Elige una contraseña nueva" }),
     ).toBeVisible();
     await inviteePage
       .getByLabel("Nueva contraseña", { exact: true })
@@ -177,7 +177,7 @@ test.describe.serial("space invitation browser flows", () => {
       .getByRole("button", { name: "Aceptar invitación" })
       .click();
     await expect(inviteePage).toHaveURL(new RegExp(`/spaces/${spaceId}$`));
-    await expect(inviteePage.getByText("integrante")).toBeVisible();
+    await expect(inviteePage.getByText("Inicio · Integrante")).toBeVisible();
 
     await context.close();
   });

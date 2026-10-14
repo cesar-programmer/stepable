@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -15,6 +16,7 @@ import type {
 } from "@/modules/routes/contract";
 import { normalizeCode } from "@/modules/routes/generation";
 import {
+  deleteRouteDraft,
   deleteRouteStep,
   editRouteStep,
   moveRouteStep,
@@ -62,23 +64,39 @@ function routeForm(formData: FormData) {
   };
 }
 
-function finish(path: string, result: RouteMutationResult, notice: string) {
+function finish(
+  path: string,
+  result: RouteMutationResult,
+  notice: string,
+  stepId?: string,
+) {
   if (result.kind === "unauthorized" || result.kind === "not_found") {
     notFound();
   }
+  // The editor reopens on the step that was acted on.
+  const step = stepId ? `&paso=${encodeURIComponent(stepId)}` : "";
   redirect(
     result.kind === "ok"
-      ? `${path}?notice=${notice}`
-      : `${path}?error=${result.kind}`,
+      ? `${path}?notice=${notice}${step}`
+      : `${path}?error=${result.kind}${step}`,
   );
 }
 
-export async function createRouteAction(formData: FormData) {
+export type CreateRouteState = { error: string | null };
+
+/**
+ * Creates a draft and queues its generation. Errors come back to the form,
+ * so what the responsible wrote stays on screen.
+ */
+export async function createRouteFormAction(
+  _previous: CreateRouteState,
+  formData: FormData,
+): Promise<CreateRouteState> {
   const spaceId = z.uuid().safeParse(formData.get("spaceId"));
   if (!spaceId.success) notFound();
   const listPath = `/spaces/${spaceId.data}/routes`;
   const result = await requestRouteDraft(await dependencies(), {
-    identityId: await identityId(listPath),
+    identityId: await identityId(`${listPath}/new`),
     spaceId: spaceId.data,
     objective: String(formData.get("objective") ?? ""),
     sourceIds: formData.getAll("sourceIds").map(String),
@@ -88,11 +106,10 @@ export async function createRouteAction(formData: FormData) {
       .map(String) as RequestedActivity[],
   });
   if (result.kind === "unauthorized") notFound();
-  redirect(
-    result.kind === "queued"
-      ? `${listPath}/${result.routeId}?notice=generation_queued`
-      : `${listPath}?error=${result.kind}`,
-  );
+  if (result.kind === "queued") {
+    redirect(`${listPath}/${result.routeId}?notice=generation_queued`);
+  }
+  return { error: result.kind };
 }
 
 export async function regenerateRouteAction(formData: FormData) {
@@ -112,7 +129,22 @@ export async function regenerateRouteAction(formData: FormData) {
   );
 }
 
-export async function saveStepAction(formData: FormData) {
+export type SaveStepState = {
+  kind: "idle" | RouteMutationResult["kind"];
+  stepId: string | null;
+  /** Distinguishes two consecutive results of the same kind. */
+  at: number;
+};
+
+/**
+ * Saves one step and returns the outcome to the editor (no redirect), so
+ * unsaved text survives a validation error. A saved step refreshes the page
+ * data, including the edit version used to detect conflicts.
+ */
+export async function saveStepFormAction(
+  _previous: SaveStepState,
+  formData: FormData,
+): Promise<SaveStepState> {
   const form = routeForm(formData);
   // Empty option fields are dropped; the correct answer follows its option.
   const entries = [0, 1, 2, 3]
@@ -158,7 +190,15 @@ export async function saveStepAction(formData: FormData) {
       explanation: String(formData.get("explanation") ?? ""),
     },
   });
-  finish(form.path, result, "step_saved");
+  if (result.kind === "unauthorized" || result.kind === "not_found") {
+    notFound();
+  }
+  if (result.kind === "ok") revalidatePath(form.path);
+  return {
+    kind: result.kind,
+    stepId: String(formData.get("stepId") ?? ""),
+    at: Date.now(),
+  };
 }
 
 export async function moveStepAction(formData: FormData) {
@@ -171,7 +211,7 @@ export async function moveStepAction(formData: FormData) {
     stepId: String(formData.get("stepId") ?? ""),
     direction: formData.get("direction") === "up" ? "up" : "down",
   });
-  finish(form.path, result, "step_moved");
+  finish(form.path, result, "step_moved", String(formData.get("stepId") ?? ""));
 }
 
 export async function deleteStepAction(formData: FormData) {
@@ -246,5 +286,41 @@ export async function generateWithChangesAction(formData: FormData) {
     queued.kind === "queued"
       ? `${form.path}?notice=generation_queued`
       : `${form.path}?error=${queued.kind}`,
+  );
+}
+
+const deleteDraftSchema = z.object({
+  spaceId: z.uuid(),
+  routeId: z.uuid(),
+  // Where the person was, so the result shows up there.
+  from: z.enum(["inicio", "rutas", "ruta"]),
+});
+
+/** RN-40: deletes a draft after the confirmation dialog. */
+export async function deleteDraftAction(formData: FormData) {
+  const parsed = deleteDraftSchema.safeParse({
+    spaceId: formData.get("spaceId"),
+    routeId: formData.get("routeId"),
+    from: formData.get("from"),
+  });
+  if (!parsed.success) notFound();
+  const { spaceId, routeId, from } = parsed.data;
+  const routePath = `/spaces/${spaceId}/routes/${routeId}`;
+  const result = await deleteRouteDraft(await dependencies(), {
+    identityId: await identityId(routePath),
+    spaceId,
+    routeId,
+  });
+  if (result.kind === "unauthorized" || result.kind === "not_found") {
+    notFound();
+  }
+  const back =
+    from === "inicio" ? `/spaces/${spaceId}` : `/spaces/${spaceId}/routes`;
+  // The sidebar counts and the home cards change too.
+  revalidatePath(`/spaces/${spaceId}`, "layout");
+  redirect(
+    result.kind === "ok"
+      ? `${back}?notice=draft_deleted`
+      : `${from === "ruta" ? routePath : back}?error=${result.kind}`,
   );
 }

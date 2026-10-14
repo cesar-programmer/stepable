@@ -24,10 +24,10 @@ test.describe.serial("identity and session", () => {
     }
   });
 
-  test("login, protected session, logout and recovery", async ({ page }) => {
-    await page.goto("/protected");
+  test("login, session, logout and recovery", async ({ page }) => {
+    await page.goto("/spaces");
     await expect(page).toHaveURL(
-      /\/login\?next=%2Fprotected|\/login\?next=\/protected/,
+      /\/login\?next=%2Fspaces|\/login\?next=\/spaces/,
     );
 
     await page.getByLabel("Correo").fill(identity.email);
@@ -38,24 +38,27 @@ test.describe.serial("identity and session", () => {
     await page.getByLabel("Correo").fill(identity.email);
     await page.getByLabel("Contraseña").fill(identity.password);
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page).toHaveURL(/\/protected$/);
+    await expect(page).toHaveURL(/\/spaces$/);
     await expect(
-      page.getByRole("heading", { name: "Sesión validada en el servidor" }),
+      page.getByRole("heading", { name: "Tus espacios" }),
     ).toBeVisible();
 
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "Sesión validada en el servidor" }),
+      page.getByRole("heading", { name: "Tus espacios" }),
     ).toBeVisible();
+    // The former landing page still leads to the spaces.
+    await page.goto("/protected");
+    await expect(page).toHaveURL(/\/spaces$/);
 
     await page.getByRole("button", { name: "Cerrar sesión" }).click();
     await expect(page).toHaveURL(/\/login\?notice=signed-out/);
-    await page.goto("/protected");
+    await page.goto("/spaces");
     await expect(page).toHaveURL(/\/login\?next=/);
 
     await page.goto("/recover");
     await page.getByLabel("Correo").fill(identity.email);
-    await page.getByRole("button", { name: "Enviar enlace local" }).click();
+    await page.getByRole("button", { name: "Enviar enlace" }).click();
     await expect(
       page.getByText("encontrarás un enlace en Mailpit"),
     ).toBeVisible();
@@ -66,7 +69,7 @@ test.describe.serial("identity and session", () => {
     );
     await page.goto(recoveryLink);
     await expect(
-      page.getByRole("heading", { name: "Establecer contraseña" }),
+      page.getByRole("heading", { name: "Elige una contraseña nueva" }),
     ).toBeVisible();
     await page
       .getByLabel("Nueva contraseña", { exact: true })
@@ -91,7 +94,7 @@ test.describe.serial("identity and session", () => {
     await page.getByLabel("Correo").fill(identity.email);
     await page.getByLabel("Contraseña").fill(identity.updatedPassword);
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page).toHaveURL(/\/protected$/);
+    await expect(page).toHaveURL(/\/spaces$/);
   });
 
   test("does not expose server credentials in browser assets", async ({
@@ -126,5 +129,30 @@ test.describe.serial("identity and session", () => {
     }
 
     expect(assets.length).toBeGreaterThan(0);
+  });
+
+  test("the chosen theme is kept on this device and rendered by the server", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    const html = page.locator("html");
+    await expect(html).not.toHaveAttribute("data-theme", /.+/);
+
+    await page.getByRole("button", { name: "Tema oscuro" }).click();
+    await expect(html).toHaveAttribute("data-theme", "dark");
+    await expect(
+      page.getByRole("button", { name: "Tema oscuro" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    // The server reads the cookie: no flash of the other theme.
+    const response = await page.reload();
+    expect(await response?.text()).toContain('data-theme="dark"');
+
+    await page.getByRole("button", { name: "Tema del sistema" }).click();
+    await expect(html).not.toHaveAttribute("data-theme", /.+/);
+    const cookies = await page.context().cookies();
+    expect(cookies.some((cookie) => cookie.name === "stepable-tema")).toBe(
+      false,
+    );
   });
 });

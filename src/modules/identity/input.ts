@@ -23,7 +23,8 @@ export function safeInternalPath(value: FormDataEntryValue | null): string {
     !value.startsWith("/") ||
     value.startsWith("//")
   ) {
-    return "/protected";
+    // After signing in, people land on their spaces.
+    return "/spaces";
   }
 
   return value;

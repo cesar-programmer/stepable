@@ -23,6 +23,7 @@ let owner: LocalTestIdentity;
 let member: LocalTestIdentity;
 let foreign: LocalTestIdentity;
 let spaceId: string;
+let foreignSpaceId: string;
 let sourceId: string;
 
 async function login(page: Page, identity: LocalTestIdentity) {
@@ -30,7 +31,7 @@ async function login(page: Page, identity: LocalTestIdentity) {
   await page.getByLabel("Correo").fill(identity.email);
   await page.getByLabel("Contraseña").fill(identity.password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/protected$/);
+  await expect(page).toHaveURL(/\/spaces$/);
 }
 
 test.describe.serial("E3 assistant in the browser", () => {
@@ -48,11 +49,13 @@ test.describe.serial("E3 assistant in the browser", () => {
         name: "Assistant browser space",
       })
     ).space.id;
-    await bootstrapSpace(repository, {
-      email: foreign.email,
-      slug: `${runKey}-foreign`,
-      name: "Foreign assistant space",
-    });
+    foreignSpaceId = (
+      await bootstrapSpace(repository, {
+        email: foreign.email,
+        slug: `${runKey}-foreign`,
+        name: "Foreign assistant space",
+      })
+    ).space.id;
     await connection.client`
       insert into public.profiles (identity_id) values (${member.id})
       on conflict (identity_id) do nothing
@@ -60,6 +63,11 @@ test.describe.serial("E3 assistant in the browser", () => {
     await connection.client`
       insert into public.memberships (space_id, profile_id, role)
       values (${spaceId}, ${member.id}, 'integrante')
+    `;
+    // A second space for the member, to check that sessions do not cross.
+    await connection.client`
+      insert into public.memberships (space_id, profile_id, role)
+      values (${foreignSpaceId}, ${member.id}, 'integrante')
     `;
 
     sourceId = randomUUID();
@@ -105,21 +113,41 @@ test.describe.serial("E3 assistant in the browser", () => {
   }) => {
     await login(page, member);
     await page.goto(`/spaces/${spaceId}`);
-    await page.getByRole("link", { name: "Asistente" }).click();
+    await page
+      .getByRole("navigation", { name: "Espacio" })
+      .getByRole("link", { name: "Asistente", exact: true })
+      .click();
     // Guard: never send questions to a server configured with a real model.
     await expect(page.getByTestId("assistant-mode")).toContainText(
       "Conversación: simulado",
     );
 
+    // An example only fills the field; nothing is sent.
+    const field = page.getByLabel("Pregunta");
     await page
-      .getByLabel("Pregunta")
-      .fill("¿Cómo versiono un contrato con un cambio incompatible?");
+      .getByRole("button", { name: "¿Qué pasos sigue una revisión de código?" })
+      .click();
+    await expect(field).toHaveValue("¿Qué pasos sigue una revisión de código?");
+    await expect(field).toBeFocused();
+    await expect(page.getByRole("region", { name: "Respuesta" })).toHaveCount(
+      0,
+    );
+
+    await field.fill("¿Cómo versiono un contrato con un cambio incompatible?");
     await page.getByRole("button", { name: "Preguntar" }).click();
     const answer = page.getByRole("region", { name: "Respuesta" });
     await expect(answer).toContainText("Respuesta simulada");
     await expect(answer).toContainText(
-      "versión 1 · Contratos de API · líneas 1–2",
+      "Versión 1 · Contratos de API · líneas 1–2",
     );
+    await expect(answer.getByRole("link", { name: "Cita 1" })).toBeVisible();
+    // The answer clears the field; editing brings the question back unsent.
+    await expect(field).toHaveValue("");
+    await page.getByRole("button", { name: "Editar esta pregunta" }).click();
+    await expect(field).toHaveValue(
+      "¿Cómo versiono un contrato con un cambio incompatible?",
+    );
+    await expect(answer).toBeVisible();
 
     await page
       .getByLabel("Pregunta")
@@ -128,13 +156,86 @@ test.describe.serial("E3 assistant in the browser", () => {
     await expect(
       page.getByText("No encontré información suficiente"),
     ).toBeVisible();
+    // A failed query keeps what was written.
+    await expect(page.getByLabel("Pregunta")).toHaveValue(
+      "¿Cuál es la política de vacaciones?",
+    );
 
     await page
       .getByLabel("Pregunta")
       .fill("¿Cómo versiono un contrato con un cambio incompatible?");
     await page.getByRole("button", { name: "Preguntar" }).click();
-    await page.getByRole("link", { name: "Contratos de API" }).click();
+    await page
+      .getByRole("region", { name: "Respuesta" })
+      .getByRole("link", { name: "Contratos de API" })
+      .click();
     await expect(page).toHaveURL(new RegExp(`/sources/${sourceId}$`));
+  });
+
+  test("the floating assistant keeps its session only inside the space", async ({
+    page,
+  }) => {
+    await login(page, member);
+    const fab = page.locator(".assistant-fab");
+    // Not outside a space.
+    await expect(fab).toHaveCount(0);
+
+    await page.goto(`/spaces/${spaceId}`);
+    const posts: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST") posts.push(request.url());
+    });
+
+    // Opening and closing sends nothing; Escape closes and focus returns.
+    await fab.click();
+    const panel = page.getByRole("dialog", { name: "Preguntar al asistente" });
+    const field = panel.getByLabel("Pregunta");
+    await expect(field).toBeFocused();
+    await field.fill("¿Cómo versiono un contrato con un cambio incompatible?");
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(fab).toBeFocused();
+    expect(posts).toHaveLength(0);
+
+    // The text survives navigating inside the space.
+    const nav = page.getByRole("navigation", { name: "Espacio" });
+    await nav.getByRole("link", { name: "Rutas", exact: true }).click();
+    await expect(page).toHaveURL(/\/routes$/);
+    await fab.click();
+    await expect(field).toHaveValue(
+      "¿Cómo versiono un contrato con un cambio incompatible?",
+    );
+    expect(posts).toHaveLength(0);
+
+    // So does the last result, after closing the panel.
+    await panel.getByRole("button", { name: "Preguntar" }).click();
+    const answer = panel.getByRole("region", { name: "Respuesta" });
+    await expect(answer).toContainText("Respuesta simulada");
+    expect(posts).toHaveLength(1);
+    await panel.getByRole("button", { name: "Cerrar asistente" }).click();
+    await nav.getByRole("link", { name: "Fuentes", exact: true }).click();
+    await expect(page).toHaveURL(/\/sources$/);
+    await fab.click();
+    await expect(answer).toContainText("Respuesta simulada");
+
+    // The Asistente page shows the same session, without the button.
+    await panel
+      .getByRole("link", { name: "Abrir en la página Asistente" })
+      .click();
+    await expect(page).toHaveURL(/\/assistant$/);
+    await expect(fab).toHaveCount(0);
+    await expect(
+      page.getByRole("main").getByRole("region", { name: "Respuesta" }),
+    ).toContainText("Respuesta simulada");
+
+    // Another space starts empty (a client-side change, no reload).
+    await page.getByText("Espacio actual").click();
+    await page.getByRole("link", { name: "Foreign assistant space" }).click();
+    await expect(page).toHaveURL(new RegExp(`/spaces/${foreignSpaceId}$`));
+    await fab.click();
+    await expect(field).toHaveValue("");
+    await expect(answer).toHaveCount(0);
+    expect(posts).toHaveLength(1);
   });
 
   test("only responsibles see the space's estimated AI consumption", async ({
@@ -165,5 +266,12 @@ test.describe.serial("E3 assistant in the browser", () => {
     expect((await page.goto(`/spaces/${spaceId}/assistant`))?.status()).toBe(
       404,
     );
+
+    // In their own space, without ready sources, nothing can be asked yet.
+    await page.goto(`/spaces/${foreignSpaceId}/assistant`);
+    await expect(
+      page.getByRole("heading", { name: "Todavía no hay fuentes listas" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Pregunta")).toHaveCount(0);
   });
 });

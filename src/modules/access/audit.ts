@@ -11,6 +11,7 @@ export const accessAuditActions = [
   "fuente_reemplazada",
   "procesamiento_reintentado",
   "fuente_eliminada",
+  "borrador_eliminado",
 ] as const;
 
 export const accessAuditActorTypes = ["identidad", "operador"] as const;
@@ -19,6 +20,7 @@ export const accessAuditTargetTypes = [
   "invitacion",
   "membresia",
   "fuente",
+  "ruta",
 ] as const;
 
 export type AccessAuditAction = (typeof accessAuditActions)[number];

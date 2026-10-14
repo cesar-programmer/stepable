@@ -5,6 +5,7 @@ import { PostgresMembershipRepository } from "@/adapters/postgres/membership-rep
 import { getApplicationDatabase } from "@/adapters/postgres/database";
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
+import { AnimatedItem, AnimatedList } from "@/app/components/motion";
 import { spaceIdSchema } from "@/modules/access/input";
 import { listSpaceMembers } from "@/modules/memberships/service";
 
@@ -68,11 +69,11 @@ export default async function MembersPage({
         </p>
       ) : null}
 
-      <ul className="member-list">
+      <AnimatedList className="member-list">
         {members.map((member) => {
           const isSelf = member.profileId === currentIdentity.id;
           return (
-            <li key={member.profileId}>
+            <AnimatedItem key={member.profileId}>
               <div className="member-identity">
                 <strong>{member.email ?? "Identidad sin correo"}</strong>
                 {isSelf ? <span>(tú)</span> : null}
@@ -106,6 +107,7 @@ export default async function MembersPage({
                         </select>
                       </label>
                       <ConfirmSubmitButton
+                        confirmLabel="Cambiar rol"
                         message={`¿Confirmas cambiar el rol de ${member.email ?? "esta identidad"}?`}
                       >
                         Guardar rol
@@ -124,6 +126,7 @@ export default async function MembersPage({
                       />
                       <ConfirmSubmitButton
                         className="danger"
+                        confirmLabel="Retirar acceso"
                         message={`¿Confirmas retirar el acceso de ${member.email ?? "esta identidad"}?`}
                       >
                         Retirar acceso
@@ -136,10 +139,10 @@ export default async function MembersPage({
                   </span>
                 )}
               </div>
-            </li>
+            </AnimatedItem>
           );
         })}
-      </ul>
+      </AnimatedList>
 
       <div className="actions">
         <Link

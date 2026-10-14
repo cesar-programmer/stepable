@@ -169,6 +169,7 @@ export default async function SourcePage({
             </label>
             <ConfirmSubmitButton
               className="danger"
+              confirmLabel="Eliminar fuente"
               message="¿Eliminar definitivamente esta fuente con todas sus versiones y archivos? No hay papelera."
             >
               Eliminar fuente

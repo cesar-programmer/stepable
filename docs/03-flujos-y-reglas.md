@@ -62,6 +62,7 @@ Estado: aplicadas el 2026-10-01 en el prototipo local ([ADR-006](decisiones/ADR-
 | RN-26 | Un borrador se genera solo con fragmentos de las fuentes vigentes seleccionadas. Sin evidencia suficiente se registra como insuficiente, sin pasos inventados. | Aplicada en E4.1 |
 | RN-27 | Solo un responsable activo edita, regenera y publica. La publicación revalida el borrador y exige que todas sus citas apunten a versiones vigentes; después la ruta no se edita. | Aplicada en E4.1 |
 | RN-28 | Si una fuente citada se reemplaza o elimina, la ruta conserva su contenido, la cita se señala y la ruta queda marcada para revisión. Eliminar una fuente no elimina el contenido derivado ya escrito en rutas. | Aplicada en E4.1 |
+| RN-40 | Solo un responsable activo puede eliminar un **borrador**, desde Inicio, Rutas o el propio borrador, tras una confirmación explícita y sin papelera: se borran sus pasos, citas y fuentes seleccionadas. No se elimina mientras su generación está en curso; uno en cola se elimina antes de llamar al modelo. Los intentos de generación ya usados siguen contando para el límite diario y la eliminación queda auditada. Las rutas publicadas no se eliminan, porque conservan el progreso de quienes las recorren ([ADR-013](decisiones/ADR-013-eliminar-borradores.md)). | Propuesta implementada en local (2026-10-13), pendiente de revisión |
 
 ## Recorrido y progreso de rutas (E5.1–E5.2)
 

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createSupabaseIdentityGateway } from "@/adapters/supabase/identity-gateway";
 import { AutoRefresh } from "@/app/components/auto-refresh";
+import { AnimatedItem, AnimatedList } from "@/app/components/motion";
 import { spaceIdSchema } from "@/modules/access/input";
 import { listSpaceSources } from "@/modules/sources/service";
 
@@ -13,6 +14,7 @@ import {
   sourceNoticeMessages,
   sourceStatusLabels,
 } from "./messages";
+import { SourceUploadForm } from "./upload-form";
 
 type SourcesPageProps = {
   params: Promise<{ spaceId: string }>;
@@ -65,27 +67,7 @@ export default async function SourcesPage({
       ) : null}
 
       {listing.canManage ? (
-        <form
-          action={`/spaces/${spaceId}/sources/upload`}
-          encType="multipart/form-data"
-          method="post"
-        >
-          <label>
-            Archivo Markdown (hasta 1 MiB) o PDF con texto (hasta 8 MiB y 200
-            páginas)
-            <input
-              accept=".md,.markdown,.pdf,text/markdown,application/pdf"
-              name="file"
-              required
-              type="file"
-            />
-          </label>
-          <label>
-            Título (opcional)
-            <input maxLength={120} name="title" type="text" />
-          </label>
-          <button type="submit">Cargar fuente</button>
-        </form>
+        <SourceUploadForm action={`/spaces/${spaceId}/sources/upload`} />
       ) : (
         <p className="muted">
           Solo se muestran las fuentes listas para consultar.
@@ -95,9 +77,9 @@ export default async function SourcesPage({
       {listing.sources.length === 0 ? (
         <p className="empty-state">Todavía no hay fuentes.</p>
       ) : (
-        <ul className="source-list">
+        <AnimatedList className="source-list">
           {listing.sources.map((source) => (
-            <li key={source.id}>
+            <AnimatedItem key={source.id}>
               <div>
                 {source.status === "lista" || listing.canManage ? (
                   <Link href={`/spaces/${spaceId}/sources/${source.id}`}>
@@ -118,7 +100,7 @@ export default async function SourcesPage({
                 </span>
               </div>
               <div>
-                <span className={`status ${source.status}`}>
+                <span className={`status ${source.status}`} key={source.status}>
                   {sourceStatusLabels[source.status]}
                 </span>
                 {source.status === "fallida" && source.errorCode ? (
@@ -134,9 +116,9 @@ export default async function SourcesPage({
                   </span>
                 ) : null}
               </div>
-            </li>
+            </AnimatedItem>
           ))}
-        </ul>
+        </AnimatedList>
       )}
 
       <div className="actions">

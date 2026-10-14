@@ -33,7 +33,7 @@ async function login(page: Page, identity: LocalTestIdentity) {
   await page.getByLabel("Correo").fill(identity.email);
   await page.getByLabel("Contraseña").fill(identity.password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/protected$/);
+  await expect(page).toHaveURL(/\/spaces$/);
 }
 
 async function uploadFile(page: Page, name: string, buffer: Buffer) {
@@ -132,7 +132,10 @@ test.describe.serial("E2 sources in the browser", () => {
   }) => {
     await login(page, owner);
     await page.goto(`/spaces/${spaceId}`);
-    await page.getByRole("link", { name: "Fuentes" }).click();
+    await page
+      .getByRole("navigation", { name: "Espacio" })
+      .getByRole("link", { name: "Fuentes", exact: true })
+      .click();
     await expect(page).toHaveURL(new RegExp(`/spaces/${spaceId}/sources$`));
 
     await uploadFile(
@@ -305,8 +308,11 @@ test.describe.serial("E2 sources in the browser", () => {
     const detailUrl = page.url();
 
     await page.getByLabel(/Entiendo que se eliminarán la fuente/).check();
-    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Eliminar fuente" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Eliminar fuente" })
+      .click();
     await expect(page.getByText("Fuente eliminada.")).toBeVisible();
     await expect(page.getByRole("link", { name: "desechable" })).toHaveCount(0);
     expect((await page.goto(detailUrl))?.status()).toBe(404);

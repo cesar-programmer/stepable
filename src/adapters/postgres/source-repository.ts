@@ -554,6 +554,18 @@ export class PostgresSourceRepository implements SourceRepository {
       .where(condition);
   }
 
+  async listSourceIdsWithCodeBlocks(spaceId: string): Promise<string[]> {
+    const rows = (await this.database.execute(sql`
+      select source.id from public.sources source
+      where source.space_id = ${spaceId} and source.status = 'activa'
+        and exists (
+          select 1 from public.source_segments segment
+          where segment.version_id = source.current_version_id
+            and segment.content like '%' || chr(96) || chr(96) || chr(96) || '%'
+        )`)) as unknown as { id: string }[];
+    return rows.map((row) => row.id);
+  }
+
   async listSources(
     spaceId: string,
     onlyReady: boolean,

@@ -29,7 +29,7 @@ async function login(page: Page, identity: LocalTestIdentity) {
   await page.getByLabel("Correo").fill(identity.email);
   await page.getByLabel("Contraseña").fill(identity.password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/protected$/);
+  await expect(page).toHaveURL(/\/spaces$/);
 }
 
 test.describe.serial("spaces and membership isolation", () => {
@@ -150,9 +150,10 @@ test.describe.serial("spaces and membership isolation", () => {
     const revokedResponse = await page.goto(`/spaces/${revokedSpaceId}`);
     expect(revokedResponse?.status()).toBe(404);
 
-    await page.goto("/protected");
+    // The global session survives: the list of spaces still opens.
+    await page.goto("/spaces");
     await expect(
-      page.getByRole("heading", { name: "Sesión validada en el servidor" }),
+      page.getByRole("heading", { name: "Tus espacios" }),
     ).toBeVisible();
 
     await page.goto(`/spaces/${retainedSpaceId}`);
